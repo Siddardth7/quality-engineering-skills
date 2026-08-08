@@ -1,0 +1,61 @@
+[project]
+name = "quality-platform"
+version = "0.13.0"
+description = "Integrated manufacturing quality platform — FMEA, SPC, and Control Plan over a shared core."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "quality-core",
+    "fmea-app",
+    "spc-app",
+    "msa-app",
+    "controlplan-app",
+    "secom-app",
+]
+
+[tool.uv.workspace]
+members = ["packages/*", "apps/*"]
+
+[tool.uv.sources]
+quality-core = { workspace = true }
+fmea-app = { workspace = true }
+spc-app = { workspace = true }
+msa-app = { workspace = true }
+controlplan-app = { workspace = true }
+secom-app = { workspace = true }
+
+# The workspace root is a coordinator, not an installable package.
+[tool.uv]
+package = false
+override-dependencies = ["pillow>=12.3.0", "gitpython>=3.1.55"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.0",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.15.17",
+    "mypy>=2.1.0",
+    "pandas-stubs>=3.0.3",
+    "types-openpyxl>=3.1.5",
+    "pip-audit>=2.10.0",
+]
+
+# One pytest config for the whole workspace: discovers quality-core + both apps.
+# `importlib` import mode keeps the two same-named `tests` packages (and duplicate
+# basenames like `test_visualizer.py`) isolated; each app dir is put on sys.path by
+# its own conftest.py so `fmea_app` / `ui` / `spc_app` resolve.
+[tool.pytest.ini_options]
+addopts = "--tb=short --import-mode=importlib"
+testpaths = ["packages", "apps", "tests"]
+
+# Coverage across the shared core and both apps (`uv run pytest --cov`).
+# `branch = true` is mandatory: line coverage alone lets a 100%-line file hide an
+# untested branch (a missing `else`). Every per-surface CI gate measures branch
+# coverage because it reads this config. See docs/COVERAGE_BASELINE_2026-07-09.md.
+[tool.coverage.run]
+source = ["quality_core", "fmea_app", "ui", "spc_app", "msa_app", "controlplan_app", "secom_app"]
+omit = ["*/tests/*"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true  # print uncovered lines/branches so gaps are an actionable worklist

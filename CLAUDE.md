@@ -7,7 +7,7 @@ then the one for the app you are touching.
 ## What this repo is
 
 A **uv workspace monorepo** for manufacturing quality tooling: five Streamlit/engine apps
-over one shared core. Python 3.11, workspace version `0.7.0`.
+over one shared core. Python 3.11, workspace version `0.1.0`.
 
 ```
 packages/quality-core/   shared, UI-free core — io, schema, scoring, spc
@@ -142,9 +142,11 @@ Violating these has cost real rework.
 
 ## Version
 
-One version across the workspace: `0.7.0` in root `pyproject.toml` and in each
-`<app>_app/__init__.py::__version__`. Each app has a `tests/test_version.py` pinning it.
-Bump together at release.
+One version across the workspace: `0.1.0` in root `pyproject.toml`, in
+`packages/quality-core` (and `packages/quality-mcp` once it exists), and in each
+`<app>_app/__init__.py::__version__`. Each app has a `tests/test_version.py` pinning
+`__version__` to its own `pyproject.toml` version. Bump together at release, tracking the
+`v0.1.0 → v1.0.0` release ladder.
 
 ## Documentation map
 

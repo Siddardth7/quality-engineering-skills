@@ -9,6 +9,7 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- `packages/quality-mcp` workspace member binding `quality-core` engines to Model Context Protocol endpoints.
 - Project planning documents: `Idea.md`, `ROADMAP.md` (v3.0, rescoped to 10 releases), `Execution.md` (v2.0).
 
 ### Changed

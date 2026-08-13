@@ -51,9 +51,9 @@ finding regardless of test coverage — green tests over wrong math are still wr
 
 ## Out of scope — do not audit, do not propose work on
 
-- `apps/*/**/pages/`, `apps/fmea/ui/`, `shell/`, `app.py` — the Streamlit presentation layer. The web
-  migration **deletes** it (`docs/research/web-platform-migration.md` §2.2). Do not report missing
-  tests or quality issues there.
+- `apps/*/**/pages/`, `apps/fmea/ui/`, `shell/`, `app.py` — the Streamlit presentation layer. It is
+  retained as legacy engine-source UI and is not under active development (the MCP / skill path is
+  additive). Do not report missing tests or quality issues there.
 - Surfaces already gated at 100% (`quality_core.io`, `.schema`, `.scoring`, Control Plan connector +
   schema). Do not propose adding tests to already-fully-covered code. Correctness findings there are
   still in scope — coverage findings are not.

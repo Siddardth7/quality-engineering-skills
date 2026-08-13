@@ -31,9 +31,9 @@ issue = read this file + the issue body, nothing else. It is mirrored as a **pin
 
    | Surface | Gate | Command |
    |---------|------|---------|
-   | `quality_core.io` | **100%** line+branch | `uv run pytest packages/quality-core --cov=quality_core.io --cov-fail-under=100` |
-   | `quality_core.schema` | **100%** line+branch | `uv run pytest packages/quality-core --cov=quality_core.schema --cov-fail-under=100` |
-   | SPC testable surface | **≥95%** line+branch | `uv run pytest apps/spc --cov=spc_app.spc_engine --cov=spc_app.simulation --cov=spc_app.visualizer --cov=spc_app.exporter --cov=spc_app.schema --cov-fail-under=95` |
+   | Each core surface (`quality_core.io` / `.schema` / `.scoring` / `.spc`) | **100%** line+branch | `uv run pytest packages/quality-core --cov=quality_core.<surface> --cov-fail-under=100` |
+   | Each app surface (SPC / Control Plan / MSA / SECOM) | **100%** line+branch | see the exact 8 gates in [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml) — the canonical list |
+   | Each new engine module (`rca` / `ncr` / `ppap` / `sqe`) + its MCP tool surface | **100%** line+branch | a new `--cov-fail-under=100` gate added to `ci.yml` per issue |
    | Whole workspace | no regression | `uv run pytest --cov` |
 
    **New modules are held to 100%** — the floor is a minimum; a fresh module dragging a surface down
@@ -55,27 +55,23 @@ issue = read this file + the issue body, nothing else. It is mirrored as a **pin
    `uv run mypy` clean, and a `CHANGELOG.md` entry under `[Unreleased]` **in the same PR**.
 
 7. **PR + merge — and the merge type is not a preference.** One branch per issue off **`origin/test`**
-   (`feat|fix|chore|docs/<#>-<slug>`), which is also the PR target. Do **not** branch off `main` or
-   `dev`: `dev` carries a release lead, and basing on it produces ~14 files of phantom conflict in
-   the PR against `test`. Open a PR whose body says *what* and *why* and **quotes the test/coverage
-   evidence**. CI (the gate) must be green to merge. Then close the issue.
+   (`feat|fix|chore|docs/<domain>-<slug>`), which is also the PR target. Do **not** branch off `main`.
+   Open a PR whose body says *what* and *why* and **quotes the test/coverage evidence**. CI (the gate)
+   must be green to merge. Then close the issue.
 
    | Merge | Type | Why |
    |---|---|---|
    | feature → `test` | **Squash** | The feature branch is disposable; one clean commit per issue on `test`. |
-   | `test` → `dev` | **Real merge commit** (`--no-ff`) | Both branches are long-lived. |
-   | `dev` → `main` | **Real merge commit** (`--no-ff`) | Same. |
+   | `test` → `main` | **Real merge commit** (`--no-ff`) | Both are long-lived branches. |
 
-   **Never squash between long-lived branches.** A squash rewrites the merged commits under a new
-   SHA with no parent link to the originals, so git can no longer see the two branches as related.
-   The merge-base stops advancing and every subsequent promotion re-presents already-integrated work
-   as conflicts — permanently, and worse each time.
-
-   This is not hypothetical: on 2026-08-01 the `test`↔`dev` merge-base was found stranded at `#105`,
-   with `test` 66 ahead and `dev` 23 ahead holding the *same content* under different SHAs. Four
-   squashed `chore(promote):` commits caused it, and the repair was a 36-file manual resolve. A
-   `.gitattributes` `CHANGELOG.md merge=union` rule now auto-resolves the changelog half; the merge
-   type is what prevents the rest.
+   **Never squash between long-lived branches** (`test` → `main`). A squash rewrites the merged commits
+   under a new SHA with no parent link to the originals, so git can no longer see the two branches as
+   related. The merge-base stops advancing and every subsequent release re-presents already-integrated
+   work as conflicts — permanently, and worse each time. (This bit hard once on the old `test`↔`dev`
+   pair: the merge-base stranded at `#105` with both branches holding the *same content* under
+   different SHAs, caused by four squashed promote commits — a 36-file manual repair. The
+   `.gitattributes` `CHANGELOG.md merge=union` rule auto-resolves the changelog half; `--no-ff`
+   prevents the rest.)
 
 ---
 

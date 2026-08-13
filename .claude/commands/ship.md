@@ -9,9 +9,8 @@ NEVER merge or push to a protected branch (`test`, `dev`, `main`). The SME (Sid)
 
 0. **Prep.** Clear `.pipeline/` of stale files (`rm -rf .pipeline && mkdir .pipeline`). `git fetch`;
    ensure a clean tree; base new work on `origin/test` — the PR target: `git switch -c feat/<slug> origin/test`
-   (derive `<slug>` from the issue number or feature name, e.g. `feat/w06-2-controlplan-engine`).
-   Base on `origin/test`, NOT `origin/dev`: dev carries a release lead that causes ~14-file phantom
-   conflicts in the PR against `test`.
+   (derive `<slug>` from the domain and feature name, e.g. `feat/controlplan-engine`).
+   Always base on `origin/test` — it is the PR target and the only integration branch.
 1. **Research.** Delegate to the `research` subagent with the full request (include the GitHub issue
    body if an issue number was given — fetch it with `gh issue view`). Wait for `.pipeline/spec.md`.
    If it has OPEN QUESTIONS, STOP and show them to the SME.

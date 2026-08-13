@@ -1,38 +1,33 @@
 <!-- ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  HEADER  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
 
-<a href="https://quality-platform-nplyhc6rvsd3bfw6q9vvkd.streamlit.app/">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:0b1220,60:1a2f4a,100:e65100&height=200&section=header&text=Quality%20Platform&fontSize=54&fontColor=ffffff&fontAlignY=40&desc=The%20AIAG%20core%20quality%20toolset%20%E2%80%94%20unified,%20typed,%20and%20tested&descAlignY=62&descSize=16" alt="Quality Platform" width="100%">
-</a>
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0b1220,60:1a2f4a,100:e65100&height=200&section=header&text=Quality%20Engineering%20Skills&fontSize=46&fontColor=ffffff&fontAlignY=40&desc=Engine-backed%20AI%20skills%20for%20manufacturing%20quality%20%E2%80%94%20deterministic%20math,%20never%20hallucinated&descAlignY=62&descSize=15" alt="Quality Engineering Skills" width="100%">
 
 <div align="center">
 
-<img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=600&size=21&pause=1200&color=E65100&center=true&vCenter=true&width=780&height=45&lines=FMEA+//+SPC+//+Control+Plan+//+MSA;The+AIAG+core+toolset%2C+actually+connected;Proven+on+real+semiconductor+data+(SECOM);One+core+//+one+quality+gate+//+one+URL" alt="Quality Platform tagline">
+<img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=600&size=20&pause=1200&color=E65100&center=true&vCenter=true&width=820&height=45&lines=FMEA+//+SPC+//+MSA+//+Control+Plan+%E2%80%94+the+tested+core;The+AI+reasons+//+the+Python+engine+does+the+exact+math;MCP-native+//+local-first+//+agentskills.io;10+releases+//+v0.1.0+%E2%80%94%E2%96%B6+v1.0.0" alt="tagline">
 
 <br>
 
-[![CI](https://github.com/Siddardth7/quality-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/Siddardth7/quality-platform/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-1759%20passing-2ea043?logo=pytest&logoColor=white)](#-the-quality-gate)
-[![Coverage](https://img.shields.io/badge/coverage-core%20100%25%20%C2%B7%20SPC%20%E2%89%A595%25-2ea043)](#-the-quality-gate)
-[![Release](https://img.shields.io/github/v/release/Siddardth7/quality-platform?sort=semver&color=e65100&label=release)](https://github.com/Siddardth7/quality-platform/releases/latest)
-[![Last commit](https://img.shields.io/github/last-commit/Siddardth7/quality-platform?color=1a2f4a)](https://github.com/Siddardth7/quality-platform/commits/main)
+[![CI](https://github.com/Siddardth7/quality-engineering-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Siddardth7/quality-engineering-skills/actions/workflows/ci.yml)
+[![core coverage 100%](https://img.shields.io/badge/core%20coverage-100%25-2ea043)](#-the-quality-gate)
 
 [![Python 3.11](https://img.shields.io/badge/python-3.11-3776AB?logo=python&logoColor=white)](.python-version)
 [![uv](https://img.shields.io/badge/built%20with-uv-261230?logo=astral&logoColor=white)](https://github.com/astral-sh/uv)
 [![Ruff](https://img.shields.io/badge/lint-ruff-261230?logo=ruff&logoColor=white)](https://github.com/astral-sh/ruff)
 [![mypy](https://img.shields.io/badge/types-mypy-2a6db2)](https://mypy-lang.org/)
-[![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
+[![MCP](https://img.shields.io/badge/protocol-MCP-6e56cf)](https://modelcontextprotocol.io)
 
 <br>
 
-**A working manufacturing-quality engineering platform — the AIAG core tools (FMEA, SPC, Control Plan, MSA)<br>brought under one URL, one typed core, and one CI-enforced quality bar.**
+**AI agent skills for manufacturing quality engineering, backed by deterministic, unit-tested Python calculation engines.**<br>The AI reasons about methodology; the engine does the exact math — so Cp/Cpk, Gage R&R, and Action Priority are never hallucinated.
 
 <br>
 
-<a href="https://quality-platform-nplyhc6rvsd3bfw6q9vvkd.streamlit.app/"><img src="https://img.shields.io/badge/%E2%96%B6%20Live%20Demo-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" alt="Live Demo"></a>
+<a href="Idea.md"><img src="https://img.shields.io/badge/%F0%9F%92%A1%20Idea-0b1220?style=for-the-badge" alt="Idea"></a>
 &nbsp;
-<a href="ROADMAP.md"><img src="https://img.shields.io/badge/%F0%9F%97%BA%20Roadmap-0b1220?style=for-the-badge" alt="Roadmap"></a>
+<a href="ROADMAP.md"><img src="https://img.shields.io/badge/%F0%9F%97%BA%20Roadmap-1a2f4a?style=for-the-badge" alt="Roadmap"></a>
 &nbsp;
-<a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/%F0%9F%A7%A9%20Contributing-1a2f4a?style=for-the-badge" alt="Contributing"></a>
+<a href="Execution.md"><img src="https://img.shields.io/badge/%F0%9F%9B%A0%20Execution-1a2f4a?style=for-the-badge" alt="Execution"></a>
 &nbsp;
 <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/%F0%9F%93%9D%20Changelog-1a2f4a?style=for-the-badge" alt="Changelog"></a>
 
@@ -42,138 +37,59 @@
 
 ## 🔎 What this is
 
-In real quality departments, the **AIAG / IATF-16949 core tools** live in disconnected spreadsheets and
-one-off apps. A failure mode found in an **FMEA** never automatically becomes a control on a **Control
-Plan**, and an out-of-control point on an **SPC** chart never flows back to update the FMEA's risk
-rating. The methodology *describes* a closed loop; the tooling almost never *implements* one.
+Manufacturing quality engineers work in AIAG / IATF-16949 tools — **FMEA, SPC, MSA, Control Plans, 8D, PPAP, auditing** — mostly in spreadsheets and disconnected apps. AI assistants reason about these methodologies well, but **LLMs asked to compute statistics in prompt memory hallucinate the math**: they miscalculate Cp/Cpk, draw invalid control limits, and get Action Priority ratings wrong.
 
-**Quality Platform builds that loop for real** — credible standalone tools first, everything they share
-promoted into a single typed core (`quality_core`), then wired into an end-to-end workflow, and
-**proven on real semiconductor process data**. Every week ships a tested, released rung. *No week ships a
-stub.*
+This project fixes that with a strict split:
 
-> Built in public, one release per week, on a strict green-gate discipline — an engineering portfolio
-> that doubles as a genuinely usable quality toolkit.
+- **🧠 AI Agent Skills** (`agentskills.io` markdown) guide the *qualitative* reasoning — structuring a 7-step FMEA, building a reversible 5-Why chain, phrasing an ISO 9001 §8.7 non-conformance.
+- **⚙️ Deterministic engines** (`packages/quality-core`, 100% branch-covered Python) do *every* calculation — control limits, Western Electric rules, ANOVA Gage R&R, the AIAG-VDA AP table.
+- **🔌 An MCP server** (`packages/quality-mcp`) exposes those engines to Claude Code, Cursor, and Codex as native tools, so the agent *calls* verified math instead of guessing it.
+- **🖥️ A minimal local canvas** renders the charts and grids.
 
----
+Local-first: no cloud backend, works directly on local CSV / Excel / JSON files.
 
-## 🖥️ See it running
-
-<div align="center">
-<table>
-  <tr>
-    <td width="50%" valign="top">
-      <img src="assets/fmea-risk-dashboard.png" alt="FMEA Risk Analyzer dashboard with risk-tier KPIs and auto-generated insight"><br>
-      <sub><b>🛡️ FMEA Risk Analyzer</b> — RPN &amp; AIAG-VDA Action Priority, risk-tier triage, auto-generated insight.</sub>
-    </td>
-    <td width="50%" valign="top">
-      <img src="assets/spc-control-chart.png" alt="Xbar-R control chart with Western Electric rule overlays"><br>
-      <sub><b>📈 SPC Control Charts</b> — X̄-R / I-MR / c-charts with Western Electric &amp; Nelson rule overlays.</sub>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <img src="assets/capability-gauge.png" alt="Process capability Cpk gauge with a stability-gate warning"><br>
-      <sub><b>📊 Process Capability</b> — Cp/Cpk/Pp/Ppk with a <b>stability gate</b>: no capability claim on an out-of-control process.</sub>
-    </td>
-    <td width="50%" valign="top">
-      <img src="assets/platform-home.png" alt="Unified platform shell landing page"><br>
-      <sub><b>🏭 Unified shell</b> — every tool under one <code>st.navigation</code> surface, one theme, one URL.</sub>
-    </td>
-  </tr>
-</table>
-
-**▶ [Open the live demo →](https://quality-platform-nplyhc6rvsd3bfw6q9vvkd.streamlit.app/)**
-
-</div>
+> **Engine source.** This repo reuses the tested FMEA, SPC, MSA, and Control Plan engines from [`quality-platform`](https://github.com/Siddardth7/quality-platform) as its deterministic core, and builds the skill / MCP / canvas layers on top. Full vision in **[Idea.md](Idea.md)**.
 
 ---
 
-## 🔄 The closed loop
+## 🗺️ The plan
 
-The architectural payoff: the AIAG core-tools loop, wired end to end and run on real data.
+`v0.1` platform + MCP setup → `v0.2–v0.5` wrap the four existing engines → `v0.6–v0.9` one new high-ROI domain per version → `v1.0` hardening.
 
-```mermaid
-flowchart LR
-    FMEA["🛡️ FMEA<br/>score S·O·D →<br/>RPN / Action Priority"]
-    CP["🧩 Control Plan<br/>failure mode → characteristic,<br/>spec, method, sample plan,<br/>recommended chart"]
-    SPC["📈 SPC<br/>control charts +<br/>capability (Cp/Cpk)"]
-    MSA["📏 MSA / Gage RR<br/>is the measurement<br/>system even trustworthy?"]
-    SECOM[("🏭 SECOM<br/>real semiconductor<br/>process data")]
-
-    FMEA -->|"high-risk items<br/>become controls"| CP
-    CP -->|"auto-configures<br/>the chart"| SPC
-    SPC -->|"out-of-control →<br/>occurrence feedback / CAPA"| FMEA
-    MSA -.->|"prove the gage<br/>before trusting the chart"| SPC
-    SECOM -.->|"runs through<br/>every tool"| SPC
-
-    classDef live fill:#0b1220,stroke:#e65100,stroke-width:2px,color:#fff;
-    class FMEA,SPC,CP,MSA,SECOM live;
+```
+v0.1.0 ─► v0.2.0 ─► v0.3.0 ─► v0.4.0 ─► v0.5.0 ─► v0.6.0 ─► v0.7.0 ─► v0.8.0 ─► v0.9.0 ─► v1.0.0
+Setup     FMEA      SPC       MSA      Control    RCA       NCR &     PPAP      Supplier   Production
+& MCP     via MCP   via MCP   via MCP  Plan       Suite     COPQ      Core      SCAR       Hardening
 ```
 
----
-
-## 🧰 The tools
-
-| Tool | What it does | Status |
-| ---- | ------------ | ------ |
-| **🛡️ FMEA Risk Analyzer** | Failure Mode &amp; Effects Analysis — RPN + AIAG-VDA **Action Priority**, editable S/O/D scales, relational model (Function → FM → Effect / Cause / Control), action tracking, Pareto + risk heatmap, Excel/PDF/CSV export | ![live](https://img.shields.io/badge/-live-2ea043) |
-| **📈 SPC Dashboard** | Statistical Process Control — variables &amp; attributes control charts, Western Electric / Nelson rules, Cp/Cpk/Pp/Ppk **with a stability gate**, live disturbance simulator | ![live](https://img.shields.io/badge/-live-2ea043) |
-| **🧩 Control Plan connector** | Turns FMEA failure modes into a Control Plan (characteristic, spec, method, sample plan, recommended chart) — the APQP-adjacent bridge that closes the loop | ![live](https://img.shields.io/badge/-live-2ea043) |
-| **📏 MSA / Gage R&amp;R** | Measurement Systems Analysis — Gage R&amp;R (Average-and-Range by default, or ANOVA with the part×appraiser interaction), %EV/%AV/%GRR/%PV vs study &amp; tolerance, `ndc`, accept/marginal/reject vs AIAG thresholds | ![live](https://img.shields.io/badge/-live-2ea043) |
-| **🏭 SECOM case study** | The whole platform run on **real semiconductor sensor data** — SPC, real Cp/Cpk, yield/DPPM, Pareto of failing signals | ![shipped](https://img.shields.io/badge/-engine--only%20%C2%B7%20v0.9.0%20shipped-2ea043) |
-
-> Standards context: **FMEA** — AIAG-VDA (2019) + AIAG FMEA-4 · **SPC** — AIAG SPC 4th Ed. · capability target **Cpk ≥ 1.33**.
-> The AIAG-VDA Action Priority table is verified cell-by-cell against the primary handbook.
+Everything else — 8D, APQP/DVP&R, full ISO/IATF + VDA 6.3 audit, OEM CSR overlays, desktop packaging — is the named **v2 backlog** in **[ROADMAP.md](ROADMAP.md)**. Versions are milestone-driven, not date-driven.
 
 ---
 
 ## 🏗️ Architecture
 
-A **uv workspace monorepo** with **five members**: four Streamlit apps mounted under one shell, plus
-**SECOM as an engine-only member** — a tested library, deliberately not mounted. Every cross-cutting
-concern is written **once** in `quality_core` and consumed by all of them.
+A **uv workspace monorepo**. The deterministic core is written once in `quality_core` and consumed by everything above it. Imports go downward only — CI enforces that no UI dependency ever leaks into the core.
 
 ```mermaid
 flowchart TB
-    subgraph Shell["🏭 Unified shell · app.py (st.navigation)"]
-        Home["Landing + one theme + one nav"]
+    Agent["🧠 AI Agent<br/>Claude Code · Cursor · Codex"]
+    subgraph MCP["🔌 packages/quality-mcp"]
+        Tools["MCP tool bindings (JSON-RPC)"]
     end
-    subgraph Apps["Apps · mounted in the shell"]
-        FMEA["🛡️ FMEA<br/>apps/fmea"]
-        SPC["📈 SPC<br/>apps/spc"]
-        CP["🧩 Control Plan<br/>apps/controlplan"]
-        MSA["📏 MSA<br/>apps/msa"]
+    subgraph Core["⚙️ packages/quality-core — 100% branch-covered"]
+        Existing["FMEA · SPC · MSA · Control Plan<br/>(existing, tested)"]
+        New["RCA · NCR/COPQ · PPAP · SCAR<br/>(added v0.6–v0.9)"]
     end
-    subgraph Engine["Engine-only · library, not mounted"]
-        SECOM["🏭 SECOM<br/>apps/secom"]:::engine
-    end
-    subgraph Core["📦 packages/quality-core → import quality_core"]
-        Schema["schema/<br/>flat + relational contracts (Pydantic v2)"]
-        IO["io/<br/>validated ingest · CSV/Excel/PDF export"]
-        Scoring["scoring.py<br/>RPN · AIAG-VDA Action Priority"]
-        Theme["theme/<br/>palette · style"]
-    end
+    Canvas["🖥️ Local canvas<br/>FastAPI · minimal single-writer"]
 
-    Home --> FMEA & SPC & CP & MSA
-    FMEA --> Schema & IO & Scoring & Theme
-    SPC --> IO & Theme
-    CP --> Schema & IO & Scoring
-    MSA --> Schema & IO & Theme
-    SECOM --> IO
-    SECOM -.reuses the SPC engine.-> SPC
-
-    classDef engine opacity:0.85,stroke-dasharray:4 4;
+    Agent -->|tool call| Tools
+    Tools --> Existing & New
+    Tools --> Canvas
+    classDef c fill:#0b1220,stroke:#e65100,stroke-width:2px,color:#fff;
+    class Agent,Existing,New,Canvas c;
 ```
 
-**Why it's built this way**
-- **Shared core, consumed many times.** `quality_core.io` owns CSV/Excel/PDF export (formula-injection
-  safe) and validated ingest — so upload validation and export are *guaranteed identical* across tools.
-  That's the economic argument of a monorepo, made concrete and coverage-gated at 100%.
-- **Schema promoted only when stable.** Contracts lived inside the FMEA app until they earned promotion
-  to `quality_core.schema` — deferred extraction, done once, correctly.
-- **History preserved.** The FMEA and SPC apps were previously standalone repos, migrated here with
-  **full commit history intact** — the histories are part of the engineering story.
+The existing Streamlit apps under `apps/` remain in place as the tested engine source; the MCP / skill path is additive.
 
 ---
 
@@ -181,126 +97,58 @@ flowchart TB
 
 ```bash
 # 1 · clone
-git clone https://github.com/Siddardth7/quality-platform.git
-cd quality-platform
+git clone https://github.com/Siddardth7/quality-engineering-skills.git
+cd quality-engineering-skills
 
-# 2 · install the locked workspace (uv lives at ~/.local/bin/uv)
-uv sync
+# 2 · install the locked workspace
+uv sync --frozen
 
-# 3 · run the whole platform — one URL, every tool
-uv run streamlit run app.py
+# 3 · run the test suite
+uv run pytest -q
 ```
 
-<details>
-<summary><b>Run a single app standalone</b></summary>
-
-```bash
-cd apps/fmea && streamlit run app.py   # FMEA Risk Analyzer
-cd apps/spc  && streamlit run app.py   # SPC Dashboard
-```
-Each app still runs unchanged from its own directory.
-</details>
+The MCP server and canvas entry points land in `v0.1.0`–`v0.2.0` — see **[ROADMAP.md](ROADMAP.md)**.
 
 ---
 
 ## 🛡️ The quality gate
 
-The whole workspace shares **one** quality bar (`ruff.toml`, `mypy.ini`, pytest config in
-`pyproject.toml`). It runs locally and, identically, in CI on **every push and PR to `main`** — a
-protected branch that requires the gate to pass before merge.
+One bar across the workspace, enforced locally and in CI (`.github/workflows/ci.yml`) on every push and PR to `test` and `main`:
 
 ```bash
-uv run ruff check .     # lint + format check
+uv run ruff check .     # lint + format
 uv run mypy             # strict static types
-uv run pytest --cov     # 1759 tests + coverage across core + apps
+uv run pytest --cov     # tests + coverage
 ```
 
-**Coverage gates — CI-enforced, cannot silently regress:**
+Plus a **core dependency contract** (no UI chain in `quality-core`) and **per-surface coverage gates**, each at `--cov-fail-under=100` with branch coverage on. Every new engine module added in `v0.6`–`v0.9` ships with its own gate, in the same style.
 
-| Surface | Bar |
-| ------- | --- |
-| `quality_core.io` — shared export + ingest | **100%** |
-| `quality_core.schema` — shared FMEA contracts | **100%** (line + branch) |
-| SPC testable surface — engine + simulation + visualizer + exporter | **≥ 95%** |
-
-**Workflow discipline:** one logical change per commit (conventional commits) · one issue at a time ·
-multi-agent code review before finishing · push → CI green → close issue → tag a release each week ·
-if a week can't ship green, **cut scope, not quality**.
-
----
-
-## 🗺️ Roadmap
-
-Twelve tracked weeks, one release each, ending on a portfolio-grade `v1.0.0`.
-
-| Phase | Weeks | Focus |
-| ----- | ----- | ----- |
-| **A · Foundation** | 1–2 | Monorepo, shared core, shell, one CI gate · `v0.1–v0.2` ✅ |
-| **B · Standards-correct cores** | 3–5 | AP-native + relational FMEA, shared validation/export · `v0.3–v0.5` ✅ |
-| **C · Integration & core-tool completion** | 6–9 | Control Plan → close the loop → **MSA** → **SECOM** real-data case study |
-| **D · Depth & legibility** | 10–12 | Modern SPC depth, DOE on SECOM, then a hardening pass → **`v1.0.0-portfolio`** |
-
-<sub>An explainable **AI FMEA copilot** (LLM + RAG + eval harness) is a documented, unscheduled future
-phase. The full plan — vision, diagrams, week-by-week detail — lives in **[ROADMAP.md](ROADMAP.md)**.</sub>
+> **Standards fidelity.** Every AIAG / ISO / VDA constant, threshold, and quotation is cited in that domain's `docs/ASSUMPTIONS_LOG.md`, verified against the licensed reference manual — never against a web search.
 
 ---
 
 ## 📁 Repository layout
 
 ```
-quality-platform/
-├── app.py                  # unified platform shell (st.navigation)
-├── shell/                  # landing page + shared chrome
-├── ROADMAP.md              # the full project guide (vision, diagrams, 12-week plan)
+quality-engineering-skills/
+├── Idea.md · ROADMAP.md · Execution.md   # planning
 ├── packages/
-│   └── quality-core/       # shared core  →  import quality_core
-│       └── src/quality_core/
-│           ├── schema/     # flat (FMEARow) + relational (Function→FM→…) contracts
-│           ├── io/         # validated ingest · CSV/Excel/PDF export (injection-safe)
-│           ├── scoring.py  # RPN · AIAG-VDA Action Priority
-│           └── theme/      # palette · style
-└── apps/
-    ├── fmea/               # FMEA Risk Analyzer  (full original history preserved)
-    ├── spc/                # Manufacturing SPC Dashboard  (full original history preserved)
-    ├── controlplan/        # Control Plan connector — FMEA → characteristic/spec/method/chart
-    ├── msa/                # MSA / Gage R&R — Average-and-Range (default) + ANOVA
-    └── secom/              # SECOM real-data case study — engine-only, not mounted in the shell
+│   ├── quality-core/     # shared deterministic engines  → import quality_core
+│   └── quality-mcp/      # MCP tool bindings (v0.1.0+)
+├── apps/                 # existing tested apps = the engine source
+│   ├── fmea/  spc/  msa/  controlplan/  secom/
+├── skills/               # agentskills.io markdown skills (added per version)
+└── .claude/              # ship pipeline agents + commands
 ```
 
-<sub>Migrated from the standalone repos
-[`fmea-risk-analyzer`](https://github.com/Siddardth7/fmea-risk-analyzer) and
-[`manufacturing-spc-dashboard`](https://github.com/Siddardth7/manufacturing-spc-dashboard),
-now archived → moved here.</sub>
-
 ---
 
-## 🧱 Built with
+## 🔀 Branch & release flow
+
+`feature → test → main`. Feature branches are based on `origin/test`; the ship pipeline opens a PR into `test`. A version ships by promoting `test → main` at a milestone boundary and tagging it, with SME sign-off. Full operating rules in **[CLAUDE.md](CLAUDE.md)**.
 
 <div align="center">
-
-![Python](https://img.shields.io/badge/Python%203.11-3776AB?logo=python&logoColor=white)
-![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?logo=streamlit&logoColor=white)
-![pandas](https://img.shields.io/badge/pandas-150458?logo=pandas&logoColor=white)
-![Pydantic](https://img.shields.io/badge/Pydantic%20v2-E92063?logo=pydantic&logoColor=white)
-![Plotly](https://img.shields.io/badge/Plotly-3F4F75?logo=plotly&logoColor=white)
-![uv](https://img.shields.io/badge/uv-261230?logo=astral&logoColor=white)
-![Ruff](https://img.shields.io/badge/Ruff-261230?logo=ruff&logoColor=white)
-![mypy](https://img.shields.io/badge/mypy-2A6DB2)
-![pytest](https://img.shields.io/badge/pytest-0A9EDC?logo=pytest&logoColor=white)
-![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)
-
-</div>
-
----
-
-<div align="center">
-
-**New here?** Start with the **[ROADMAP.md](ROADMAP.md)** · **Contributing?** See **[CONTRIBUTING.md](CONTRIBUTING.md)** and the [Definition of Done](docs/DEFINITION_OF_DONE.md).
-
-<br>
-
-<sub>Manufacturing-quality engineering, built like software — typed, tested, and shipped weekly.</sub>
+<sub>Manufacturing-quality engineering, built like software — typed, tested, and shipped as milestones.</sub>
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:e65100,40:1a2f4a,100:0b1220&height=120&section=footer" alt="" width="100%">
-
 </div>

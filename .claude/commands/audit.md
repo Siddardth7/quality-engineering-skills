@@ -15,8 +15,8 @@ is fixed later through `/ship`, so it lands under CI and the coverage gates.
    any stale `.pipeline/audit-<scope>.md` for this scope.
 
 1. **Audit.** Delegate to the `auditor` subagent with the scope and the reminder that the Streamlit
-   presentation layer and already-100%-gated surfaces are out of scope
-   (`docs/research/web-platform-migration.md` §2.2). Wait for `.pipeline/audit-<scope>.md`.
+   presentation layer (retained as legacy engine-source UI, not under active development) and
+   already-100%-gated surfaces are out of scope. Wait for `.pipeline/audit-<scope>.md`.
 
 2. **Read the report yourself.** Do not forward it unread. Sanity-check it:
    - Does every finding cite a real `file:line`? Spot-check two.

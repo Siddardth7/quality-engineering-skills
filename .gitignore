@@ -37,3 +37,12 @@ htmlcov/
 
 # Playwright MCP browser artifacts (transient)
 .playwright-mcp/
+
+# hyperresearch tool + research artifacts (research aid, not part of the product).
+# The distilled findings live in Idea.md; the raw CLI/notes stay local, out of the repo.
+/hyperresearch/
+/.hyperresearch/
+/research/
+/.claude/skills/
+/.claude/agents/hyperresearch-*.md
+/.claude/settings.json

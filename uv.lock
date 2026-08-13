@@ -19,6 +19,7 @@ members = [
     "fmea-app",
     "msa-app",
     "quality-core",
+    "quality-mcp",
     "quality-platform",
     "secom-app",
     "spc-app",
@@ -1866,6 +1867,17 @@ requires-dist = [
 provides-extras = ["streamlit"]
 
 [[package]]
+name = "quality-mcp"
+version = "0.1.0"
+source = { editable = "packages/quality-mcp" }
+dependencies = [
+    { name = "quality-core" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "quality-core", editable = "packages/quality-core" }]
+
+[[package]]
 name = "quality-platform"
 version = "0.1.0"
 source = { virtual = "." }
@@ -1874,6 +1886,7 @@ dependencies = [
     { name = "fmea-app" },
     { name = "msa-app" },
     { name = "quality-core" },
+    { name = "quality-mcp" },
     { name = "secom-app" },
     { name = "spc-app" },
 ]
@@ -1895,6 +1908,7 @@ requires-dist = [
     { name = "fmea-app", virtual = "apps/fmea" },
     { name = "msa-app", editable = "apps/msa" },
     { name = "quality-core", editable = "packages/quality-core" },
+    { name = "quality-mcp", editable = "packages/quality-mcp" },
     { name = "secom-app", editable = "apps/secom" },
     { name = "spc-app", editable = "apps/spc" },
 ]

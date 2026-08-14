@@ -1,0 +1,33 @@
+"""
+server.py
+Model Context Protocol (MCP) server for Quality Platform.
+
+Exposes quality-core deterministic engineering engines to AI agents over standard MCP
+transports using the FastMCP framework.
+"""
+from __future__ import annotations
+
+from mcp.server.fastmcp import FastMCP
+
+from quality_mcp import __version__
+
+mcp = FastMCP("quality-mcp")
+
+
+@mcp.tool()
+def ping() -> dict[str, str]:
+    """Health check endpoint confirming MCP server availability and version."""
+    return {
+        "status": "ok",
+        "server": "quality-mcp",
+        "version": __version__,
+    }
+
+
+def main() -> None:
+    """Entry point for the quality-mcp console script."""
+    mcp.run()
+
+
+if __name__ == "__main__":
+    main()

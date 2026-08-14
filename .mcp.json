@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "quality-mcp": {
+      "command": "uv",
+      "args": [
+        "run",
+        "quality-mcp"
+      ]
+    }
+  }
+}

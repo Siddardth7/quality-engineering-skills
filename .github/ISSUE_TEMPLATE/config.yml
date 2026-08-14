@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Definition of Done Contract
+    url: https://github.com/Siddardth7/quality-engineering-skills/blob/test/docs/DEFINITION_OF_DONE.md
+    about: Read the engineering standards, 7-gate per-issue Definition of Done, and coverage rules before opening an issue or PR.

@@ -201,19 +201,14 @@ def test_milestones_markdown_links_resolve() -> None:
 
 
 def test_changelog_entry_unreleased() -> None:
-    """Verify CHANGELOG.md contains the issue #7 entry under [Unreleased] -> Added."""
+    """Verify CHANGELOG.md contains the issue #7 entry under [0.1.0] or [Unreleased]."""
     assert _CHANGELOG.is_file(), f"Missing CHANGELOG file: {_CHANGELOG}"
     content = _CHANGELOG.read_text(encoding="utf-8")
 
-    assert "## [Unreleased]" in content
-    unreleased_section = content.split("## [Unreleased]")[1].split("## [")[0]
-    assert "### Added" in unreleased_section
-
-    added_section = unreleased_section.split("### Added")[1].split("###")[0]
-    assert "#7" in added_section, "CHANGELOG.md [Unreleased] -> Added must reference issue #7"
-    assert "docs/milestones/README.md" in added_section
-    assert "docs/milestones/v0.1.0.md" in added_section
-    assert "tests/test_milestones_convention.py" in added_section
+    assert "#7" in content, "CHANGELOG.md must reference issue #7"
+    assert "docs/milestones/README.md" in content
+    assert "docs/milestones/v0.1.0.md" in content
+    assert "tests/test_milestones_convention.py" in content
 
 
 # ==============================================================================

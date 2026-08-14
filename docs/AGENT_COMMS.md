@@ -49,7 +49,7 @@ on, so absorb it before starting Milestone 2.
 
 - **Removed:** `apps/{fmea,spc,msa,controlplan,secom}`, the shell (`shell/`, `app.py`), the
   stale root `requirements.txt`, and the app/cross-app boundary tests. Landed on branch
-  `chore/slim-to-core-mcp` → PR into `test` (link to be added when opened).
+  `chore/slim-to-core-mcp` → **PR #22** into `test`.
 - **Why:** the whole quality-platform had been bulk-duplicated in and CI ran all of it
   (~1h/PR — core 5×, apps 2×) for code this architecture never imports. `quality-mcp`
   depends only on `quality-core`; `quality-core` is standalone.

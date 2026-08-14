@@ -1,37 +1,46 @@
 # CLAUDE.md
 
-Guidance for Claude Code (claude.ai/code) working anywhere in the `quality-platform`
-repository. App-specific detail lives in `apps/<app>/CLAUDE.md` — read this file first,
-then the one for the app you are touching.
+Guidance for Claude Code (claude.ai/code) working anywhere in the
+`quality-engineering-skills` repository. Read this file first.
+
+> **📮 Read [`docs/AGENT_COMMS.md`](docs/AGENT_COMMS.md) at the start of every session.** It is
+> the async channel between **Claude** (PM/SME reviewer) and **Antigravity** (implementer):
+> review notes, decisions, hand-offs, and questions flow through it. Check the "Open items"
+> index for anything addressed to you, and post there when you have something for the other
+> agent. Both agents feed this doc in by default.
 
 ## What this repo is
 
-A **uv workspace monorepo** for manufacturing quality tooling: five Streamlit/engine apps
-over one shared core. Python 3.11, workspace version `0.1.0`.
+A **uv workspace monorepo** for **Engine-Powered Quality Engineering Skills**: AI-agent
+skills + an MCP server exposing a shared, deterministic quality-engineering core to LLM
+hosts. Python 3.11, workspace version `0.1.0`.
 
 ```
-packages/quality-core/   shared, UI-free core — io, schema, scoring, spc
-apps/fmea/               FMEA risk analyzer (RPN + AIAG-VDA Action Priority)
-apps/spc/                Statistical Process Control (control charts, capability)
-apps/msa/                Measurement System Analysis (crossed Gage R&R)
-apps/controlplan/        Control Plan (+ FMEA -> Control Plan connector)
-apps/secom/              SECOM semiconductor case study — engine-only, no UI (#206)
-shell/ + app.py          unified Streamlit shell mounting FMEA, SPC, Control Plan, Gage R&R
+packages/quality-core/   shared, UI-free core — io, schema, scoring, spc, theme
+packages/quality-mcp/    FastMCP server exposing core engines to Claude Code / Cursor / Codex
+skills/                  agentskills.io skill definitions (qualitative prompt layer; no inline math)
+docs/milestones/         per-release milestone index + specs
+tests/                   top-level governance suites (templates, skills, milestone docs)
 ```
 
-**Imports go downward only.** Apps import from `quality_core`; apps never import each
-other. SECOM enforces this with `apps/secom/tests/test_import_boundary.py`, and CI enforces
-that `quality-core` never resolves a Streamlit-chain dependency (audit A11, #202).
+> **The five legacy Streamlit apps (`apps/fmea`, `apps/spc`, `apps/msa`, `apps/controlplan`,
+> `apps/secom`) and the unified shell (`shell/` + `app.py`) were removed 2026-08.** This repo
+> is skills + MCP + core only. Each engine is **extracted from the source quality-platform
+> repo into `quality-core`** as its milestone comes up (FMEA's AP scorer already lives in
+> `quality_core.scoring`; SPC primitives in `quality_core.spc`). See `ROADMAP.md`.
+
+**Imports go downward only.** `quality-mcp` imports `quality-core`; `quality-core` imports
+no app and no UI. CI enforces that neither `quality-core` nor `quality-mcp` resolves a
+Streamlit-chain dependency (audit A11, #202/#3).
 
 ## Commands
 
-All commands run from the **workspace root** via `uv` — never `pip`, never from an app
-directory. Per-app `requirements.txt` files are legacy leftovers; they are not the install path.
+All commands run from the **workspace root** via `uv` — never `pip`.
 
 ```bash
-uv sync --frozen                     # install (locked deps + dev tools)
-uv run streamlit run app.py          # unified platform shell
-uv run streamlit run apps/spc/app.py # a standalone app
+uv sync --frozen                                    # install (locked deps + dev tools)
+uv run quality-mcp                                  # run the MCP server (stdio)
+uv run pytest packages/quality-mcp -q               # one package's tests
 ```
 
 ### The gate
@@ -42,29 +51,29 @@ Python 3.11. All must be green before merging:
 ```bash
 uv run ruff check .
 uv run mypy
-uv run pytest --cov
+uv run pip-audit
 ```
 
-Plus a **core dependency contract** (no Streamlit chain in `quality-core`) and **eight
-per-surface coverage gates**, each at `--cov-fail-under=100` with branch coverage on
-(`[tool.coverage.run] branch=true`):
+Plus a **core dependency contract** (no Streamlit chain in `quality-core` **or**
+`quality-mcp`) and **two coverage gates**, each at `--cov-fail-under=100` with branch
+coverage on (`[tool.coverage.run] branch=true`), followed by the governance suites:
 
 | Gate | Surface |
 |---|---|
-| Core io / schema / scoring / spc (4 gates) | `quality_core.{io,schema,scoring,spc}`, each run from `packages/quality-core` |
-| SPC | `spc_app.{spc_engine,simulation,visualizer,exporter,schema,control_plan_config,fmea_feedback}` |
-| Control Plan | `controlplan_app.{connector,schema}` |
-| MSA | `msa_app.{gage_rr_engine,schema,exporter}` |
-| SECOM | all seven `secom_app` engine modules (no `pages/` exclusion — SECOM has no UI) |
+| Core coverage gate | `quality_core.{io,schema,scoring,spc}` — one run over `packages/quality-core`, combined 100% |
+| quality-mcp coverage gate | `quality_mcp` (all modules), run from `packages/quality-mcp` |
+| Governance suites | `tests/` — templates, skills conventions, milestone docs |
 
-Streamlit `pages/` and entry scripts are excluded from app gates — they need a runtime.
+Each suite runs **once** — the old sweep + per-app gates that re-ran the core 5× and the
+apps 2× are gone with the apps. When an engine is extracted into `quality-core` for its
+milestone, it is covered by the core gate; an app-specific gate returns only if an app is
+ever reintroduced.
 
 ### Single test
 
 ```bash
-uv run pytest apps/msa/tests/test_gage_rr_engine.py -q     # one module
-uv run pytest apps/spc -k "capability" -q                  # by keyword
-```
+uv run pytest packages/quality-core -k "scoring" -q   # by keyword
+uv run pytest packages/quality-mcp/tests/test_server.py -q
 
 ## Branch ladder
 
@@ -128,34 +137,35 @@ Violating these has cost real rework.
 
 ## Standards fidelity
 
-- Every AIAG/ISO constant, threshold, and quotation is cited in that app's
-  `apps/<app>/docs/ASSUMPTIONS_LOG.md`. **Do not change a value without updating its log.**
+- Every AIAG/ISO constant, threshold, and quotation must be cited in an `ASSUMPTIONS_LOG.md`
+  that travels with the engine (each engine carries its own when extracted from the source
+  platform repo). **Do not change a value without updating its log.**
 - **For AIAG/ISO claims the on-machine manual is the ONLY valid source:**
   `/Users/sid/Documents/Upskill/SixSigma/MSA_Reference_Manual_4th_Edition.md`.
   Never verify a standards quotation via web search.
 - Use **formatting-tolerant matching** when checking quotations. Markdown emphasis and
   inline `<sup>` footnote markup produce false "fabricated" verdicts — and a false
-  fabrication verdict is as serious as a real fabrication. MSA keeps a machine-checkable
-  manifest at `apps/msa/docs/CITATIONS.tsv`, enforced by `apps/msa/tests/test_citations.py`.
-- Where no published standard exists, say so in the module docstring rather than implying
-  one (see `secom_app/selection.py` and `secom_app/doe_screening.py`).
+  fabrication verdict is as serious as a real fabrication. Keep citations in a
+  machine-checkable manifest (`CITATIONS.tsv`) with an enforcing test, as the extracted
+  engines did in the source repo.
+- Where no published standard exists, say so in the module docstring rather than implying one.
 
 ## Version
 
 One version across the workspace: `0.1.0` in root `pyproject.toml`, in
-`packages/quality-core` (and `packages/quality-mcp` once it exists), and in each
-`<app>_app/__init__.py::__version__`. Each app has a `tests/test_version.py` pinning
-`__version__` to its own `pyproject.toml` version. Bump together at release, tracking the
-`v0.1.0 → v1.0.0` release ladder.
+`packages/quality-core`, and in `packages/quality-mcp` (`<pkg>/__init__.py::__version__`).
+Each package has a `tests/test_version.py` pinning `__version__` to its own
+`pyproject.toml` version. Bump together at release, tracking the `v0.1.0 → v1.0.0` ladder.
 
 ## Documentation map
 
 | Doc | What it is |
 |---|---|
+| `docs/AGENT_COMMS.md` | **async Claude ⇄ Antigravity channel — read every session** |
 | `docs/ENGINEERING_SYSTEM_PLAYBOOK.md` | the working system — issues, review loop, CI, releases |
 | `docs/DEFINITION_OF_DONE.md` | the contract (#43) — read before claiming done |
+| `docs/milestones/` | per-release milestone index + specs |
 | `Idea.md`, `ROADMAP.md`, `Execution.md`, `CHANGELOG.md` | vision, plan, execution, history |
-| `apps/<app>/docs/ASSUMPTIONS_LOG.md` | every constant/threshold with its citation |
 
 <!-- hyperresearch:start -->
 ## Research Base (hyperresearch)

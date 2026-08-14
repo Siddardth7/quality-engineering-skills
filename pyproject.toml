@@ -1,35 +1,28 @@
 [project]
-name = "quality-platform"
+name = "quality-engineering-skills"
 version = "0.1.0"
-description = "Integrated manufacturing quality platform — FMEA, SPC, and Control Plan over a shared core."
+description = "Engine-Powered Quality Engineering Skills — MCP tools + agent skills over a shared deterministic core."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "quality-core",
     "quality-mcp",
-    "fmea-app",
-    "spc-app",
-    "msa-app",
-    "controlplan-app",
-    "secom-app",
 ]
 
+# Legacy Streamlit apps (fmea/spc/msa/controlplan/secom) were removed 2026-08 — this
+# repo is skills + quality-mcp + quality-core only. Each engine is extracted from the
+# source quality-platform repo into quality-core as its milestone comes up (FMEA's AP
+# scorer already lives in quality_core.scoring); see ROADMAP.md.
 [tool.uv.workspace]
-members = ["packages/*", "apps/*"]
+members = ["packages/*"]
 
 [tool.uv.sources]
 quality-core = { workspace = true }
 quality-mcp = { workspace = true }
-fmea-app = { workspace = true }
-spc-app = { workspace = true }
-msa-app = { workspace = true }
-controlplan-app = { workspace = true }
-secom-app = { workspace = true }
 
 # The workspace root is a coordinator, not an installable package.
 [tool.uv]
 package = false
-override-dependencies = ["pillow>=12.3.0", "gitpython>=3.1.55"]
 
 [dependency-groups]
 dev = [
@@ -42,20 +35,19 @@ dev = [
     "pip-audit>=2.10.0",
 ]
 
-# One pytest config for the whole workspace: discovers quality-core + both apps.
-# `importlib` import mode keeps the two same-named `tests` packages (and duplicate
-# basenames like `test_visualizer.py`) isolated; each app dir is put on sys.path by
-# its own conftest.py so `fmea_app` / `ui` / `spc_app` resolve.
+# One pytest config for the workspace: quality-core + quality-mcp + the top-level
+# governance suites in tests/. `importlib` import mode keeps same-named test modules
+# isolated across packages.
 [tool.pytest.ini_options]
 addopts = "--tb=short --import-mode=importlib"
-testpaths = ["packages", "apps", "tests"]
+testpaths = ["packages", "tests"]
 
-# Coverage across the shared core and both apps (`uv run pytest --cov`).
+# Coverage across the shared core and the MCP server (`uv run pytest --cov`).
 # `branch = true` is mandatory: line coverage alone lets a 100%-line file hide an
 # untested branch (a missing `else`). Every per-surface CI gate measures branch
-# coverage because it reads this config. See docs/COVERAGE_BASELINE_2026-07-09.md.
+# coverage because it reads this config.
 [tool.coverage.run]
-source = ["quality_core", "quality_mcp", "fmea_app", "ui", "spc_app", "msa_app", "controlplan_app", "secom_app"]
+source = ["quality_core", "quality_mcp"]
 omit = ["*/tests/*"]
 branch = true
 

@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, dev, test]
+    branches: [main, test]
   pull_request:
-    branches: [main, dev, test]
+    branches: [main, test]
 
 # The gate only reads the repo: checkout, resolve the lock, lint, type-check, test.
 # It never comments, pushes, publishes or uploads an artifact, so GITHUB_TOKEN is

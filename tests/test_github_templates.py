@@ -218,19 +218,14 @@ def test_template_markdown_links_resolve() -> None:
 
 
 def test_changelog_entry_unreleased() -> None:
-    """Verify CHANGELOG.md contains the issue #5 entry under [Unreleased] -> Added."""
+    """Verify CHANGELOG.md contains the issue #5 entry."""
     assert _CHANGELOG.is_file(), f"Missing CHANGELOG file: {_CHANGELOG}"
     content = _CHANGELOG.read_text(encoding="utf-8")
 
-    assert "## [Unreleased]" in content
-    unreleased_section = content.split("## [Unreleased]")[1].split("## [")[0]
-    assert "### Added" in unreleased_section
-
-    added_section = unreleased_section.split("### Added")[1].split("###")[0]
-    assert "#5" in added_section, "CHANGELOG.md [Unreleased] -> Added must reference issue #5"
-    assert ".github/ISSUE_TEMPLATE/task.md" in added_section
-    assert ".github/ISSUE_TEMPLATE/config.yml" in added_section
-    assert ".github/pull_request_template.md" in added_section
+    assert "#5" in content, "CHANGELOG.md must reference issue #5"
+    assert ".github/ISSUE_TEMPLATE/task.md" in content
+    assert ".github/ISSUE_TEMPLATE/config.yml" in content
+    assert ".github/pull_request_template.md" in content
 
 
 def test_negative_control_no_deprecated_branch_references() -> None:

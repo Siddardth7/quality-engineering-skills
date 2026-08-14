@@ -6,7 +6,11 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "quality-core",
+    "mcp>=1.2.0,<2",
 ]
+
+[project.scripts]
+quality-mcp = "quality_mcp.server:main"
 
 [tool.uv.sources]
 quality-core = { workspace = true }

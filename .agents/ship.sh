@@ -4,7 +4,7 @@
 # Stops at the first failing stage. Never touches git.
 set -euo pipefail
 
-REPO="/Users/sid/Documents/Claude/Projects/Quality Platform/quality-platform"
+REPO="$(git rev-parse --show-toplevel)"
 cd "$REPO"
 
 TASK="${1:?usage: ship.sh \"<issue or description>\"}"

@@ -14,6 +14,7 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 - Project planning documents: `Idea.md`, `ROADMAP.md` (v3.0, rescoped to 10 releases), `Execution.md` (v2.0).
 
 ### Changed
+- CI gate (`.github/workflows/ci.yml`) extended with headless dependency guard and 100% line/branch coverage gate for `packages/quality-mcp` (#3).
 - Branch ladder simplified to `feature → test → main` (dropped the pass-through `dev` stage).
 - Repo reset from its engine-source origin: README rewritten for this project, old
   quality-platform planning docs / assets / changelog cleared (preserved in git history).

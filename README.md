@@ -107,7 +107,7 @@ uv sync --frozen
 uv run pytest -q
 ```
 
-The MCP server and canvas entry points land in `v0.1.0`–`v0.2.0` — see **[ROADMAP.md](ROADMAP.md)**.
+The MCP server and canvas entry points land in `v0.1.0`–`v0.2.0` — see **[ROADMAP.md](ROADMAP.md)**. To connect AI host clients (Claude Code, Cursor) to `quality-mcp`, see **[docs/mcp-client-setup.md](docs/mcp-client-setup.md)**.
 
 ---
 

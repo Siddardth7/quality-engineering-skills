@@ -7,6 +7,6 @@ from __future__ import annotations
 
 __version__ = "0.1.0"
 
-from quality_mcp.server import mcp, ping
+from quality_mcp.server import lookup_fmea_ap, mcp, ping
 
-__all__ = ["__version__", "mcp", "ping"]
+__all__ = ["__version__", "lookup_fmea_ap", "mcp", "ping"]

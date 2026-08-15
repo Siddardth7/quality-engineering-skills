@@ -10,8 +10,12 @@ from __future__ import annotations
 from mcp.server.fastmcp import FastMCP
 
 from quality_mcp import __version__
+from quality_mcp.tools.fmea import lookup_fmea_ap
 
 mcp = FastMCP("quality-mcp")
+
+# Register tools on the FastMCP instance
+mcp.tool()(lookup_fmea_ap)
 
 
 @mcp.tool()
@@ -31,3 +35,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+__all__ = ["lookup_fmea_ap", "main", "mcp", "ping"]

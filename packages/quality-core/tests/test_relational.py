@@ -33,13 +33,9 @@ from quality_core.schema import (
     relational_to_flat,
 )
 
-DEMO_CSV = (
-    Path(__file__).resolve().parents[3]
-    / "apps"
-    / "fmea"
-    / "data"
-    / "composite_panel_fmea_demo.csv"
-)
+# Fixture lives with the test (moved out of the removed apps/fmea/data 2026-08) so
+# quality-core's suite has no upward dependency on an app.
+DEMO_CSV = Path(__file__).resolve().parent / "data" / "composite_panel_fmea_demo.csv"
 
 INT_COLUMNS = ("ID", "Severity", "Occurrence", "Detection")
 

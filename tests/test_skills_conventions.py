@@ -165,11 +165,12 @@ def test_skills_readme_exists_and_documents_conventions() -> None:
 
 
 def test_discoverable_skill_directories_exist() -> None:
-    """At least _template and mcp-health skill directories must exist."""
+    """At least _template, mcp-health, and fmea-reviewer skill directories must exist."""
     skill_dirs = _discover_skill_directories()
     dir_names = {d.name for d in skill_dirs}
     assert "_template" in dir_names, "skills/_template directory missing"
     assert "mcp-health" in dir_names, "skills/mcp-health directory missing"
+    assert "fmea-reviewer" in dir_names, "skills/fmea-reviewer directory missing"
 
 
 @pytest.mark.parametrize(
@@ -196,7 +197,18 @@ def test_mcp_health_skill_specifies_ping_tool() -> None:
     content = mcp_health_file.read_text(encoding="utf-8")
     assert "ping" in content, "mcp-health skill must document the ping tool"
     assert "quality-mcp" in content, "mcp-health skill must reference quality-mcp"
-    assert "0.1.0" in content, "mcp-health skill must reference version 0.1.0"
+    assert "0.1.0" in content or "0.2.0" in content, "mcp-health skill must reference platform version"
+
+
+def test_fmea_reviewer_skill_specifies_lookup_fmea_ap_tool() -> None:
+    """skills/fmea-reviewer/SKILL.md must document lookup_fmea_ap tool and cite AIAG & Action Priority."""
+    fmea_reviewer_file = _SKILLS_DIR / "fmea-reviewer" / "SKILL.md"
+    assert fmea_reviewer_file.exists(), "skills/fmea-reviewer/SKILL.md does not exist"
+    content = fmea_reviewer_file.read_text(encoding="utf-8")
+    assert "lookup_fmea_ap" in content, "fmea-reviewer skill must document lookup_fmea_ap tool"
+    assert "quality-mcp" in content, "fmea-reviewer skill must reference quality-mcp"
+    assert "AIAG" in content, "fmea-reviewer skill must cite AIAG"
+    assert "Action Priority" in content, "fmea-reviewer skill must cite Action Priority"
 
 
 def test_claude_skills_isolation() -> None:
@@ -207,6 +219,7 @@ def test_claude_skills_isolation() -> None:
     claude_dirs = {d.name for d in _CLAUDE_SKILLS_DIR.iterdir() if d.is_dir()}
     assert "mcp-health" not in claude_dirs, "mcp-health domain skill leaked into .claude/skills/"
     assert "_template" not in claude_dirs, "_template domain skill leaked into .claude/skills/"
+    assert "fmea-reviewer" not in claude_dirs, "fmea-reviewer domain skill leaked into .claude/skills/"
 
 
 # ---------------------------------------------------------------------------

@@ -98,7 +98,7 @@ flowchart TB
     class Agent,Existing,New,Canvas c;
 ```
 
-The existing Streamlit apps under `apps/` remain in place as the tested engine source; the MCP / skill path is additive.
+The deterministic engines live in `quality-core`; the MCP / skill path exposes them to AI hosts. Engines not yet in `quality-core` are extracted from the source quality-platform repo per milestone (see **[ROADMAP.md](ROADMAP.md)**) — this repo does not vendor the old Streamlit apps.
 
 ---
 
@@ -127,10 +127,10 @@ One bar across the workspace, enforced locally and in CI (`.github/workflows/ci.
 ```bash
 uv run ruff check .     # lint + format
 uv run mypy             # strict static types
-uv run pytest --cov     # tests + coverage
+uv run pip-audit        # dependency vulnerability audit
 ```
 
-Plus a **core dependency contract** (no UI chain in `quality-core`) and **per-surface coverage gates**, each at `--cov-fail-under=100` with branch coverage on. Every new engine module added in `v0.6`–`v0.9` ships with its own gate, in the same style.
+Plus a **core dependency contract** (no UI chain in `quality-core` or `quality-mcp`) and two **100%** line+branch coverage gates — `quality-core` (io / schema / scoring / spc) and `quality-mcp` — followed by the `tests/` governance suites. Each suite runs once. Every new engine module added in `v0.6`–`v0.9` ships with its own gate, in the same style.
 
 > **Standards fidelity.** Every AIAG / ISO / VDA constant, threshold, and quotation is cited in that domain's `docs/ASSUMPTIONS_LOG.md`, verified against the licensed reference manual — never against a web search.
 
@@ -144,9 +144,8 @@ quality-engineering-skills/
 ├── packages/
 │   ├── quality-core/     # shared deterministic engines  → import quality_core
 │   └── quality-mcp/      # MCP tool bindings (v0.1.0+)
-├── apps/                 # existing tested apps = the engine source
-│   ├── fmea/  spc/  msa/  controlplan/  secom/
 ├── skills/               # agentskills.io markdown skills (added per version)
+├── docs/milestones/      # per-release milestone index + specs
 └── .claude/              # ship pipeline agents + commands
 ```
 

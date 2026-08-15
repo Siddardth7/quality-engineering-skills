@@ -31,10 +31,12 @@ issue = read this file + the issue body, nothing else. It is mirrored as a **pin
 
    | Surface | Gate | Command |
    |---------|------|---------|
-   | Each core surface (`quality_core.io` / `.schema` / `.scoring` / `.spc`) | **100%** line+branch | `uv run pytest packages/quality-core --cov=quality_core.<surface> --cov-fail-under=100` |
-   | Each app surface (SPC / Control Plan / MSA / SECOM) | **100%** line+branch | see the exact 8 gates in [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml) — the canonical list |
-   | Each new engine module (`rca` / `ncr` / `ppap` / `sqe`) + its MCP tool surface | **100%** line+branch | a new `--cov-fail-under=100` gate added to `ci.yml` per issue |
-   | Whole workspace | no regression | `uv run pytest --cov` |
+   | Core surfaces (`quality_core.io` / `.schema` / `.scoring` / `.spc`) | **100%** line+branch | one run: `uv run pytest packages/quality-core --cov=quality_core.io --cov=quality_core.schema --cov=quality_core.scoring --cov=quality_core.spc --cov-fail-under=100` |
+   | `quality-mcp` (all modules) | **100%** line+branch | `uv run pytest packages/quality-mcp --cov=quality_mcp --cov-fail-under=100` |
+   | Each new engine module (`rca` / `ncr` / `ppap` / `sqe`) extracted into `quality_core` + its MCP tool surface | **100%** line+branch | folded into the core / mcp gate as the module lands (or a new `--cov-fail-under=100` gate in `ci.yml` if it warrants its own) |
+   | Governance suites (`tests/`) | green | `uv run pytest tests/` |
+
+   The legacy per-app gates (SPC / Control Plan / MSA / SECOM) were removed 2026-08 with the apps — see [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml) for the canonical current gate list.
 
    **New modules are held to 100%** — the floor is a minimum; a fresh module dragging a surface down
    is a fail even if the number technically survives. `show_missing = true` prints the exact

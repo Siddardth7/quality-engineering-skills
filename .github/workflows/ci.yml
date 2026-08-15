@@ -54,11 +54,11 @@ jobs:
             exit 1
           fi
 
-      # MCP server headless contract (#3, audit A11): quality-mcp is a headless daemon
-      # communicating via stdio with LLM hosts. A UI dependency (e.g. Streamlit or
-      # its transitive chain) creeping into quality-mcp would bloat the server environment
-      # and break headless containment. Resolve quality-mcp's subtree from the lock and
-      # fail if any Streamlit-chain package is in it.
+      # MCP server headless contract (#3, #17, audit A11): quality-mcp is a headless daemon
+      # communicating via stdio with LLM hosts. It resolves quality-core engines directly
+      # and must never resolve Streamlit or UI-chain packages (streamlit, gitpython, tornado,
+      # protobuf, pyarrow, pydeck). Resolve quality-mcp's subtree from the lock and fail if any
+      # UI-chain package is present.
       - name: quality-mcp headless dependency guard (no UI chain in quality-mcp)
         run: |
           uv export --package quality-mcp --no-dev --no-emit-workspace --no-hashes \
@@ -74,145 +74,41 @@ jobs:
       - name: Mypy
         run: uv run mypy
 
-      - name: Pytest (with coverage)
-        run: uv run pytest --cov
-
       - name: Dependency vulnerability audit
         run: uv run pip-audit
 
-      # Core io coverage gate: quality_core.io (shared export + validated ingest)
-      # is used by every tool, so it must be fully covered by its OWN tests — not
-      # only incidentally via the app suites. Held at 100% from packages/quality-core.
-      - name: Core io coverage gate
+      # Core coverage gate: the contracted quality-core surfaces — io (shared export +
+      # validated ingest), schema (shared FMEA row/dataset contracts), scoring (RPN +
+      # the AIAG-VDA Action Priority table), spc (control-chart + capability
+      # primitives), and canvas (FMEA visual canvas reference architecture) — must be fully
+      # covered by quality-core's OWN tests. One run over packages/quality-core covers all five;
+      # the combined --cov-fail-under=100 fails if any line in any of them is uncovered.
+      # branch coverage is inherited from [tool.coverage.run] branch=true in pyproject.
+      - name: Core coverage gate
         run: >
           uv run pytest packages/quality-core
           --cov=quality_core.io
-          --cov-report=term-missing
-          --cov-fail-under=100
-
-      # Core schema coverage gate: quality_core.schema holds the shared FMEA
-      # row/dataset contracts (W05-1), promoted out of the FMEA app so every tool
-      # shares one schema. Like io, it must be fully covered by its OWN tests, not
-      # only incidentally via the FMEA suite. Held at 100% from packages/quality-core.
-      - name: Core schema coverage gate
-        run: >
-          uv run pytest packages/quality-core
           --cov=quality_core.schema
-          --cov-report=term-missing
-          --cov-fail-under=100
-
-      # Core scoring coverage gate: quality_core.scoring holds the shared scalar
-      # risk scorers (RPN + the AIAG-VDA Action Priority table, promoted W05-3a),
-      # used by FMEA and the future action-effectiveness model. A standards table
-      # must be fully covered by its OWN tests. Held at 100% from packages/quality-core.
-      - name: Core scoring coverage gate
-        run: >
-          uv run pytest packages/quality-core
           --cov=quality_core.scoring
-          --cov-report=term-missing
-          --cov-fail-under=100
-
-      # Core SPC coverage gate: quality_core.spc holds the shared SPC primitives
-      # (AIAG chart constants, the chart vocabulary, WE/Nelson rule detection, the
-      # chart math itself — compute_* plus the one copy of the AIAG I-MR limit
-      # formula in imr_limits — Phase I/II limit freezing, the capability stability
-      # gate, and capability itself: Cp/Cpk/Pp/Ppk plus the non-normal Box-Cox /
-      # fitted-percentile study), promoted out of spc_app so SECOM and the future API import
-      # downward instead of sideways into another app (audit A12, #205). Like io,
-      # schema, and scoring, it must be fully covered by its OWN tests, not only
-      # incidentally via the SPC suite. Held at 100% from packages/quality-core.
-      - name: Core SPC coverage gate
-        run: >
-          uv run pytest packages/quality-core
           --cov=quality_core.spc
+          --cov=quality_core.canvas
           --cov-report=term-missing
           --cov-fail-under=100
 
-      # SPC coverage gate: the testable SPC surface (spc_engine — now the app-local
-      # data_generator plus the quality_core.spc re-export shims, so a shim added and
-      # left unimported fails here — simulation logic, figure builders, report
-      # exporter) must stay highly covered so it can't
-      # regress silently. The Streamlit `pages/` are excluded — they need a
-      # runtime to exercise — mirroring how the FMEA bar covers fmea_app/ but not
-      # its entry scripts.
-      - name: SPC coverage gate
-        run: >
-          uv run pytest apps/spc
-          --cov=spc_app.spc_engine
-          --cov=spc_app.simulation
-          --cov=spc_app.visualizer
-          --cov=spc_app.exporter
-          --cov=spc_app.schema
-          --cov=spc_app.control_plan_config
-          --cov=spc_app.fmea_feedback
-          --cov-report=term-missing
-          --cov-fail-under=100
-
-      # Control Plan coverage gate: the FMEA→Control Plan connector engine (W06-2)
-      # and the validated Control Plan ingest schema (W06-1) are new testable surface
-      # and must stay fully covered so the mapping/rule-table and rejection paths can't
-      # regress silently. The Streamlit pages/ and the exporter are excluded here —
-      # mirroring how the SPC bar covers the engine surface but not its entry scripts.
-      # branch coverage is inherited from [tool.coverage.run] branch=true in pyproject.
-      - name: Control Plan coverage gate
-        run: >
-          uv run pytest apps/controlplan
-          --cov=controlplan_app.connector
-          --cov=controlplan_app.schema
-          --cov-report=term-missing
-          --cov-fail-under=100
-
-      # MSA coverage gate: the testable MSA surface (Gage R&R engine, validated
-      # ingest schema, report exporter) must stay fully covered so the AIAG math,
-      # rejection paths, and export payloads can't regress silently. The Streamlit
-      # pages/ and app.py are excluded — they need a runtime — mirroring the SPC gate.
-      - name: MSA coverage gate
-        run: >
-          uv run pytest apps/msa
-          --cov=msa_app.gage_rr_engine
-          --cov=msa_app.schema
-          --cov=msa_app.exporter
-          --cov-report=term-missing
-          --cov-fail-under=100
-
-      # SECOM coverage gate: the SECOM honest ingest (heavy, real missingness
-      # preserved) and signal-selection screen (W09-1), the I-MR control
-      # chart integration (W09-2, reuses the SPC engine), the
-      # caller-supplied-limits capability wrapper (W09-3, reuses
-      # compute_capability), the MSA applicability refusal guard (W09-4,
-      # reuses no math — refuses only), the yield/DPPM + association
-      # Pareto engine (W09-5, reuses W09-2's SPC violation detection), and
-      # the observational DOE screening analysis (W11-1, reuses
-      # scipy.stats for Welch's t / BH-FDR) are new testable surface and
-      # must stay fully covered so the missingness/NZV/zero-variance
-      # filters, the gap-broken moving-range/autocorrelation logic, the
-      # stability-gated capability coupling, the MSA-applicability refusal,
-      # the yield/DPPM + violation-to-failed-wafer mapping, and the
-      # Cohen's-d/Welch-t/BH-FDR screening math can't regress silently.
-      # SECOM is engine-only (#206): the W09-5 Streamlit view was deleted, so
-      # every engine module is gated here — no pages/ exclusion, unlike
-      # the SPC/MSA gates above.
-      - name: SECOM coverage gate
-        run: >
-          uv run pytest apps/secom
-          --cov=secom_app.ingest
-          --cov=secom_app.selection
-          --cov=secom_app.charts
-          --cov=secom_app.capability
-          --cov=secom_app.msa
-          --cov=secom_app.yield_dppm
-          --cov=secom_app.doe_screening
-          --cov-report=term-missing
-          --cov-fail-under=100
-
-      # quality-mcp coverage gate: the FastMCP server, tools, and entry points
-      # in packages/quality-mcp (#3) are testable surface exposing deterministic
-      # core engines to LLMs. Held at 100% line and branch coverage from
-      # packages/quality-mcp.
+      # quality-mcp coverage gate: the FastMCP server, tools, and entry points in
+      # packages/quality-mcp are testable surface exposing deterministic core engines
+      # to LLMs. quality_mcp.tools.* is in scope and verified at 100% line & branch
+      # coverage under --cov=quality_mcp --cov-fail-under=100 from packages/quality-mcp.
       - name: quality-mcp coverage gate
         run: >
           uv run pytest packages/quality-mcp
           --cov=quality_mcp
           --cov-report=term-missing
           --cov-fail-under=100
+
+      # Top-level governance suites (templates, skills conventions, milestone docs).
+      # Run on their own so their same-named test modules don't collide with the
+      # package suites under importlib import mode.
+      - name: Governance test suites
+        run: uv run pytest tests/
 

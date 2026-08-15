@@ -165,12 +165,13 @@ def test_skills_readme_exists_and_documents_conventions() -> None:
 
 
 def test_discoverable_skill_directories_exist() -> None:
-    """At least _template, mcp-health, and fmea-reviewer skill directories must exist."""
+    """At least _template, mcp-health, fmea-reviewer, and spc-control-charts skill directories must exist."""
     skill_dirs = _discover_skill_directories()
     dir_names = {d.name for d in skill_dirs}
     assert "_template" in dir_names, "skills/_template directory missing"
     assert "mcp-health" in dir_names, "skills/mcp-health directory missing"
     assert "fmea-reviewer" in dir_names, "skills/fmea-reviewer directory missing"
+    assert "spc-control-charts" in dir_names, "skills/spc-control-charts directory missing"
 
 
 @pytest.mark.parametrize(
@@ -211,6 +212,17 @@ def test_fmea_reviewer_skill_specifies_lookup_fmea_ap_tool() -> None:
     assert "Action Priority" in content, "fmea-reviewer skill must cite Action Priority"
 
 
+def test_spc_control_charts_skill_specifies_calculate_spc_chart_tool() -> None:
+    """skills/spc-control-charts/SKILL.md must document calculate_spc_chart tool, reference quality-mcp, and cite AIAG & stability."""
+    spc_file = _SKILLS_DIR / "spc-control-charts" / "SKILL.md"
+    assert spc_file.exists(), "skills/spc-control-charts/SKILL.md does not exist"
+    content = spc_file.read_text(encoding="utf-8")
+    assert "calculate_spc_chart" in content, "spc-control-charts skill must document calculate_spc_chart tool"
+    assert "quality-mcp" in content, "spc-control-charts skill must reference quality-mcp"
+    assert "AIAG" in content, "spc-control-charts skill must cite AIAG"
+    assert "stability" in content or "in_control" in content, "spc-control-charts skill must document stability gate rule"
+
+
 def test_claude_skills_isolation() -> None:
     """.claude/skills/ must remain segregated from domain skills/."""
     if not _CLAUDE_SKILLS_DIR.exists():
@@ -220,6 +232,7 @@ def test_claude_skills_isolation() -> None:
     assert "mcp-health" not in claude_dirs, "mcp-health domain skill leaked into .claude/skills/"
     assert "_template" not in claude_dirs, "_template domain skill leaked into .claude/skills/"
     assert "fmea-reviewer" not in claude_dirs, "fmea-reviewer domain skill leaked into .claude/skills/"
+    assert "spc-control-charts" not in claude_dirs, "spc-control-charts domain skill leaked into .claude/skills/"
 
 
 # ---------------------------------------------------------------------------

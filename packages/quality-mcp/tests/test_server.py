@@ -16,6 +16,7 @@ from quality_mcp.server import (
     mcp,
     ping,
     render_fmea_canvas,
+    render_spc_canvas,
 )
 
 
@@ -43,6 +44,7 @@ def test_mcp_instance_configuration() -> None:
     assert "ping" in tool_names
     assert "lookup_fmea_ap" in tool_names
     assert "render_fmea_canvas" in tool_names
+    assert "render_spc_canvas" in tool_names
     assert "calculate_spc_chart" in tool_names
 
     # Verify tool execution via FastMCP interface
@@ -69,6 +71,11 @@ def test_mcp_instance_configuration() -> None:
     assert "summary" in canvas_content
     assert "html" in canvas_content
 
+    _, spc_canvas_content = asyncio.run(mcp.call_tool("render_spc_canvas", {}))
+    assert spc_canvas_content["chart_type"] == "Xbar-R"
+    assert spc_canvas_content["in_control"] is True
+    assert "html" in spc_canvas_content
+
 
 def test_main_invokes_mcp_run() -> None:
     """main() entry point must call mcp.run() once."""
@@ -87,12 +94,13 @@ def test_main_dunder_execution() -> None:
 
 
 def test_package_exports() -> None:
-    """Package root __init__.py must re-export mcp, ping, lookup_fmea_ap, render_fmea_canvas, calculate_spc_chart, and __version__ correctly."""
+    """Package root __init__.py must re-export mcp, ping, lookup_fmea_ap, render_fmea_canvas, render_spc_canvas, calculate_spc_chart, and __version__ correctly."""
     assert quality_mcp.mcp is mcp
     assert quality_mcp.ping is ping
     assert quality_mcp.lookup_fmea_ap is lookup_fmea_ap
     assert quality_mcp.render_fmea_canvas is render_fmea_canvas
+    assert quality_mcp.render_spc_canvas is render_spc_canvas
     assert quality_mcp.calculate_spc_chart is calculate_spc_chart
     assert quality_mcp.__version__ == "0.2.0"
-    assert set(quality_mcp.__all__) == {"__version__", "calculate_spc_chart", "lookup_fmea_ap", "mcp", "ping", "render_fmea_canvas"}
-    assert sorted(quality_mcp.__all__) == ["__version__", "calculate_spc_chart", "lookup_fmea_ap", "mcp", "ping", "render_fmea_canvas"]
+    assert set(quality_mcp.__all__) == {"__version__", "calculate_spc_chart", "lookup_fmea_ap", "mcp", "ping", "render_fmea_canvas", "render_spc_canvas"}
+    assert sorted(quality_mcp.__all__) == ["__version__", "calculate_spc_chart", "lookup_fmea_ap", "mcp", "ping", "render_fmea_canvas", "render_spc_canvas"]

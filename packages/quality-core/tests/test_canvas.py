@@ -9,9 +9,13 @@ from __future__ import annotations
 import pytest
 from quality_core.canvas import (
     SAMPLE_FMEA_ROWS,
+    SAMPLE_SPC_XBAR_R_DATA,
     FMEACanvas,
     FMEACanvasRow,
+    SPCCanvas,
+    SPCCanvasSubgroup,
     load_sample_canvas,
+    load_sample_spc_canvas,
 )
 from quality_core.scoring import HIGH, LOW, MEDIUM
 
@@ -549,3 +553,234 @@ def test_canvas_to_html_invalid_arguments_raise() -> None:
 
     with pytest.raises(ValueError, match="theme must be 'dark' or 'light'"):
         canvas.to_html(theme="solarized")
+
+
+# ---------------------------------------------------------------------------
+# SPCCanvas & SPCCanvasSubgroup Unit Tests
+# ---------------------------------------------------------------------------
+
+
+def test_spc_canvas_init_valid_sample() -> None:
+    """Test default construction and load_sample for SPCCanvas."""
+    assert len(SAMPLE_SPC_XBAR_R_DATA) == 20
+    subgroup = SPCCanvasSubgroup(id=1, values=[10.1, 10.0])
+    assert subgroup.to_dict()["id"] == 1
+    assert subgroup.to_dict()["values"] == [10.1, 10.0]
+
+    canvas = SPCCanvas.load_sample(title="Engine Shaft Diameters", usl=10.5, lsl=9.5)
+    assert canvas.title == "Engine Shaft Diameters"
+    assert canvas.chart_type == "Xbar-R"
+    assert len(canvas.subgroups) == 20
+    assert len(canvas.points) == 20
+    assert canvas.in_control is True
+    assert canvas.stable is True
+    assert canvas.violations == []
+    assert canvas.capability is not None
+    assert canvas.capability["cp"] > 1.0
+    assert canvas.capability["cpk"] > 1.0
+
+    helper_canvas = load_sample_spc_canvas()
+    assert helper_canvas.title == "AIAG SPC Control Chart Canvas"
+    assert len(helper_canvas.subgroups) == 20
+
+
+def test_spc_canvas_init_invalid() -> None:
+    """SPCCanvas validates title, chart_type, and spec limits on init."""
+    with pytest.raises(ValueError, match="title must be a non-empty string"):
+        SPCCanvas(title="")
+
+    with pytest.raises(ValueError, match="title must be a non-empty string"):
+        SPCCanvas(title=True)  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="Unknown or unsupported chart_type"):
+        SPCCanvas(chart_type="NonexistentChart")
+
+    with pytest.raises(ValueError, match="USL cannot be less than LSL"):
+        SPCCanvas(usl=9.0, lsl=10.0)
+
+
+def test_spc_canvas_set_data_supported_charts() -> None:
+    """SPCCanvas supports Xbar-R, Xbar-S, I-MR, p, c, and u charts."""
+    # Xbar-S
+    canvas_xs = SPCCanvas(chart_type="Xbar-S", usl=11.0, lsl=9.0)
+    canvas_xs.set_data([[10.0, 10.1, 9.9, 10.0], [10.1, 10.0, 10.2, 9.9]])
+    assert canvas_xs.in_control is True
+    assert len(canvas_xs.points) == 2
+    assert canvas_xs.dispersion_center > 0
+
+    # I-MR
+    canvas_imr = SPCCanvas(chart_type="I-MR", usl=12.0, lsl=8.0)
+    canvas_imr.set_data([10.0, 10.2, 9.8, 10.1, 9.9])
+    assert canvas_imr.in_control is True
+    assert len(canvas_imr.points) == 5
+    assert canvas_imr.capability is not None
+
+    # p chart
+    canvas_p = SPCCanvas(chart_type="p", sample_sizes=[100.0, 100.0, 100.0])
+    canvas_p.set_data([2.0, 3.0, 1.0])
+    assert canvas_p.in_control is True
+    assert len(canvas_p.points) == 3
+
+    # c chart
+    canvas_c = SPCCanvas(chart_type="c")
+    canvas_c.set_data([5.0, 4.0, 6.0, 3.0])
+    assert canvas_c.in_control is True
+    assert len(canvas_c.points) == 4
+
+    # u chart
+    canvas_u = SPCCanvas(chart_type="u", sample_sizes=[10.0, 10.0, 10.0])
+    canvas_u.set_data([2.0, 3.0, 1.0])
+    assert canvas_u.in_control is True
+    assert len(canvas_u.points) == 3
+
+
+def test_spc_canvas_set_data_invalid() -> None:
+    """SPCCanvas validates input dimensions, sizes, and requirements."""
+    canvas_xr = SPCCanvas(chart_type="Xbar-R")
+
+    # 1D data to Xbar-R
+    with pytest.raises(ValueError, match="requires data as a list of subgroups"):
+        canvas_xr.set_data([10.0, 10.1])  # type: ignore[arg-type]
+
+    # Ragged subgroups
+    with pytest.raises(ValueError, match="All subgroups in Xbar-R chart must have equal size"):
+        canvas_xr.set_data([[10.0, 10.1], [10.0, 10.1, 10.2]])
+
+    # Subgroup size n=1 for Xbar-R
+    with pytest.raises(ValueError, match="subgroup size between 2 and 10"):
+        canvas_xr.set_data([[10.0], [10.1]])
+
+    # Subgroup size n=11 for Xbar-R
+    with pytest.raises(ValueError, match="subgroup size between 2 and 10"):
+        canvas_xr.set_data([[10.0] * 11, [10.1] * 11])
+
+    # Xbar-S subgroup size n=13
+    canvas_xs = SPCCanvas(chart_type="Xbar-S")
+    with pytest.raises(ValueError, match="subgroup size between 2 and 12"):
+        canvas_xs.set_data([[10.0] * 13, [10.1] * 13])
+
+    # 2D data to I-MR
+    canvas_imr = SPCCanvas(chart_type="I-MR")
+    with pytest.raises(ValueError, match="requires data as a 1D list of values"):
+        canvas_imr.set_data([[10.0, 10.1], [9.9, 10.0]])  # type: ignore[arg-type]
+
+    # I-MR less than 2 values
+    with pytest.raises(ValueError, match="requires at least two values"):
+        canvas_imr.set_data([10.0])
+
+    # p chart missing sample_sizes
+    canvas_p = SPCCanvas(chart_type="p")
+    with pytest.raises(ValueError, match="p chart requires sample_sizes"):
+        canvas_p.set_data([2.0, 3.0])
+
+
+def test_spc_canvas_single_writer_edit_subgroup() -> None:
+    """SPCCanvas.edit_subgroup modifies data deterministically and recalculates."""
+    canvas = SPCCanvas.load_sample(title="Editable Canvas")
+    original_mean_0 = canvas.points[0]
+
+    # Edit subgroup 0
+    canvas.edit_subgroup(0, [10.5, 10.5, 10.5, 10.5, 10.5])
+    assert canvas.points[0] == 10.5
+    assert canvas.points[0] != original_mean_0
+    assert canvas.subgroups[0].point_value == 10.5
+
+    # Index out of range
+    with pytest.raises(IndexError, match="out of range"):
+        canvas.edit_subgroup(99, [10.0, 10.0, 10.0, 10.0, 10.0])
+
+    # Empty new_values
+    with pytest.raises(ValueError, match="non-empty list"):
+        canvas.edit_subgroup(0, [])
+
+    # Subgroup length mismatch
+    with pytest.raises(ValueError, match="Subgroup size mismatch"):
+        canvas.edit_subgroup(0, [10.0, 10.0])
+
+    # Edit subgroup on 1D chart
+    canvas_imr = SPCCanvas(chart_type="I-MR", data=[10.0, 10.1, 9.9])
+    with pytest.raises(TypeError, match="edit_subgroup is for 2D charts"):
+        canvas_imr.edit_subgroup(0, [10.0])
+
+
+def test_spc_canvas_single_writer_edit_point() -> None:
+    """SPCCanvas.edit_point modifies 1D observation and recalculates."""
+    canvas = SPCCanvas(chart_type="I-MR", data=[10.0, 10.1, 9.9])
+    canvas.edit_point(1, 10.5)
+    assert canvas.points[1] == 10.5
+    assert canvas.subgroups[1].point_value == 10.5
+
+    with pytest.raises(IndexError, match="out of range"):
+        canvas.edit_point(10, 10.0)
+
+    canvas_xr = SPCCanvas.load_sample()
+    with pytest.raises(TypeError, match="edit_point is for 1D charts"):
+        canvas_xr.edit_point(0, 10.0)
+
+
+def test_spc_canvas_stability_gate_suppresses_capability() -> None:
+    """SPCCanvas strictly suppresses capability when process has out-of-control signals."""
+    # Out of control dataset (severe outlier)
+    ooc_data = [
+        [10.0, 10.1, 9.9, 10.0, 10.1],
+        [10.0, 10.0, 10.1, 9.9, 10.0],
+        [10.1, 9.9, 10.0, 10.1, 10.0],
+        [10.0, 10.1, 10.0, 9.9, 10.0],
+        [10.0, 10.0, 10.0, 10.1, 10.0],
+        [15.0, 15.0, 15.0, 15.0, 15.0],  # Outlier
+    ]
+    canvas = SPCCanvas(chart_type="Xbar-R", usl=12.0, lsl=8.0, data=ooc_data)
+    assert canvas.in_control is False
+    assert canvas.stable is False
+    assert len(canvas.violations) > 0
+    assert canvas.stability_note is not None
+    assert canvas.capability is None
+
+    # Verify HTML renders stability notice
+    html_out = canvas.to_html(standalone=False)
+    assert "OUT OF CONTROL" in html_out
+    assert "Stability Gate Notice" in html_out
+
+
+def test_spc_canvas_to_dict_and_summary() -> None:
+    """SPCCanvas to_dict and get_summary serialize complete state."""
+    canvas = SPCCanvas.load_sample(usl=11.0, lsl=9.0)
+    summary = canvas.get_summary()
+    assert summary["title"] == canvas.title
+    assert summary["chart_type"] == "Xbar-R"
+    assert summary["in_control"] is True
+    assert summary["violations_count"] == 0
+    assert summary["capability"] is not None
+
+    state_dict = canvas.to_dict()
+    assert len(state_dict["subgroups"]) == 20
+    assert state_dict["subgroups"][0]["id"] == 1
+    assert "values" in state_dict["subgroups"][0]
+
+
+def test_spc_canvas_to_html_standalone_and_embedded() -> None:
+    """SPCCanvas to_html produces standalone HTML5 document and embedded container."""
+    canvas = SPCCanvas.load_sample(title="Piston Pin Diameters & Specs")
+
+    # Standalone HTML
+    html_doc = canvas.to_html(standalone=True)
+    assert "<!DOCTYPE html>" in html_doc
+    assert "<html lang=\"en\">" in html_doc
+    assert "Piston Pin Diameters &amp; Specs" in html_doc
+    assert "<svg" in html_doc
+    assert "UCL" in html_doc
+    assert "LCL" in html_doc
+    assert "CL" in html_doc
+    assert "Cp" in html_doc
+    assert "Cpk" in html_doc
+
+    # Embedded HTML
+    html_embed = canvas.to_html(standalone=False)
+    assert "<!DOCTYPE html>" not in html_embed
+    assert "Primary Control Chart View" in html_embed
+
+    # Empty data canvas
+    empty_canvas = SPCCanvas()
+    empty_html = empty_canvas.to_html(standalone=False)
+    assert "No data to display." in empty_html
+

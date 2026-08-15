@@ -44,7 +44,7 @@ Where:
 | Version | Milestone Document | Theme / Domain | Status |
 | :--- | :--- | :--- | :--- |
 | `v0.1.0` | [`docs/milestones/v0.1.0.md`](v0.1.0.md) | Platform Setup & MCP Foundation | Complete |
-| `v0.2.0` | `docs/milestones/v0.2.0.md` | FMEA Engine via MCP & Single-Writer Canvas | Planned |
+| `v0.2.0` | [`docs/milestones/v0.2.0.md`](v0.2.0.md) | FMEA Engine via MCP & Single-Writer Canvas | Complete |
 | `v0.3.0` | `docs/milestones/v0.3.0.md` | SPC Engine via MCP & Stability Gate | Planned |
 | `v0.4.0` | `docs/milestones/v0.4.0.md` | MSA Engine via MCP & Gage R&R Interaction | Planned |
 | `v0.5.0` | `docs/milestones/v0.5.0.md` | Control Plan Engine via MCP (4-Engine Checkpoint) | Planned |

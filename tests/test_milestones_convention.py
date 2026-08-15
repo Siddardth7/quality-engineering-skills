@@ -1,15 +1,16 @@
-"""Test suite for milestone documentation, SemVer naming, and governance conventions (#7).
+"""Test suite for milestone documentation, SemVer naming, and governance conventions (#7, #21).
 
 Validates:
 1. Presence of docs/milestones/ directory and README.md governance documentation.
 2. SemVer filename mapping convention (docs/milestones/vX.Y.Z.md).
 3. Mandatory structural sections across all milestone files.
 4. Milestone 1 (v0.1.0.md) Epic definitions (E1-E4) and Issue traceability (#1 through #7).
-5. Real MCP client ping release gate and verification artifacts cataloging.
-6. Summary Release Matrix table link update in ROADMAP.md.
-7. Markdown relative link resolution against repository filesystem.
-8. CHANGELOG.md entry formatting under [Unreleased] -> Added (#7).
-9. Negative controls: detection of invalid filenames, missing sections, invalid issue URLs, and broken links.
+5. Milestone 2 (v0.2.0.md) Epic definitions (E1-E6), Issue traceability (#16 through #21), and branch mapping.
+6. Real MCP client release gate and verification artifacts cataloging for v0.1.0 and v0.2.0.
+7. Summary Release Matrix table link updates in ROADMAP.md for v0.1.0 and v0.2.0.
+8. Markdown relative link resolution against repository filesystem.
+9. CHANGELOG.md entry formatting under [Unreleased] -> Added (#7, #21).
+10. Negative controls: detection of invalid filenames, missing sections, invalid issue URLs, and broken links.
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ _DOCS_DIR = _REPO_ROOT / "docs"
 _MILESTONES_DIR = _DOCS_DIR / "milestones"
 _MILESTONES_README = _MILESTONES_DIR / "README.md"
 _V010_MILESTONE = _MILESTONES_DIR / "v0.1.0.md"
+_V020_MILESTONE = _MILESTONES_DIR / "v0.2.0.md"
 _ROADMAP = _REPO_ROOT / "ROADMAP.md"
 _CHANGELOG = _REPO_ROOT / "CHANGELOG.md"
 
@@ -189,6 +191,80 @@ def test_roadmap_links_v010_milestone() -> None:
     )
 
 
+def test_v020_milestone_epics_and_issues_traceability() -> None:
+    """Verify docs/milestones/v0.2.0.md defines Epics E1-E6 and links issues #16 through #21 with branch names."""
+    assert _V020_MILESTONE.is_file(), f"Missing milestone v0.2.0 file: {_V020_MILESTONE}"
+    content = _V020_MILESTONE.read_text(encoding="utf-8")
+
+    # Verify all 6 Epics are present
+    for epic_num in range(1, 7):
+        assert f"Epic {epic_num} (E{epic_num})" in content or f"E{epic_num}:" in content, (
+            f"Missing Epic {epic_num} in v0.2.0.md"
+        )
+
+    # Verify all 6 issues are present with canonical URLs and branch names
+    issue_tuples = _extract_issue_urls(content)
+    issue_numbers = {num for _, num in issue_tuples}
+
+    expected_issues = {
+        16: "feat/fmea-mcp-tool-16",
+        17: "feat/ci-fmea-guard-17",
+        18: "feat/mcp-fmea-client-roundtrip-18",
+        19: "feat/fmea-reviewer-skill-19",
+        20: "feat/fmea-canvas-reference-20",
+        21: "feat/docs-milestones-21",
+    }
+
+    for expected_issue, branch_name in expected_issues.items():
+        assert expected_issue in issue_numbers, f"Missing issue #{expected_issue} in v0.2.0.md"
+        expected_url = f"https://github.com/Siddardth7/quality-engineering-skills/issues/{expected_issue}"
+        assert expected_url in content, f"Missing canonical URL for issue #{expected_issue}: {expected_url}"
+        assert branch_name in content, f"Missing branch {branch_name} for issue #{expected_issue} in v0.2.0.md"
+
+
+def test_v020_milestone_release_gate_and_artifacts() -> None:
+    """Verify v0.2.0.md specifies the 7 release gate criteria and catalogs verification artifacts."""
+    assert _V020_MILESTONE.is_file(), f"Missing milestone v0.2.0 file: {_V020_MILESTONE}"
+    content = _V020_MILESTONE.read_text(encoding="utf-8")
+
+    # Release gate criteria
+    assert "lookup_fmea_ap" in content
+    assert "render_fmea_canvas" in content
+    assert "fmea-reviewer" in content
+    assert "Action Priority" in content or "action priority" in content
+    assert "Single-Writer" in content or "single-writer" in content
+    assert "100%" in content
+
+    # Key verification artifacts cataloged
+    expected_artifacts = [
+        "packages/quality-core/src/quality_core/scoring.py",
+        "packages/quality-core/src/quality_core/canvas/fmea.py",
+        "packages/quality-core/tests/test_canvas.py",
+        "packages/quality-mcp/src/quality_mcp/tools/fmea.py",
+        "packages/quality-mcp/src/quality_mcp/tools/canvas.py",
+        "packages/quality-mcp/tests/test_fmea_tool.py",
+        "packages/quality-mcp/tests/test_canvas_tool.py",
+        "packages/quality-mcp/tests/test_fmea_client_roundtrip.py",
+        "skills/fmea-reviewer/SKILL.md",
+        "docs/mcp-client-setup.md",
+        "tests/test_skills_conventions.py",
+        "tests/test_milestones_convention.py",
+        ".github/workflows/ci.yml",
+    ]
+    for artifact in expected_artifacts:
+        assert artifact in content, f"Missing expected verification artifact in v0.2.0.md: {artifact}"
+
+
+def test_roadmap_links_v020_milestone() -> None:
+    """Verify ROADMAP.md links v0.2.0 in Summary Release Matrix to docs/milestones/v0.2.0.md."""
+    assert _ROADMAP.is_file(), f"Missing ROADMAP: {_ROADMAP}"
+    content = _ROADMAP.read_text(encoding="utf-8")
+
+    assert "[**`v0.2.0`**](docs/milestones/v0.2.0.md)" in content or "[`v0.2.0`](docs/milestones/v0.2.0.md)" in content, (
+        "ROADMAP.md Summary Release Matrix must link v0.2.0 to docs/milestones/v0.2.0.md"
+    )
+
+
 def test_milestones_markdown_links_resolve() -> None:
     """Verify all relative markdown links in docs/milestones/*.md resolve to existing repository files."""
     for md_file in _MILESTONES_DIR.glob("*.md"):
@@ -201,13 +277,15 @@ def test_milestones_markdown_links_resolve() -> None:
 
 
 def test_changelog_entry_unreleased() -> None:
-    """Verify CHANGELOG.md contains the issue #7 entry under [0.1.0] or [Unreleased]."""
+    """Verify CHANGELOG.md contains the issue #7 and #21 entries under [0.1.0] or [Unreleased]."""
     assert _CHANGELOG.is_file(), f"Missing CHANGELOG file: {_CHANGELOG}"
     content = _CHANGELOG.read_text(encoding="utf-8")
 
     assert "#7" in content, "CHANGELOG.md must reference issue #7"
+    assert "#21" in content, "CHANGELOG.md must reference issue #21"
     assert "docs/milestones/README.md" in content
     assert "docs/milestones/v0.1.0.md" in content
+    assert "docs/milestones/v0.2.0.md" in content
     assert "tests/test_milestones_convention.py" in content
 
 

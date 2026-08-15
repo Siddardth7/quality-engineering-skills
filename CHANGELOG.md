@@ -9,6 +9,9 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- Milestone 2 (`v0.2.0`) specification document in `docs/milestones/v0.2.0.md` detailing Epics E1–E6, linking issues #16 through #21 with branch names, 7 release gate criteria, verification artifacts, and Milestone 3 readiness handoff (#21).
+- Updated `docs/milestones/README.md` canonical mapping table marking `v0.2.0` as Complete and updated `ROADMAP.md` Summary Release Matrix linking `docs/milestones/v0.2.0.md` (#21).
+- Extended milestone governance test suite in `tests/test_milestones_convention.py` with comprehensive traceability, branch mapping, release gate, and artifact assertions for `v0.2.0` (#21).
 - Minimal single-writer FMEA visual canvas architecture in `quality_core.canvas` (`FMEACanvasRow`, `FMEACanvas` controller with deterministic scoring via `quality_core.scoring`, benchmark sample loader, edit controller, and standalone/embedded HTML renderer with Quality Platform dark theme styling) (#20).
 - `render_fmea_canvas` FastMCP tool in `quality_mcp.tools.canvas` exposing styled FMEA canvas HTML rendering and risk summary metrics over Model Context Protocol endpoints (#20).
 - Comprehensive test suites in `packages/quality-core/tests/test_canvas.py` and `packages/quality-mcp/tests/test_canvas_tool.py` achieving 100% line & branch coverage across `quality_core.canvas` and `quality_mcp.tools.canvas` (#20).

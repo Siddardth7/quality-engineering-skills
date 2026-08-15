@@ -12,6 +12,8 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 - FastMCP tool `calculate_spc_chart` in `quality_mcp.tools.spc` wrapping `quality_core.spc` deterministic engines for Shewhart variable (`Xbar-R`, `Xbar-S`, `I-MR`) and attribute (`p`, `c`, `u`) charts, run-rule detection (Western Electric 1–8 and Nelson), and strict stability-gated capability analysis (`Cp`, `Cpk`, `Pp`, `Ppk`) (#29).
 - Re-export `calculate_spc_chart` in `quality_mcp.tools`, register on `quality-mcp` FastMCP server, and export in package root (#29).
 - Comprehensive unit and integration test suite in `packages/quality-mcp/tests/test_spc_tool.py` verifying worked examples, run rules, error handling, and stability gate negative controls at 100% line & branch coverage (#29).
+- In-process MCP client round-trip integration test suite in `packages/quality-mcp/tests/test_spc_client_roundtrip.py` validating `calculate_spc_chart` across AIAG benchmark datasets, dual-payload parity (`structuredContent` vs serialized text), and strict stability-gate capability withholding over the JSON-RPC wire (#31).
+- Updated `docs/mcp-client-setup.md` with verified JSON-RPC 2.0 message exchange transcripts for `calculate_spc_chart` in-control, out-of-control, and parameter validation error workflows (#31).
 
 ### Changed
 - CI headless dependency guard and coverage gate comments in `.github/workflows/ci.yml` updated to document the headless containment contract and confirm 100% line & branch coverage scope for `quality_mcp.tools.spc` under `--cov=quality_mcp --cov-fail-under=100` (#30).

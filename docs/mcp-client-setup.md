@@ -107,11 +107,19 @@ Create or edit `.cursor/mcp.json` in the workspace root:
 
 ## 3. Testing and Verification
 
-### In-Process Round-Trip Suite
-The automated test suite exercises `initialize`, `tools/list`, and `tools/call` (`ping`) using in-process memory transports:
-```bash
-uv run pytest packages/quality-mcp/tests/test_client_roundtrip.py -v
-```
+### In-Process Round-Trip Suites
+The automated test suites exercise MCP client-server protocol lifecycles (`initialize`, `tools/list`, and `tools/call`) using in-process memory transports:
+
+1. **Ping Health Check Round-Trip**:
+   ```bash
+   uv run pytest packages/quality-mcp/tests/test_client_roundtrip.py -v
+   ```
+
+2. **FMEA Action Priority Round-Trip**:
+   ```bash
+   uv run pytest packages/quality-mcp/tests/test_fmea_client_roundtrip.py -v
+   ```
+   Validates session handshake, tool discovery of `lookup_fmea_ap`, round-trip evaluation against 12 real-world automotive DFMEA/PFMEA failure modes across High/Medium/Low Action Priority, dual structured and serialized payload parity against `quality_core.scoring`, and protocol-level negative controls for out-of-range integer scores, non-integer types, and unknown tools.
 
 ### Coverage Gate
 Run the full 100% line and branch coverage gate for `quality-mcp`:
@@ -219,6 +227,36 @@ Below is a verified JSON-RPC 2.0 message exchange showing client initialization,
             "type": "string"
           }
         }
+      },
+      {
+        "name": "lookup_fmea_ap",
+        "description": "Look up AIAG-VDA 2019 Action Priority and calculate RPN for an FMEA item.",
+        "inputSchema": {
+          "type": "object",
+          "title": "lookup_fmea_apArguments",
+          "properties": {
+            "severity": {
+              "title": "Severity",
+              "description": "Severity rating (1–10 on the AIAG-VDA scale)",
+              "type": "integer"
+            },
+            "occurrence": {
+              "title": "Occurrence",
+              "description": "Occurrence rating (1–10 on the AIAG-VDA scale)",
+              "type": "integer"
+            },
+            "detection": {
+              "title": "Detection",
+              "description": "Detection rating (1–10 on the AIAG-VDA scale)",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "severity",
+            "occurrence",
+            "detection"
+          ]
+        }
       }
     ]
   }
@@ -260,6 +298,89 @@ Below is a verified JSON-RPC 2.0 message exchange showing client initialization,
       "version": "0.1.0"
     },
     "isError": false
+  }
+}
+```
+
+---
+
+### 4.4 Tool Invocation (`tools/call` -> `lookup_fmea_ap` Success)
+
+**Client Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "tools/call",
+  "params": {
+    "name": "lookup_fmea_ap",
+    "arguments": {
+      "severity": 10,
+      "occurrence": 4,
+      "detection": 4
+    }
+  }
+}
+```
+
+**Server Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"severity\": 10,\n  \"occurrence\": 4,\n  \"detection\": 4,\n  \"rpn\": 160,\n  \"action_priority\": \"High\"\n}"
+      }
+    ],
+    "structuredContent": {
+      "severity": 10,
+      "occurrence": 4,
+      "detection": 4,
+      "rpn": 160,
+      "action_priority": "High"
+    },
+    "isError": false
+  }
+}
+```
+
+---
+
+### 4.5 Tool Invocation (`tools/call` -> `lookup_fmea_ap` Validation Error)
+
+**Client Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "method": "tools/call",
+  "params": {
+    "name": "lookup_fmea_ap",
+    "arguments": {
+      "severity": 11,
+      "occurrence": 5,
+      "detection": 5
+    }
+  }
+}
+```
+
+**Server Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Error executing tool lookup_fmea_ap: Severity score 11 is out of range. Valid range is 1–10 (AIAG-VDA scale)."
+      }
+    ],
+    "isError": true
   }
 }
 ```

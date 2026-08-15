@@ -8,12 +8,17 @@ quality_core.scoring to AI agents and MCP client hosts.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
+from pydantic import Field
 from quality_core.scoring import action_priority, rpn
 
 
-def lookup_fmea_ap(severity: int, occurrence: int, detection: int) -> dict[str, Any]:
+def lookup_fmea_ap(
+    severity: Annotated[int, Field(strict=True, description="Severity rating (1–10 on the AIAG-VDA scale)")],
+    occurrence: Annotated[int, Field(strict=True, description="Occurrence rating (1–10 on the AIAG-VDA scale)")],
+    detection: Annotated[int, Field(strict=True, description="Detection rating (1–10 on the AIAG-VDA scale)")],
+) -> dict[str, Any]:
     """Look up AIAG-VDA 2019 Action Priority and calculate RPN for an FMEA item.
 
     Pure deterministic function wrapping `quality_core.scoring.action_priority` and

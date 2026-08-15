@@ -7,6 +7,6 @@ from __future__ import annotations
 
 __version__ = "0.2.0"
 
-from quality_mcp.server import lookup_fmea_ap, mcp, ping, render_fmea_canvas
+from quality_mcp.server import calculate_spc_chart, lookup_fmea_ap, mcp, ping, render_fmea_canvas
 
-__all__ = ["__version__", "lookup_fmea_ap", "mcp", "ping", "render_fmea_canvas"]
+__all__ = ["__version__", "calculate_spc_chart", "lookup_fmea_ap", "mcp", "ping", "render_fmea_canvas"]

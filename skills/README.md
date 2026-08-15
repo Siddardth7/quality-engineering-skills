@@ -87,7 +87,7 @@ The skill catalog maps directly to the releases defined in `ROADMAP.md`:
 | **`v0.1.0`** | `_template` | Canonical Skill Skeleton | Reference Template | Active |
 | **`v0.1.0`** | `mcp-health` | Diagnostic & Connectivity Verification | `quality_mcp.server.ping` | Active |
 | **`v0.2.0`** | `fmea-reviewer` | AIAG & VDA FMEA Review & AP Matrix | `quality_mcp.tools.fmea` (`quality_core.scoring.ap_matrix`) | Active |
-| **`v0.3.0`** | `spc-control-charts` | SPC Charts, WE Rules 1–8, Capability | `quality_mcp.tools.spc` (`quality_core.spc`) | Planned |
+| **`v0.3.0`** | `spc-control-charts` | SPC Charts, WE Rules 1–8, Capability | `quality_mcp.tools.spc` (`quality_core.spc`) | Active |
 | **`v0.4.0`** | `msa-gauge-rr` | Crossed Gage R&R (ANOVA & Xbar-R) | `quality_mcp.tools.msa` (`msa_app.gage_rr_engine`) | Planned |
 | **`v0.5.0`** | `control-plan` | Control Plan Validation & PFMEA Linkage | `quality_mcp.tools.control_plan` (`controlplan_app.connector`) | Planned |
 | **`v0.6.0`** | `5why-root-cause` | Reversible 5-Why Causal Logic | `quality_mcp.tools.rca` (`quality_core.rca`) | Planned |

@@ -54,11 +54,11 @@ jobs:
             exit 1
           fi
 
-      # MCP server headless contract (#3, audit A11): quality-mcp is a headless daemon
-      # communicating via stdio with LLM hosts. A UI dependency (e.g. Streamlit or
-      # its transitive chain) creeping into quality-mcp would bloat the server environment
-      # and break headless containment. Resolve quality-mcp's subtree from the lock and
-      # fail if any Streamlit-chain package is in it.
+      # MCP server headless contract (#3, #17, audit A11): quality-mcp is a headless daemon
+      # communicating via stdio with LLM hosts. It resolves quality-core engines directly
+      # and must never resolve Streamlit or UI-chain packages (streamlit, gitpython, tornado,
+      # protobuf, pyarrow, pydeck). Resolve quality-mcp's subtree from the lock and fail if any
+      # UI-chain package is present.
       - name: quality-mcp headless dependency guard (no UI chain in quality-mcp)
         run: |
           uv export --package quality-mcp --no-dev --no-emit-workspace --no-hashes \
@@ -97,7 +97,8 @@ jobs:
 
       # quality-mcp coverage gate: the FastMCP server, tools, and entry points in
       # packages/quality-mcp are testable surface exposing deterministic core engines
-      # to LLMs. Held at 100% line and branch coverage from packages/quality-mcp.
+      # to LLMs. quality_mcp.tools.* is in scope and verified at 100% line & branch
+      # coverage under --cov=quality_mcp --cov-fail-under=100 from packages/quality-mcp.
       - name: quality-mcp coverage gate
         run: >
           uv run pytest packages/quality-mcp

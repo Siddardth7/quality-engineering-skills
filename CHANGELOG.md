@@ -9,6 +9,9 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- AIAG & VDA (1st Edition, 2019) FMEA reviewer skill in `skills/fmea-reviewer/SKILL.md` defining qualitative 7-Step FMEA review methodology, failure chain analysis, and deterministic Action Priority scoring via `lookup_fmea_ap` on `quality-mcp` (#19).
+- Updated `skills/README.md` taxonomy table marking `fmea-reviewer` skill as Active (#19).
+- Governance test suite coverage in `tests/test_skills_conventions.py` asserting `lookup_fmea_ap` tool documentation, `quality-mcp` server reference, and AIAG Action Priority citations for `fmea-reviewer` (#19).
 - In-process MCP client round-trip test suite in `packages/quality-mcp/tests/test_fmea_client_roundtrip.py` validating `lookup_fmea_ap` tool discovery, real-world automotive DFMEA/PFMEA dataset evaluation across 12 diverse failure modes spanning High, Medium, and Low Action Priority, dual structured and serialized text payload parity against `quality_core.scoring`, and protocol-level negative controls for out-of-range ratings, invalid types, and unknown tools (#18).
 - Updated MCP client setup guide in `docs/mcp-client-setup.md` with test instructions for `test_fmea_client_roundtrip.py` and verified JSON-RPC 2.0 protocol transcripts for `lookup_fmea_ap` tool execution and validation error exchanges (#18).
 - `lookup_fmea_ap` MCP tool (`quality_mcp.tools.fmea`) exposing AIAG-VDA 2019 Action Priority and RPN risk scoring over Model Context Protocol endpoints (#16).

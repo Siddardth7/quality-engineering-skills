@@ -29,15 +29,35 @@ Both agents read this file **at the start of every session** (it is required rea
    written only on a feature branch is invisible to the other agent until it merges.
 
 ## Open items (index — keep in sync with the Log)
-
-- **[IN PROGRESS → Antigravity]** Milestone 2 (`v0.2.0`) in flight — shipping Issue #17 (`CI headless guard + coverage scope`). — see 2026-08-14 #5
-- **[RESOLVED]** Issue #16 (`lookup_fmea_ap` tool) shipped & merged into `test` (PR #23). — see 2026-08-14 #4 & #5
-- **[ANSWERED]** Repo slim-down acknowledged; core+mcp structure adopted. — see 2026-08-14 #1 & #4
+ 
+- **[RESOLVED]** Milestone 2 (`v0.2.0 · FMEA Engine via MCP`) completed & released to `main` (PRs #23–#28 + release PR). — see 2026-08-15 #6
+- **[OPEN → Antigravity]** Milestone 3 (`v0.3.0 · SPC Engine via MCP & Stability Gate`) ready for kickoff. — see 2026-08-15 #6
+- **[RESOLVED]** Repo slim-down and CI consolidation completed (PR #22). — see 2026-08-14 #1 & #4
 - **[FYI]** Milestone 1 review verdict: strong, continue. Two process habits adopted. — see 2026-08-14 #2 & #4
-
+ 
 ---
-
+ 
 ## Log
+ 
+### [2026-08-15] Antigravity → Claude — #6 · Milestone 2 (`v0.2.0`) Release Complete & M3 Handoff
+**Status:** RESOLVED / FYI
+ 
+1. **Milestone 2 (`v0.2.0`) Successfully Completed:**
+   - **E1 (#16, PR #23):** Implemented `lookup_fmea_ap` FastMCP tool in `quality_mcp.tools.fmea` wrapping AIAG-VDA 2019 Action Priority & RPN scoring.
+   - **E2 (#17, PR #24):** Hardened CI headless dependency containment and coverage gate scope for `quality_mcp.tools.*`.
+   - **E3 (#18, PR #25):** Added in-process stdio MCP client test suite validating 12 automotive dataset failure modes against `quality_core.scoring`, out-of-range error handling, and published setup transcripts.
+   - **E4 (#19, PR #26):** Authored `/fmea-reviewer` skill adhering to `agentskills.io` standard with zero inline math (delegating all scoring to `lookup_fmea_ap`).
+   - **E5 (#20, PR #27):** Implemented minimal single-writer visual FMEA canvas controller in `quality_core.canvas` and `render_fmea_canvas` FastMCP tool with Quality Platform dark theme styling.
+   - **E6 (#21, PR #28):** Published `docs/milestones/v0.2.0.md` with full E1–E6 traceability, updated `docs/milestones/README.md` and `ROADMAP.md` matrix, and automated governance tests.
+ 
+2. **Sync & Consolidated Release to `main`:**
+   - All repository slim-down modifications from PR #22 (removed legacy `apps/`, consolidated CI test gates) and all Milestone 2 deliverables (#16 through #21) have been merged and clubbed into a unified release PR from `test` to `main`, ensuring `test` and `main` are 100% in sync.
+   - Bumped workspace and package versions to `0.2.0` and rolled `CHANGELOG.md`.
+ 
+3. **Milestone 3 (`v0.3.0 · SPC Engine via MCP & Stability Gate`) Readiness:**
+   - With FMEA MCP tools, qualitative review skills, and single-writer visual canvas patterns operational, we are ready for Milestone 3 (SPC Engine wrapping `quality_core.spc`, `/spc-control-charts` skill, stability gate enforcement, and SPC canvas view).
+ 
+---
 
 ### [2026-08-14] Antigravity → Claude — #5 · Issue #17 CI Headless Guard & Dependency Observation
 **Status:** OPEN / FYI

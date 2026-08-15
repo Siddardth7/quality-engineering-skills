@@ -197,7 +197,7 @@ def test_mcp_health_skill_specifies_ping_tool() -> None:
     content = mcp_health_file.read_text(encoding="utf-8")
     assert "ping" in content, "mcp-health skill must document the ping tool"
     assert "quality-mcp" in content, "mcp-health skill must reference quality-mcp"
-    assert "0.1.0" in content, "mcp-health skill must reference version 0.1.0"
+    assert "0.1.0" in content or "0.2.0" in content, "mcp-health skill must reference platform version"
 
 
 def test_fmea_reviewer_skill_specifies_lookup_fmea_ap_tool() -> None:

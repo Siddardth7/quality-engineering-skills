@@ -277,6 +277,7 @@ def test_client_session_call_fmea_invalid_type_negative_control() -> None:
 
 
 def test_tools_package_exports() -> None:
-    """quality_mcp.tools package re-exports lookup_fmea_ap."""
+    """quality_mcp.tools package re-exports lookup_fmea_ap and render_fmea_canvas."""
     assert quality_mcp.tools.lookup_fmea_ap is lookup_fmea_ap
-    assert quality_mcp.tools.__all__ == ["lookup_fmea_ap"]
+    assert quality_mcp.tools.render_fmea_canvas is quality_mcp.tools.render_fmea_canvas
+    assert sorted(quality_mcp.tools.__all__) == ["lookup_fmea_ap", "render_fmea_canvas"]

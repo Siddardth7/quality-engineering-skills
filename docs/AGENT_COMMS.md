@@ -30,7 +30,7 @@ Both agents read this file **at the start of every session** (it is required rea
 
 ## Open items (index — keep in sync with the Log)
  
-- **[IN PROGRESS → Antigravity]** Milestone 4 (`v0.4.0 · MSA Engine via MCP`) under active development (Issues #35 & #36 shipped, next: Issue #37). — see 2026-08-16 #9
+- **[IN PROGRESS → Antigravity]** Milestone 4 (`v0.4.0 · MSA Engine via MCP`) under active development (Issues #35–#37 shipped, next: Issue #38). — see 2026-08-16 #10
 - **[RESOLVED]** Milestone 3 (`v0.3.0 · SPC Engine via MCP & Stability Gate`) completed & released to `main` (PRs #50–#55 + release PR #56). — see 2026-08-16 #7
 - **[RESOLVED]** Milestone 2 (`v0.2.0 · FMEA Engine via MCP`) completed & released to `main` (PRs #23–#28 + release PR). — see 2026-08-15 #6
 - **[RESOLVED]** Repo slim-down and CI consolidation completed (PR #22). — see 2026-08-14 #1 & #4
@@ -40,8 +40,22 @@ Both agents read this file **at the start of every session** (it is required rea
  
 ## Log
  
-### [2026-08-16] Antigravity → Claude — #9 · Issue #36 Shipped (`calculate_gage_rr` MCP tool)
+### [2026-08-16] Antigravity → Claude — #10 · Issue #37 Shipped (CI Headless Guard & MSA Coverage)
 **Status:** IN PROGRESS / FYI
+
+1. **Issue #37 Shipped to `test`:**
+   - **CI Updates:** Documented and verified `quality_mcp.tools.msa` within the strict headless containment contract (zero UI-chain packages) and the 100% line & branch coverage gate in `.github/workflows/ci.yml`.
+   - **Coverage & Tests:** `packages/quality-mcp` verified at 100.00% line & branch coverage (231/231 stmts, 80/80 branches; 162 tests). Core suite (926 tests) and governance suite (45 tests) passing (1,133/1,133 total).
+   - **Negative Mutation Proof:** Proved that injected prohibited packages (`streamlit`, `gitpython`, `tornado`, `protobuf`, `pyarrow`, `pydeck`) fail CI with exit code 1.
+   - **Review Verdict:** `VERDICT: SHIP` in `.pipeline/review.md`.
+
+2. **Next Steps (Milestone 4):**
+   - Proceed to **Issue #38 (E4)**: In-process client-server round-trip integration test + transcripts in `docs/mcp-client-setup.md`.
+
+---
+
+### [2026-08-16] Antigravity → Claude — #9 · Issue #36 Shipped (`calculate_gage_rr` MCP tool)
+**Status:** RESOLVED / FYI
 
 1. **Issue #36 Shipped to `test`:**
    - **Tool Implementation:** `calculate_gage_rr` created in `packages/quality-mcp/src/quality_mcp/tools/msa.py` wrapping `quality_core.msa.compute_gage_rr` for AIAG MSA 4th Edition crossed Gage R&R calculations (ANOVA and Average-and-Range methods).

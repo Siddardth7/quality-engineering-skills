@@ -127,6 +127,12 @@ The automated test suites exercise MCP client-server protocol lifecycles (`initi
    ```
    Validates in-process JSON-RPC execution of `calculate_spc_chart` across AIAG benchmark datasets (Xbar-R shaft diameters, I-MR coating thickness, attribute p/c charts), asserts dual-payload parity against `quality_core.spc`, verifies stability-gated capability withholding on out-of-control processes over the wire, and validates protocol-level error handling.
 
+4. **MSA Client-Server Round-Trip**:
+   ```bash
+   uv run pytest packages/quality-mcp/tests/test_msa_client_roundtrip.py -v
+   ```
+   Validates in-process JSON-RPC execution of `calculate_gage_rr` across AIAG MSA 4th Edition benchmark datasets (10x3x3 crossed study case 1 and Example B), asserts dual-payload parity against `quality_core.msa`, verifies exact ANOVA and Average-and-Range decomposition parity against extracted reference fixtures, and validates protocol-level negative controls.
+
 ### Coverage Gate
 Run the full 100% line and branch coverage gate for `quality-mcp`:
 ```bash
@@ -574,6 +580,205 @@ Below is a verified JSON-RPC 2.0 message exchange showing client initialization,
       {
         "type": "text",
         "text": "Error executing tool calculate_spc_chart: USL cannot be less than LSL."
+      }
+    ],
+    "isError": true
+  }
+}
+```
+
+---
+
+### 4.9 Tool Invocation (`tools/call` -> `calculate_gage_rr` ANOVA Success)
+
+**Client Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 9,
+  "method": "tools/call",
+  "params": {
+    "name": "calculate_gage_rr",
+    "arguments": {
+      "measurements": [
+        {"part": "P1", "appraiser": "A", "trial": 1, "measurement": 2.0},
+        {"part": "P1", "appraiser": "A", "trial": 2, "measurement": 2.2},
+        {"part": "P1", "appraiser": "B", "trial": 1, "measurement": 2.5},
+        {"part": "P1", "appraiser": "B", "trial": 2, "measurement": 2.5},
+        {"part": "P2", "appraiser": "A", "trial": 1, "measurement": 4.0},
+        {"part": "P2", "appraiser": "A", "trial": 2, "measurement": 4.2},
+        {"part": "P2", "appraiser": "B", "trial": 1, "measurement": 4.5},
+        {"part": "P2", "appraiser": "B", "trial": 2, "measurement": 4.5},
+        {"part": "P3", "appraiser": "A", "trial": 1, "measurement": 6.0},
+        {"part": "P3", "appraiser": "A", "trial": 2, "measurement": 6.2},
+        {"part": "P3", "appraiser": "B", "trial": 1, "measurement": 6.5},
+        {"part": "P3", "appraiser": "B", "trial": 2, "measurement": 6.5}
+      ],
+      "method": "anova",
+      "tolerance": 8.0
+    }
+  }
+}
+```
+
+**Server Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 9,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"basis\": \"AIAG MSA 4th Edition\",\n  \"ev\": 0.0866,\n  \"av\": 0.2806,\n  \"grr\": 0.2937,\n  \"pv\": 2.0917,\n  \"tv\": 2.1122,\n  \"mean\": 4.1417,\n  \"pev_study\": 4.1005,\n  \"pav_study\": 13.2861,\n  \"pgrr_study\": 13.9056,\n  \"ppv_study\": 99.0285,\n  \"pev_tolerance\": 6.4952,\n  \"pav_tolerance\": 21.0468,\n  \"pgrr_tolerance\": 22.0283,\n  \"ppv_tolerance\": 156.8746,\n  \"ndc\": 10,\n  \"verdict\": \"Marginal\",\n  \"n_parts\": 3,\n  \"n_appraisers\": 2,\n  \"n_trials\": 2,\n  \"is_balanced\": true,\n  \"method\": \"anova\",\n  \"method_note\": \"ANOVA method (crossed two-factor with replication): the part x appraiser interaction IS estimated and tested. AIAG MSA 4th Ed., Ch. III Sec. B / Appendix A. When the interaction F statistic falls below its critical value \\\"the interaction term is pooled with the equipment (error) term\\\" and the interaction is reported as 0; when it does not, GRR = sqrt(EV^2 + AV^2 + INT^2) carries the interaction. The F-test uses alpha = 0.05, the level footnoted in the manual's own worked example (Table A 4); AIAG does not mandate a significance level. Negative variance components are set to zero, per Appendix A.\",\n  \"interaction\": 0.0,\n  \"interaction_f\": 0.0,\n  \"interaction_significant\": false\n}"
+      }
+    ],
+    "structuredContent": {
+      "basis": "AIAG MSA 4th Edition",
+      "ev": 0.0866,
+      "av": 0.2806,
+      "grr": 0.2937,
+      "pv": 2.0917,
+      "tv": 2.1122,
+      "mean": 4.1417,
+      "pev_study": 4.1005,
+      "pav_study": 13.2861,
+      "pgrr_study": 13.9056,
+      "ppv_study": 99.0285,
+      "pev_tolerance": 6.4952,
+      "pav_tolerance": 21.0468,
+      "pgrr_tolerance": 22.0283,
+      "ppv_tolerance": 156.8746,
+      "ndc": 10,
+      "verdict": "Marginal",
+      "n_parts": 3,
+      "n_appraisers": 2,
+      "n_trials": 2,
+      "is_balanced": true,
+      "method": "anova",
+      "method_note": "ANOVA method (crossed two-factor with replication): the part x appraiser interaction IS estimated and tested. AIAG MSA 4th Ed., Ch. III Sec. B / Appendix A. When the interaction F statistic falls below its critical value \"the interaction term is pooled with the equipment (error) term\" and the interaction is reported as 0; when it does not, GRR = sqrt(EV^2 + AV^2 + INT^2) carries the interaction. The F-test uses alpha = 0.05, the level footnoted in the manual's own worked example (Table A 4); AIAG does not mandate a significance level. Negative variance components are set to zero, per Appendix A.",
+      "interaction": 0.0,
+      "interaction_f": 0.0,
+      "interaction_significant": false
+    },
+    "isError": false
+  }
+}
+```
+
+---
+
+### 4.10 Tool Invocation (`tools/call` -> `calculate_gage_rr` Average-and-Range Success)
+
+**Client Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 10,
+  "method": "tools/call",
+  "params": {
+    "name": "calculate_gage_rr",
+    "arguments": {
+      "measurements": [
+        {"part": "P1", "appraiser": "A", "trial": 1, "measurement": 2.0},
+        {"part": "P1", "appraiser": "A", "trial": 2, "measurement": 2.2},
+        {"part": "P1", "appraiser": "B", "trial": 1, "measurement": 2.5},
+        {"part": "P1", "appraiser": "B", "trial": 2, "measurement": 2.5},
+        {"part": "P2", "appraiser": "A", "trial": 1, "measurement": 4.0},
+        {"part": "P2", "appraiser": "A", "trial": 2, "measurement": 4.2},
+        {"part": "P2", "appraiser": "B", "trial": 1, "measurement": 4.5},
+        {"part": "P2", "appraiser": "B", "trial": 2, "measurement": 4.5},
+        {"part": "P3", "appraiser": "A", "trial": 1, "measurement": 6.0},
+        {"part": "P3", "appraiser": "A", "trial": 2, "measurement": 6.2},
+        {"part": "P3", "appraiser": "B", "trial": 1, "measurement": 6.5},
+        {"part": "P3", "appraiser": "B", "trial": 2, "measurement": 6.5}
+      ],
+      "method": "average_and_range"
+    }
+  }
+}
+```
+
+**Server Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 10,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"basis\": \"AIAG MSA 4th Edition\",\n  \"ev\": 0.0886,\n  \"av\": 0.2805,\n  \"grr\": 0.2942,\n  \"pv\": 2.0924,\n  \"tv\": 2.1130,\n  \"mean\": 4.1417,\n  \"pev_study\": 4.1941,\n  \"pav_study\": 13.2758,\n  \"pgrr_study\": 13.9226,\n  \"ppv_study\": 99.0260,\n  \"pev_tolerance\": null,\n  \"pav_tolerance\": null,\n  \"pgrr_tolerance\": null,\n  \"ppv_tolerance\": null,\n  \"ndc\": 10,\n  \"verdict\": \"Marginal\",\n  \"n_parts\": 3,\n  \"n_appraisers\": 2,\n  \"n_trials\": 2,\n  \"is_balanced\": true,\n  \"method\": \"average_and_range\",\n  \"method_note\": \"Average-and-Range method: the part x appraiser interaction is NOT estimated. AIAG MSA 4th Ed., Ch. III Sec. B: the Average and Range method \\\"does not include\\\" the operator-to-part interaction, which is therefore absorbed into the reported components; %GRR is biased low when that interaction is non-zero. ANOVA (which separates it) is available via method=\\\"anova\\\".\",\n  \"interaction\": null,\n  \"interaction_f\": null,\n  \"interaction_significant\": null\n}"
+      }
+    ],
+    "structuredContent": {
+      "basis": "AIAG MSA 4th Edition",
+      "ev": 0.0886,
+      "av": 0.2805,
+      "grr": 0.2942,
+      "pv": 2.0924,
+      "tv": 2.1130,
+      "mean": 4.1417,
+      "pev_study": 4.1941,
+      "pav_study": 13.2758,
+      "pgrr_study": 13.9226,
+      "ppv_study": 99.0260,
+      "pev_tolerance": null,
+      "pav_tolerance": null,
+      "pgrr_tolerance": null,
+      "ppv_tolerance": null,
+      "ndc": 10,
+      "verdict": "Marginal",
+      "n_parts": 3,
+      "n_appraisers": 2,
+      "n_trials": 2,
+      "is_balanced": true,
+      "method": "average_and_range",
+      "method_note": "Average-and-Range method: the part x appraiser interaction is NOT estimated. AIAG MSA 4th Ed., Ch. III Sec. B: the Average and Range method \"does not include\" the operator-to-part interaction, which is therefore absorbed into the reported components; %GRR is biased low when that interaction is non-zero. ANOVA (which separates it) is available via method=\"anova\".",
+      "interaction": null,
+      "interaction_f": null,
+      "interaction_significant": null
+    },
+    "isError": false
+  }
+}
+```
+
+---
+
+### 4.11 Tool Invocation (`tools/call` -> `calculate_gage_rr` Validation Error)
+
+**Client Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 11,
+  "method": "tools/call",
+  "params": {
+    "name": "calculate_gage_rr",
+    "arguments": {
+      "measurements": [
+        {"part": "P1", "appraiser": "A", "trial": 1, "measurement": 2.0},
+        {"part": "P1", "appraiser": "A", "trial": 2, "measurement": 2.2},
+        {"part": "P1", "appraiser": "A", "trial": 3, "measurement": 2.1},
+        {"part": "P1", "appraiser": "B", "trial": 1, "measurement": 2.5},
+        {"part": "P1", "appraiser": "B", "trial": 2, "measurement": 2.5}
+      ]
+    }
+  }
+}
+```
+
+**Server Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 11,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Error executing tool calculate_gage_rr: Data is unbalanced. This Gage R&R engine requires equal trials per (part, appraiser) cell. Found 2–3 trials across cells."
       }
     ],
     "isError": true

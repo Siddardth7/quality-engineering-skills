@@ -14,6 +14,7 @@ from quality_mcp.server import (
     mcp,
     ping,
     render_fmea_canvas,
+    render_msa_canvas,
     render_spc_canvas,
 )
 
@@ -25,5 +26,6 @@ __all__ = [
     "mcp",
     "ping",
     "render_fmea_canvas",
+    "render_msa_canvas",
     "render_spc_canvas",
 ]

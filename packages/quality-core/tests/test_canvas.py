@@ -6,15 +6,21 @@ deterministic scoring recalculations, CRUD lifecycle, summary statistics, and HT
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from quality_core.canvas import (
     SAMPLE_FMEA_ROWS,
+    SAMPLE_MSA_STUDY_DATA,
     SAMPLE_SPC_XBAR_R_DATA,
     FMEACanvas,
     FMEACanvasRow,
+    MSACanvas,
+    MSACanvasMeasurement,
     SPCCanvas,
     SPCCanvasSubgroup,
     load_sample_canvas,
+    load_sample_msa_canvas,
     load_sample_spc_canvas,
 )
 from quality_core.scoring import HIGH, LOW, MEDIUM
@@ -844,3 +850,312 @@ def test_spc_canvas_nelson_and_one_sided_specs() -> None:
     assert lsl_canvas.capability["cpk"] is not None
 
 
+# ---------------------------------------------------------------------------
+# MSACanvasMeasurement & MSACanvas Unit Tests
+# ---------------------------------------------------------------------------
+
+
+def test_msa_canvas_measurement_valid_and_to_dict() -> None:
+    """MSACanvasMeasurement constructs correctly and serializes to dict."""
+    m = MSACanvasMeasurement(id=1, part="P01", appraiser="A", trial=1, measurement=0.29)
+    assert m.id == 1
+    assert m.part == "P01"
+    assert m.appraiser == "A"
+    assert m.trial == 1
+    assert m.measurement == 0.29
+    d = m.to_dict()
+    assert d == {"id": 1, "part": "P01", "appraiser": "A", "trial": 1, "measurement": 0.29}
+
+
+def test_msa_canvas_measurement_from_dict_variations() -> None:
+    """from_dict handles snake_case, PascalCase, and alternate key aliases."""
+    # Standard snake_case
+    m1 = MSACanvasMeasurement.from_dict({"id": 5, "part": "P02", "appraiser": "B", "trial": 2, "measurement": 1.45})
+    assert m1.id == 5
+    assert m1.part == "P02"
+    assert m1.appraiser == "B"
+    assert m1.trial == 2
+    assert m1.measurement == 1.45
+
+    # PascalCase & value alias
+    m2 = MSACanvasMeasurement.from_dict({"ID": "10", "Part": "P03", "Appraiser": "C", "Trial": "3", "value": "2.5"})
+    assert m2.id == 10
+    assert m2.part == "P03"
+    assert m2.appraiser == "C"
+    assert m2.trial == 3
+    assert m2.measurement == 2.5
+
+
+@pytest.mark.parametrize(
+    ("invalid_dict", "expected_err", "match_str"),
+    [
+        ("not-a-dict", TypeError, "Expected dict"),
+        ({"id": "bad-id"}, ValueError, "Invalid measurement id"),
+        ({"part": ""}, ValueError, "missing or empty 'part'"),
+        ({"part": "P1", "appraiser": ""}, ValueError, "missing or empty 'appraiser'"),
+        ({"part": "P1", "appraiser": "A", "trial": "zero"}, ValueError, "Trial must be a positive integer"),
+        ({"part": "P1", "appraiser": "A", "trial": 0}, ValueError, "Trial must be a positive integer"),
+        ({"part": "P1", "appraiser": "A", "trial": 1, "measurement": "invalid"}, ValueError, "Invalid measurement numeric value"),
+    ],
+)
+def test_msa_canvas_measurement_from_dict_errors(
+    invalid_dict: Any,
+    expected_err: type[Exception],
+    match_str: str,
+) -> None:
+    """Invalid dictionaries raise ValueError or TypeError in MSACanvasMeasurement.from_dict."""
+    with pytest.raises(expected_err, match=match_str):
+        MSACanvasMeasurement.from_dict(invalid_dict)
+
+
+def test_msa_canvas_initialization_and_validation() -> None:
+    """MSACanvas initialization validates title, method, and tolerance."""
+    canvas = MSACanvas(method="anova", title="Custom Title", tolerance=5.0)
+    assert canvas.title == "Custom Title"
+    assert canvas.method == "anova"
+    assert canvas.tolerance == 5.0
+
+    # Invalid title
+    with pytest.raises(ValueError, match="title must be a non-empty string"):
+        MSACanvas(title="")
+    with pytest.raises(ValueError, match="title must be a non-empty string"):
+        MSACanvas(title=True)  # type: ignore[arg-type]
+
+    # Invalid method
+    with pytest.raises(ValueError, match="Unknown or unsupported method"):
+        MSACanvas(method="invalid_method")
+
+    # Invalid tolerance
+    with pytest.raises(ValueError, match="tolerance must be a positive finite float"):
+        MSACanvas(tolerance=-1.0)
+    with pytest.raises(ValueError, match="tolerance must be a positive finite float"):
+        MSACanvas(tolerance=0.0)
+    with pytest.raises(ValueError, match="tolerance must be a positive finite float"):
+        MSACanvas(tolerance=True)  # type: ignore[arg-type]
+
+
+def test_msa_canvas_load_sample_and_convenience_helper() -> None:
+    """load_sample and load_sample_msa_canvas load the 90-row AIAG benchmark dataset."""
+    assert len(SAMPLE_MSA_STUDY_DATA) == 90
+    canvas = MSACanvas.load_sample()
+    assert len(canvas.measurements) == 90
+    assert canvas.n_parts == 10
+    assert canvas.n_appraisers == 3
+    assert canvas.n_trials == 3
+    assert canvas.verdict == "Reject"
+    assert canvas.ndc == 6
+    assert pytest.approx(canvas.grr, rel=1e-3) == 0.225791
+
+    canvas_helper = load_sample_msa_canvas(method="average_and_range", title="A&R Study", tolerance=4.42)
+    assert canvas_helper.title == "A&R Study"
+    assert canvas_helper.method == "average_and_range"
+    assert len(canvas_helper.measurements) == 90
+    assert canvas_helper.verdict == "Reject"
+    assert canvas_helper.ndc == 6
+    assert pytest.approx(canvas_helper.grr, rel=1e-3) == 0.226378
+
+
+def test_msa_canvas_single_writer_crud_lifecycle() -> None:
+    """MSACanvas single-writer CRUD: add, update, delete, set_data, and recalculate."""
+    # Synthetic Example B (3 parts x 2 appraisers x 2 trials)
+    example_b: list[dict[str, Any]] = [
+        {"part": "P1", "appraiser": "A", "trial": 1, "measurement": 2.0},
+        {"part": "P1", "appraiser": "A", "trial": 2, "measurement": 2.2},
+        {"part": "P1", "appraiser": "B", "trial": 1, "measurement": 2.5},
+        {"part": "P1", "appraiser": "B", "trial": 2, "measurement": 2.5},
+        {"part": "P2", "appraiser": "A", "trial": 1, "measurement": 4.0},
+        {"part": "P2", "appraiser": "A", "trial": 2, "measurement": 4.2},
+        {"part": "P2", "appraiser": "B", "trial": 1, "measurement": 4.5},
+        {"part": "P2", "appraiser": "B", "trial": 2, "measurement": 4.5},
+        {"part": "P3", "appraiser": "A", "trial": 1, "measurement": 6.0},
+        {"part": "P3", "appraiser": "A", "trial": 2, "measurement": 6.2},
+        {"part": "P3", "appraiser": "B", "trial": 1, "measurement": 6.5},
+        {"part": "P3", "appraiser": "B", "trial": 2, "measurement": 6.5},
+    ]
+
+    canvas = MSACanvas(method="anova", tolerance=8.0)
+    assert len(canvas.measurements) == 0
+    assert canvas.verdict == "Pending"
+
+    # set_data with dict list
+    canvas.set_data(example_b)
+    assert len(canvas.measurements) == 12
+    assert canvas.n_parts == 3
+    assert canvas.verdict == "Marginal"
+
+    # set_data with MSACanvasMeasurement list
+    meas_objs = [MSACanvasMeasurement(id=i, part=r["part"], appraiser=r["appraiser"], trial=r["trial"], measurement=r["measurement"]) for i, r in enumerate(example_b, 1)]
+    canvas.set_data(meas_objs)
+    assert len(canvas.measurements) == 12
+
+    # set_data invalid type
+    with pytest.raises(TypeError, match="measurements must be a list"):
+        canvas.set_data("invalid")  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match="Expected dict or MSACanvasMeasurement"):
+        canvas.set_data([123])  # type: ignore[list-item]
+
+    # update_measurement
+    grr_before = canvas.grr
+    updated = canvas.update_measurement(1, measurement=3.5, part="P1", appraiser="A", trial=1)
+    assert updated.measurement == 3.5
+    assert canvas.grr != grr_before
+
+    # update_measurement errors
+    with pytest.raises(KeyError, match="Measurement with id=999 not found"):
+        canvas.update_measurement(999, measurement=3.0)
+    with pytest.raises(ValueError, match="Invalid numeric measurement"):
+        canvas.update_measurement(1, measurement="bad-float")  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="part cannot be empty"):
+        canvas.update_measurement(1, part="")
+    with pytest.raises(ValueError, match="appraiser cannot be empty"):
+        canvas.update_measurement(1, appraiser="")
+    with pytest.raises(ValueError, match="trial must be a positive integer"):
+        canvas.update_measurement(1, trial=0)
+
+    # delete_measurement
+    assert canvas.delete_measurement(1) is True
+    assert canvas.delete_measurement(999) is False
+
+    # add_measurement (MSACanvasMeasurement and dict)
+    new_m = canvas.add_measurement({"part": "P1_mod", "appraiser": "A_mod", "trial": 1, "measurement": 2.0})
+    assert new_m.id > 0
+    new_obj = canvas.add_measurement(MSACanvasMeasurement(id=0, part="P1_mod", appraiser="A_mod", trial=1, measurement=2.1))
+    assert new_obj.id > new_m.id
+
+    with pytest.raises(TypeError, match="Expected dict or MSACanvasMeasurement"):
+        canvas.add_measurement("bad-input")  # type: ignore[arg-type]
+
+
+def test_msa_canvas_summary_and_to_dict() -> None:
+    """get_summary and to_dict provide full serializable summaries."""
+    canvas = MSACanvas.load_sample()
+    summary = canvas.get_summary()
+    assert summary["title"] == "AIAG MSA Gage R&R Canvas"
+    assert summary["method"] == "anova"
+    assert summary["measurements_count"] == 90
+    assert summary["n_parts"] == 10
+    assert summary["verdict"] == "Reject"
+
+    d = canvas.to_dict()
+    assert d["title"] == "AIAG MSA Gage R&R Canvas"
+    assert len(d["measurements"]) == 90
+    assert d["summary"] == summary
+
+
+def test_msa_canvas_html_rendering_and_verdict_styles() -> None:
+    """to_html generates valid HTML5 and covers Accept, Marginal, Reject, and Pending styles."""
+    # 1. Reject verdict (Sample dataset)
+    sample_canvas = MSACanvas.load_sample(tolerance=4.42)
+    sample_html = sample_canvas.to_html(standalone=True)
+    assert "<!DOCTYPE html>" in sample_html
+    assert "REJECT" in sample_html
+    assert "Operator × Part Interaction Plot" in sample_html
+    assert "Variance Component Breakdown" in sample_html
+    assert "<svg" in sample_html
+
+    # 2. Embedded HTML (standalone=False)
+    embedded_html = sample_canvas.to_html(standalone=False)
+    assert "<!DOCTYPE html>" not in embedded_html
+    assert '<div class="msa-canvas-container"' in embedded_html
+
+    # 3. Marginal verdict (Example B)
+    example_b = [
+        {"part": "P1", "appraiser": "A", "trial": 1, "measurement": 2.0},
+        {"part": "P1", "appraiser": "A", "trial": 2, "measurement": 2.2},
+        {"part": "P1", "appraiser": "B", "trial": 1, "measurement": 2.5},
+        {"part": "P1", "appraiser": "B", "trial": 2, "measurement": 2.5},
+        {"part": "P2", "appraiser": "A", "trial": 1, "measurement": 4.0},
+        {"part": "P2", "appraiser": "A", "trial": 2, "measurement": 4.2},
+        {"part": "P2", "appraiser": "B", "trial": 1, "measurement": 4.5},
+        {"part": "P2", "appraiser": "B", "trial": 2, "measurement": 4.5},
+        {"part": "P3", "appraiser": "A", "trial": 1, "measurement": 6.0},
+        {"part": "P3", "appraiser": "A", "trial": 2, "measurement": 6.2},
+        {"part": "P3", "appraiser": "B", "trial": 1, "measurement": 6.5},
+        {"part": "P3", "appraiser": "B", "trial": 2, "measurement": 6.5},
+    ]
+    marginal_canvas = MSACanvas(method="anova", tolerance=8.0, measurements=example_b)
+    marginal_html = marginal_canvas.to_html()
+    assert "MARGINAL" in marginal_html
+
+    # 4. Accept verdict (High part spread, tiny measurement noise)
+    accept_data = [
+        {"part": "P1", "appraiser": "A", "trial": 1, "measurement": 10.00},
+        {"part": "P1", "appraiser": "A", "trial": 2, "measurement": 10.01},
+        {"part": "P1", "appraiser": "B", "trial": 1, "measurement": 10.00},
+        {"part": "P1", "appraiser": "B", "trial": 2, "measurement": 10.01},
+        {"part": "P2", "appraiser": "A", "trial": 1, "measurement": 20.00},
+        {"part": "P2", "appraiser": "A", "trial": 2, "measurement": 20.01},
+        {"part": "P2", "appraiser": "B", "trial": 1, "measurement": 20.00},
+        {"part": "P2", "appraiser": "B", "trial": 2, "measurement": 20.01},
+        {"part": "P3", "appraiser": "A", "trial": 1, "measurement": 30.00},
+        {"part": "P3", "appraiser": "A", "trial": 2, "measurement": 30.01},
+        {"part": "P3", "appraiser": "B", "trial": 1, "measurement": 30.00},
+        {"part": "P3", "appraiser": "B", "trial": 2, "measurement": 30.01},
+    ]
+    accept_canvas = MSACanvas(method="anova", tolerance=50.0, measurements=accept_data)
+    assert accept_canvas.verdict == "Accept"
+    accept_html = accept_canvas.to_html()
+    assert "ACCEPT" in accept_html
+
+    # 5. Pending / Empty canvas HTML
+    empty_canvas = MSACanvas(method="anova")
+    empty_html = empty_canvas.to_html()
+    assert "PENDING" in empty_html
+    assert "No measurement data" in empty_html
+
+
+def test_msa_canvas_svg_edge_cases_and_non_zero_interaction() -> None:
+    """Test SVG generation when dataset has non-zero interaction, flat values, or single part."""
+    # Non-zero interaction dataset
+    int_data = [
+        {"part": "P1", "appraiser": "A", "trial": 1, "measurement": 1.0},
+        {"part": "P1", "appraiser": "A", "trial": 2, "measurement": 1.1},
+        {"part": "P1", "appraiser": "B", "trial": 1, "measurement": 5.0},
+        {"part": "P1", "appraiser": "B", "trial": 2, "measurement": 5.1},
+        {"part": "P2", "appraiser": "A", "trial": 1, "measurement": 5.0},
+        {"part": "P2", "appraiser": "A", "trial": 2, "measurement": 5.1},
+        {"part": "P2", "appraiser": "B", "trial": 1, "measurement": 1.0},
+        {"part": "P2", "appraiser": "B", "trial": 2, "measurement": 1.1},
+    ]
+    int_canvas = MSACanvas(method="anova", tolerance=10.0, measurements=int_data)
+    assert int_canvas.interaction_significant is True
+    int_html = int_canvas.to_html()
+    assert "Interaction: Significant" in int_html
+    assert "Part × Appraiser (INT)" in int_html
+
+    # Flat values
+    flat_data = [
+        {"part": "P1", "appraiser": "A", "trial": 1, "measurement": 10.0},
+        {"part": "P1", "appraiser": "A", "trial": 2, "measurement": 10.0},
+        {"part": "P1", "appraiser": "B", "trial": 1, "measurement": 10.0},
+        {"part": "P1", "appraiser": "B", "trial": 2, "measurement": 10.0},
+        {"part": "P2", "appraiser": "A", "trial": 1, "measurement": 10.0},
+        {"part": "P2", "appraiser": "A", "trial": 2, "measurement": 10.0},
+        {"part": "P2", "appraiser": "B", "trial": 1, "measurement": 10.0},
+        {"part": "P2", "appraiser": "B", "trial": 2, "measurement": 10.0},
+    ]
+    flat_canvas = MSACanvas(method="average_and_range", measurements=flat_data)
+    flat_html = flat_canvas.to_html()
+    assert "<svg" in flat_html
+
+    # Empty canvas recalculate
+    empty_canvas = MSACanvas()
+    empty_canvas.recalculate()
+    assert empty_canvas.verdict == "Pending"
+    assert empty_canvas.measurements == []
+
+    # Update measurement with trial=None
+    sample_c = MSACanvas.load_sample()
+    updated = sample_c.update_measurement(1, measurement=0.42)
+    assert updated.measurement == 0.42
+    assert updated.trial == 1
+
+    # Sparse / single-point appraiser SVG branch coverage
+    sparse_canvas = MSACanvas(
+        measurements=[
+            {"part": "P1", "appraiser": "A", "trial": 1, "measurement": 1.0},
+            {"part": "P2", "appraiser": "B", "trial": 1, "measurement": 2.0},
+        ]
+    )
+    sparse_html = sparse_canvas.to_html()
+    assert "<svg" in sparse_html

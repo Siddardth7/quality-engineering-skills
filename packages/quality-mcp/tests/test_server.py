@@ -26,7 +26,7 @@ def test_ping_returns_correct_dict() -> None:
     expected = {
         "status": "ok",
         "server": "quality-mcp",
-        "version": "0.2.0",
+        "version": "0.3.0",
     }
     assert result == expected
     assert result["status"] == "ok"
@@ -101,6 +101,6 @@ def test_package_exports() -> None:
     assert quality_mcp.render_fmea_canvas is render_fmea_canvas
     assert quality_mcp.render_spc_canvas is render_spc_canvas
     assert quality_mcp.calculate_spc_chart is calculate_spc_chart
-    assert quality_mcp.__version__ == "0.2.0"
+    assert quality_mcp.__version__ == "0.3.0"
     assert set(quality_mcp.__all__) == {"__version__", "calculate_spc_chart", "lookup_fmea_ap", "mcp", "ping", "render_fmea_canvas", "render_spc_canvas"}
     assert sorted(quality_mcp.__all__) == ["__version__", "calculate_spc_chart", "lookup_fmea_ap", "mcp", "ping", "render_fmea_canvas", "render_spc_canvas"]

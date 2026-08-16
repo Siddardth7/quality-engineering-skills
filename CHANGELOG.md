@@ -18,6 +18,9 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 - Updated `skills/README.md` taxonomy table marking `spc-control-charts` as Active (#32).
 - Extended `quality_core.canvas` with `SPCCanvas` single-writer SPC control-chart controller supporting variable (`Xbar-R`, `Xbar-S`, `I-MR`) and attribute (`p`, `c`, `u`) charts, deterministic point/subgroup editing, strict stability-gated capability analysis, and Quality Platform dark-themed HTML5/SVG canvas generation (#33).
 - FastMCP tool `render_spc_canvas` in `quality_mcp.tools.canvas` registered on `quality-mcp` FastMCP server, re-exported across packages, and tested with in-process MCP client round-trip validation (#33).
+- Finalized Milestone 3 (`v0.3.0`) specification document in `docs/milestones/v0.3.0.md` detailing Epics E1–E6, linking issues #29 through #34 with branch names, 7 release gate criteria, verification artifacts, and Milestone 4 readiness handoff (#34).
+- Updated `docs/milestones/README.md` canonical mapping table marking `v0.3.0` as Complete and updated `ROADMAP.md` Summary Release Matrix linking `docs/milestones/v0.3.0.md` (#34).
+- Extended milestone governance test suite in `tests/test_milestones_convention.py` with comprehensive traceability, branch mapping, release gate, and artifact assertions for `v0.3.0` (#34).
 
 ### Changed
 - CI headless dependency guard and coverage gate comments in `.github/workflows/ci.yml` updated to document the headless containment contract and confirm 100% line & branch coverage scope for `quality_mcp.tools.spc` under `--cov=quality_mcp --cov-fail-under=100` (#30).

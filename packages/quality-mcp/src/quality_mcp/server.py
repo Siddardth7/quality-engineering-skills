@@ -10,14 +10,17 @@ from __future__ import annotations
 from mcp.server.fastmcp import FastMCP
 
 from quality_mcp import __version__
-from quality_mcp.tools.canvas import render_fmea_canvas
+from quality_mcp.tools.canvas import render_fmea_canvas, render_spc_canvas
 from quality_mcp.tools.fmea import lookup_fmea_ap
+from quality_mcp.tools.spc import calculate_spc_chart
 
 mcp = FastMCP("quality-mcp")
 
 # Register tools on the FastMCP instance
 mcp.tool()(lookup_fmea_ap)
 mcp.tool()(render_fmea_canvas)
+mcp.tool()(render_spc_canvas)
+mcp.tool()(calculate_spc_chart)
 
 
 @mcp.tool()
@@ -38,4 +41,4 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 
-__all__ = ["lookup_fmea_ap", "main", "mcp", "ping", "render_fmea_canvas"]
+__all__ = ["calculate_spc_chart", "lookup_fmea_ap", "main", "mcp", "ping", "render_fmea_canvas", "render_spc_canvas"]

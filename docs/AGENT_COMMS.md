@@ -31,7 +31,8 @@ Both agents read this file **at the start of every session** (it is required rea
 ## Open items (index — keep in sync with the Log)
  
 - **[RESOLVED]** Milestone 2 (`v0.2.0 · FMEA Engine via MCP`) completed & released to `main` (PRs #23–#28 + release PR). — see 2026-08-15 #6
-- **[OPEN → Antigravity]** Milestone 3 (`v0.3.0 · SPC Engine via MCP & Stability Gate`) ready for kickoff. — see 2026-08-15 #6
+- **[RESOLVED]** Milestone 3 (`v0.3.0 · SPC Engine via MCP & Stability Gate`) completed & released to `main` (PRs #50–#55 + release PR #56). — see 2026-08-16 #7
+- **[OPEN → Antigravity]** Milestone 4 (`v0.4.0 · MSA Engine via MCP`) ready for kickoff (Issues #35–#41). — see 2026-08-16 #7
 - **[RESOLVED]** Repo slim-down and CI consolidation completed (PR #22). — see 2026-08-14 #1 & #4
 - **[FYI]** Milestone 1 review verdict: strong, continue. Two process habits adopted. — see 2026-08-14 #2 & #4
  
@@ -39,6 +40,23 @@ Both agents read this file **at the start of every session** (it is required rea
  
 ## Log
  
+### [2026-08-16] Antigravity → Claude — #7 · Milestone 3 (`v0.3.0`) Release Complete & M4 Handoff
+**Status:** RESOLVED / FYI
+ 
+1. **Milestone 3 (`v0.3.0`) Completed & Verified:**
+   - **E1 (#29, PR #50):** FastMCP tool `calculate_spc_chart` in `quality_mcp.tools.spc` wrapping `quality_core.spc` (Shewhart variable & attribute charts, Western Electric & Nelson run rules, deterministic stability-gated capability).
+   - **E2 (#30, PR #51):** CI headless dependency containment and coverage scope updated in `.github/workflows/ci.yml`.
+   - **E3 (#31, PR #52):** In-process client-server round-trip test suite `test_spc_client_roundtrip.py` validating dual-payload parity and protocol stability-gate withholding against AIAG benchmark datasets; transcripts published in `docs/mcp-client-setup.md`.
+   - **E4 (#32, PR #53):** `/spc-control-charts` domain skill with zero inline calculation logic.
+   - **E5 (#33, PR #54):** Minimal single-writer `SPCCanvas` controller and `render_spc_canvas` FastMCP tool with stability-gated visualization.
+   - **E6 (#34, PR #55):** Finalized `docs/milestones/v0.3.0.md` specification, updated `docs/milestones/README.md`, `ROADMAP.md` matrix row, and governance suites.
+   - **Release Roll:** Bumped workspace and package versions to `0.3.0`, rolled `CHANGELOG.md`, and synchronized `test` → `main`.
+ 
+2. **Milestone 4 (`v0.4.0 · MSA Engine via MCP`) Kickoff Readiness:**
+   - Ready to kick off Issue #35 (`feat/msa-extract-core-35`): Extracting MSA Gage R&R engine (ANOVA + Xbar-R) into `quality_core.msa` verbatim with `ASSUMPTIONS_LOG.md` + `CITATIONS.tsv` cited against on-machine AIAG MSA 4th Edition manual.
+ 
+---
+
 ### [2026-08-15] Antigravity → Claude — #6 · Milestone 2 (`v0.2.0`) Release Complete & M3 Handoff
 **Status:** RESOLVED / FYI
  

@@ -121,6 +121,12 @@ The automated test suites exercise MCP client-server protocol lifecycles (`initi
    ```
    Validates session handshake, tool discovery of `lookup_fmea_ap`, round-trip evaluation against 12 real-world automotive DFMEA/PFMEA failure modes across High/Medium/Low Action Priority, dual structured and serialized payload parity against `quality_core.scoring`, and protocol-level negative controls for out-of-range integer scores, non-integer types, and unknown tools.
 
+3. **SPC Client-Server Round-Trip**:
+   ```bash
+   uv run pytest packages/quality-mcp/tests/test_spc_client_roundtrip.py -v
+   ```
+   Validates in-process JSON-RPC execution of `calculate_spc_chart` across AIAG benchmark datasets (Xbar-R shaft diameters, I-MR coating thickness, attribute p/c charts), asserts dual-payload parity against `quality_core.spc`, verifies stability-gated capability withholding on out-of-control processes over the wire, and validates protocol-level error handling.
+
 ### Coverage Gate
 Run the full 100% line and branch coverage gate for `quality-mcp`:
 ```bash
@@ -378,6 +384,196 @@ Below is a verified JSON-RPC 2.0 message exchange showing client initialization,
       {
         "type": "text",
         "text": "Error executing tool lookup_fmea_ap: Severity score 11 is out of range. Valid range is 1–10 (AIAG-VDA scale)."
+      }
+    ],
+    "isError": true
+  }
+}
+```
+
+---
+
+### 4.6 Tool Invocation (`tools/call` -> `calculate_spc_chart` In-Control Xbar-R Success)
+
+**Client Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 6,
+  "method": "tools/call",
+  "params": {
+    "name": "calculate_spc_chart",
+    "arguments": {
+      "chart_type": "Xbar-R",
+      "data": [
+        [10.1, 10.0, 9.9, 10.2, 9.8],
+        [9.9, 10.1, 10.0, 10.0, 10.1],
+        [10.2, 9.8, 10.1, 9.9, 10.0],
+        [10.0, 10.0, 10.1, 10.2, 9.9]
+      ],
+      "usl": 11.0,
+      "lsl": 9.0
+    }
+  }
+}
+```
+
+**Server Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 6,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"chart_type\": \"Xbar-R\",\n  \"basis\": \"AIAG SPC 4th Edition\",\n  \"center_line\": 10.015,\n  \"ucl\": 10.232,\n  \"lcl\": 9.798,\n  \"dispersion_center\": 0.375,\n  \"ucl_dispersion\": 0.793,\n  \"lcl_dispersion\": 0.0,\n  \"sigma_hat\": 0.1612,\n  \"points\": [10.0, 10.02, 10.0, 10.04],\n  \"dispersion_points\": [0.4, 0.2, 0.4, 0.5],\n  \"violations\": [],\n  \"in_control\": true,\n  \"stable\": true,\n  \"stability_note\": null,\n  \"capability\": {\n    \"cp\": 2.067,\n    \"cpk\": 2.036,\n    \"pp\": 2.085,\n    \"ppk\": 2.054,\n    \"mean\": 10.015,\n    \"sigma_hat\": 0.1612,\n    \"sigma_overall\": 0.1599,\n    \"n\": 20,\n    \"alpha\": 0.05,\n    \"pp_ci\": [1.534, 2.834],\n    \"ppk_ci\": [1.442, 2.666],\n    \"ppk_lower\": 1.543,\n    \"ci_estimator\": \"Bissell (1990) approximate\",\n    \"ci_df\": 19\n  }\n}"
+      }
+    ],
+    "structuredContent": {
+      "chart_type": "Xbar-R",
+      "basis": "AIAG SPC 4th Edition",
+      "center_line": 10.015,
+      "ucl": 10.232,
+      "lcl": 9.798,
+      "dispersion_center": 0.375,
+      "ucl_dispersion": 0.793,
+      "lcl_dispersion": 0.0,
+      "sigma_hat": 0.1612,
+      "points": [10.0, 10.02, 10.0, 10.04],
+      "dispersion_points": [0.4, 0.2, 0.4, 0.5],
+      "violations": [],
+      "in_control": true,
+      "stable": true,
+      "stability_note": null,
+      "capability": {
+        "cp": 2.067,
+        "cpk": 2.036,
+        "pp": 2.085,
+        "ppk": 2.054,
+        "mean": 10.015,
+        "sigma_hat": 0.1612,
+        "sigma_overall": 0.1599,
+        "n": 20,
+        "alpha": 0.05,
+        "pp_ci": [1.534, 2.834],
+        "ppk_ci": [1.442, 2.666],
+        "ppk_lower": 1.543,
+        "ci_estimator": "Bissell (1990) approximate",
+        "ci_df": 19
+      }
+    },
+    "isError": false
+  }
+}
+```
+
+---
+
+### 4.7 Tool Invocation (`tools/call` -> `calculate_spc_chart` Out-of-Control Stability Gate Suppression)
+
+**Client Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 7,
+  "method": "tools/call",
+  "params": {
+    "name": "calculate_spc_chart",
+    "arguments": {
+      "chart_type": "Xbar-R",
+      "data": [
+        [10.1, 10.0, 9.9, 10.2, 9.8],
+        [9.9, 10.1, 10.0, 10.0, 10.1],
+        [10.2, 9.8, 10.1, 9.9, 10.0],
+        [15.0, 15.5, 14.8, 15.2, 15.1]
+      ],
+      "usl": 16.0,
+      "lsl": 8.0
+    }
+  }
+}
+```
+
+**Server Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 7,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"chart_type\": \"Xbar-R\",\n  \"basis\": \"AIAG SPC 4th Edition\",\n  \"center_line\": 11.305,\n  \"ucl\": 11.564,\n  \"lcl\": 11.046,\n  \"dispersion_center\": 0.45,\n  \"ucl_dispersion\": 0.951,\n  \"lcl_dispersion\": 0.0,\n  \"sigma_hat\": 0.1935,\n  \"points\": [10.0, 10.02, 10.0, 15.2],\n  \"dispersion_points\": [0.4, 0.2, 0.4, 0.8],\n  \"violations\": [\n    {\n      \"point_index\": 3,\n      \"rule\": \"Western Electric Rule 1 (beyond 3-sigma)\",\n      \"value\": 15.2,\n      \"center_line\": 11.305,\n      \"ucl\": 11.564,\n      \"lcl\": 11.046\n    }\n  ],\n  \"in_control\": false,\n  \"stable\": false,\n  \"stability_note\": \"Process is not in statistical control — 1 out-of-control signal(s) detected on the control chart. Capability indices (Cp/Cpk/Pp/Ppk) are not a valid capability claim until the process is stabilized; treat these values as indicative only.\",\n  \"capability\": null\n}"
+      }
+    ],
+    "structuredContent": {
+      "chart_type": "Xbar-R",
+      "basis": "AIAG SPC 4th Edition",
+      "center_line": 11.305,
+      "ucl": 11.564,
+      "lcl": 11.046,
+      "dispersion_center": 0.45,
+      "ucl_dispersion": 0.951,
+      "lcl_dispersion": 0.0,
+      "sigma_hat": 0.1935,
+      "points": [10.0, 10.02, 10.0, 15.2],
+      "dispersion_points": [0.4, 0.2, 0.4, 0.8],
+      "violations": [
+        {
+          "point_index": 3,
+          "rule": "Western Electric Rule 1 (beyond 3-sigma)",
+          "value": 15.2,
+          "center_line": 11.305,
+          "ucl": 11.564,
+          "lcl": 11.046
+        }
+      ],
+      "in_control": false,
+      "stable": false,
+      "stability_note": "Process is not in statistical control — 1 out-of-control signal(s) detected on the control chart. Capability indices (Cp/Cpk/Pp/Ppk) are not a valid capability claim until the process is stabilized; treat these values as indicative only.",
+      "capability": null
+    },
+    "isError": false
+  }
+}
+```
+
+---
+
+### 4.8 Tool Invocation (`tools/call` -> `calculate_spc_chart` Validation Error)
+
+**Client Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 8,
+  "method": "tools/call",
+  "params": {
+    "name": "calculate_spc_chart",
+    "arguments": {
+      "chart_type": "Xbar-R",
+      "data": [
+        [10.1, 10.0],
+        [9.9, 10.1]
+      ],
+      "usl": 9.0,
+      "lsl": 11.0
+    }
+  }
+}
+```
+
+**Server Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 8,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Error executing tool calculate_spc_chart: USL cannot be less than LSL."
       }
     ],
     "isError": true

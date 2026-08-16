@@ -81,9 +81,10 @@ jobs:
       # Core coverage gate: the contracted quality-core surfaces — io (shared export +
       # validated ingest), schema (shared FMEA row/dataset contracts), scoring (RPN +
       # the AIAG-VDA Action Priority table), spc (control-chart + capability
-      # primitives), and canvas (FMEA visual canvas reference architecture) — must be fully
-      # covered by quality-core's OWN tests. One run over packages/quality-core covers all five;
-      # the combined --cov-fail-under=100 fails if any line in any of them is uncovered.
+      # primitives), canvas (FMEA/SPC visual canvas architectures), and msa (MSA Gage
+      # R&R engine) — must be fully covered by quality-core's OWN tests. One run over
+      # packages/quality-core covers all six; the combined --cov-fail-under=100 fails if any
+      # line in any of them is uncovered.
       # branch coverage is inherited from [tool.coverage.run] branch=true in pyproject.
       - name: Core coverage gate
         run: >
@@ -93,6 +94,7 @@ jobs:
           --cov=quality_core.scoring
           --cov=quality_core.spc
           --cov=quality_core.canvas
+          --cov=quality_core.msa
           --cov-report=term-missing
           --cov-fail-under=100
 

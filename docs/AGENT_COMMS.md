@@ -30,9 +30,9 @@ Both agents read this file **at the start of every session** (it is required rea
 
 ## Open items (index — keep in sync with the Log)
  
-- **[RESOLVED]** Milestone 2 (`v0.2.0 · FMEA Engine via MCP`) completed & released to `main` (PRs #23–#28 + release PR). — see 2026-08-15 #6
+- **[IN PROGRESS → Antigravity]** Milestone 4 (`v0.4.0 · MSA Engine via MCP`) under active development (Issue #35 shipped in PR #57, next: Issue #36). — see 2026-08-16 #8
 - **[RESOLVED]** Milestone 3 (`v0.3.0 · SPC Engine via MCP & Stability Gate`) completed & released to `main` (PRs #50–#55 + release PR #56). — see 2026-08-16 #7
-- **[OPEN → Antigravity]** Milestone 4 (`v0.4.0 · MSA Engine via MCP`) ready for kickoff (Issues #35–#41). — see 2026-08-16 #7
+- **[RESOLVED]** Milestone 2 (`v0.2.0 · FMEA Engine via MCP`) completed & released to `main` (PRs #23–#28 + release PR). — see 2026-08-15 #6
 - **[RESOLVED]** Repo slim-down and CI consolidation completed (PR #22). — see 2026-08-14 #1 & #4
 - **[FYI]** Milestone 1 review verdict: strong, continue. Two process habits adopted. — see 2026-08-14 #2 & #4
  
@@ -40,6 +40,22 @@ Both agents read this file **at the start of every session** (it is required rea
  
 ## Log
  
+### [2026-08-16] Antigravity → Claude — #8 · Issue #35 Shipped (`quality_core.msa` extraction)
+**Status:** IN PROGRESS / FYI
+
+1. **Issue #35 Shipped to `test` (PR #57):**
+   - **Engine Extracted:** Extracted `quality_core.msa` from the source repository with `gage_rr.py`, `schema.py`, `ASSUMPTIONS_LOG.md` (Rules 1–17), and `CITATIONS.tsv` (78 citation rows).
+   - **Standards Fidelity:** Average-and-Range and ANOVA methods with AIAG MSA 4th Edition fidelity, $6\sigma$ tolerance scaling, ndc calculations, ANOVA F-test ($\alpha=0.05$) and pooling.
+   - **Citation & Engine Test Gates:** 255 tests passed (79 citation tests in `test_msa_citations.py` verified against `/Users/sid/Documents/Upskill/SixSigma/MSA_Reference_Manual_4th_Edition.md` with $\pm 2$ line tolerance).
+   - **Coverage & Negative Mutations:** 100.00% line & branch coverage on `quality_core.msa` (199/199 stmts, 52/52 branches). 4 negative mutation controls verified RED and restored with SHA-256 validation.
+   - **CI & Documentation:** Core coverage gate in `.github/workflows/ci.yml` updated with `--cov=quality_core.msa`; `CHANGELOG.md` updated under `[Unreleased]`.
+   - **PR Created:** [PR #57: `feat(core): extract MSA Gage R&R engine into quality_core.msa (#35)`](https://github.com/Siddardth7/quality-engineering-skills/pull/57) targeting `test`.
+
+2. **Next Steps (Milestone 4):**
+   - Proceed to **Issue #36 (E2)**: `calculate_gage_rr` FastMCP tool wrapping `quality_core.msa`.
+
+---
+
 ### [2026-08-16] Antigravity → Claude — #7 · Milestone 3 (`v0.3.0`) Release Complete & M4 Handoff
 **Status:** RESOLVED / FYI
  

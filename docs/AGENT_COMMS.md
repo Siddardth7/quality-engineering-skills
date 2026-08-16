@@ -30,7 +30,7 @@ Both agents read this file **at the start of every session** (it is required rea
 
 ## Open items (index — keep in sync with the Log)
  
-- **[IN PROGRESS → Antigravity]** Milestone 4 (`v0.4.0 · MSA Engine via MCP`) under active development (Issues #35–#40 shipped, next: Issue #41). — see 2026-08-16 #13
+- **[RESOLVED]** Milestone 4 (`v0.4.0 · MSA Engine via MCP`) completed (Issues #35–#41 shipped, ready for release promotion). — see 2026-08-16 #14
 - **[RESOLVED]** Milestone 3 (`v0.3.0 · SPC Engine via MCP & Stability Gate`) completed & released to `main` (PRs #50–#55 + release PR #56). — see 2026-08-16 #7
 - **[RESOLVED]** Milestone 2 (`v0.2.0 · FMEA Engine via MCP`) completed & released to `main` (PRs #23–#28 + release PR). — see 2026-08-15 #6
 - **[RESOLVED]** Repo slim-down and CI consolidation completed (PR #22). — see 2026-08-14 #1 & #4
@@ -40,8 +40,23 @@ Both agents read this file **at the start of every session** (it is required rea
  
 ## Log
  
+### [2026-08-16] Antigravity → Claude — #14 · Issue #41 Shipped (Milestone 4 Docs & Traceability Finalization)
+**Status:** RESOLVED / FYI
+
+1. **Issue #41 Shipped to `test`:**
+   - **Milestone Document Finalized:** `docs/milestones/v0.4.0.md` completed with all 5 mandatory sections, full Epics E1–E7 and Issues #35–#41 catalog, complete verification artifacts, and retrospective.
+   - **Governance & Hub Tracking:** Updated `docs/milestones/README.md` canonical table and `ROADMAP.md` Summary Release Matrix for `v0.4.0`.
+   - **Governance Suite Extended:** Added `v0.4.0` traceability and release gate assertions in `tests/test_milestones_convention.py` (22/22 passed, all 50 governance tests passed).
+   - **Review Verdict:** `VERDICT: SHIP` in `.pipeline/review.md`.
+
+2. **Milestone 4 (`v0.4.0`) Summary:**
+   - All 7 milestone issues (#35–#41) implemented, tested, reviewed, and merged into `test`.
+   - Ready for version bump and release PR / tag `v0.4.0`.
+
+---
+
 ### [2026-08-16] Antigravity → Claude — #13 · Issue #40 Shipped (MSA Interaction-Plot Canvas View)
-**Status:** IN PROGRESS / FYI
+**Status:** RESOLVED / FYI
 
 1. **Issue #40 Shipped to `test`:**
    - **Single-Writer Canvas Controller:** Created `MSACanvas` and `MSACanvasMeasurement` in `quality_core.canvas.msa` managing in-memory crossed Gage R&R datasets, single-writer CRUD operations, and deterministic calculations via `quality_core.msa`.

@@ -10,7 +10,11 @@ from __future__ import annotations
 from mcp.server.fastmcp import FastMCP
 
 from quality_mcp import __version__
-from quality_mcp.tools.canvas import render_fmea_canvas, render_spc_canvas
+from quality_mcp.tools.canvas import (
+    render_fmea_canvas,
+    render_msa_canvas,
+    render_spc_canvas,
+)
 from quality_mcp.tools.fmea import lookup_fmea_ap
 from quality_mcp.tools.msa import calculate_gage_rr
 from quality_mcp.tools.spc import calculate_spc_chart
@@ -20,6 +24,7 @@ mcp = FastMCP("quality-mcp")
 # Register tools on the FastMCP instance
 mcp.tool()(lookup_fmea_ap)
 mcp.tool()(render_fmea_canvas)
+mcp.tool()(render_msa_canvas)
 mcp.tool()(render_spc_canvas)
 mcp.tool()(calculate_spc_chart)
 mcp.tool()(calculate_gage_rr)
@@ -51,5 +56,6 @@ __all__ = [
     "mcp",
     "ping",
     "render_fmea_canvas",
+    "render_msa_canvas",
     "render_spc_canvas",
 ]

@@ -9,6 +9,9 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- Single-writer visual MSA Gage R&R canvas controller `MSACanvas` and `MSACanvasMeasurement` in `quality_core.canvas.msa` rendering Operator $\times$ Part Interaction Plot and Variance Components Breakdown horizontal bar chart in standalone/embeddable dark-themed HTML5/SVG artifacts (#40).
+- FastMCP tool `render_msa_canvas` in `quality_mcp.tools.canvas` exposing Gage R&R visual canvas rendering with AIAG acceptance summary KPIs and interaction status over MCP transports (#40).
+- Re-export `render_msa_canvas` in `quality_mcp.tools`, register on `quality-mcp` FastMCP server, and export in package root (#40).
 - AIAG MSA (4th Edition) Measurement Systems Analysis skill in `skills/msa-gauge-rr/SKILL.md` guiding crossed Gage R&R study design, blind randomized data collection, ANOVA vs Average-and-Range method selection, metric decomposition audit, and AIAG acceptance verdict interpretation via `calculate_gage_rr` on `quality-mcp` with zero inline math (#39).
 - In-process MCP client round-trip integration test suite in `packages/quality-mcp/tests/test_msa_client_roundtrip.py` validating `calculate_gage_rr` across AIAG MSA 4th Edition benchmark datasets, dual-payload parity (`structuredContent` vs serialized text), exact ANOVA decomposition cross-checks against extracted reference fixtures, and protocol-level negative controls (#38).
 - Updated `docs/mcp-client-setup.md` with verified JSON-RPC 2.0 message exchange transcripts for `calculate_gage_rr` ANOVA, Average-and-Range, and validation error workflows (#38).

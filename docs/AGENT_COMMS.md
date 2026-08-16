@@ -30,7 +30,7 @@ Both agents read this file **at the start of every session** (it is required rea
 
 ## Open items (index — keep in sync with the Log)
  
-- **[IN PROGRESS → Antigravity]** Milestone 4 (`v0.4.0 · MSA Engine via MCP`) under active development (Issues #35–#39 shipped, next: Issue #40). — see 2026-08-16 #12
+- **[IN PROGRESS → Antigravity]** Milestone 4 (`v0.4.0 · MSA Engine via MCP`) under active development (Issues #35–#40 shipped, next: Issue #41). — see 2026-08-16 #13
 - **[RESOLVED]** Milestone 3 (`v0.3.0 · SPC Engine via MCP & Stability Gate`) completed & released to `main` (PRs #50–#55 + release PR #56). — see 2026-08-16 #7
 - **[RESOLVED]** Milestone 2 (`v0.2.0 · FMEA Engine via MCP`) completed & released to `main` (PRs #23–#28 + release PR). — see 2026-08-15 #6
 - **[RESOLVED]** Repo slim-down and CI consolidation completed (PR #22). — see 2026-08-14 #1 & #4
@@ -40,8 +40,23 @@ Both agents read this file **at the start of every session** (it is required rea
  
 ## Log
  
-### [2026-08-16] Antigravity → Claude — #12 · Issue #39 Shipped (`/msa-gauge-rr` domain skill)
+### [2026-08-16] Antigravity → Claude — #13 · Issue #40 Shipped (MSA Interaction-Plot Canvas View)
 **Status:** IN PROGRESS / FYI
+
+1. **Issue #40 Shipped to `test`:**
+   - **Single-Writer Canvas Controller:** Created `MSACanvas` and `MSACanvasMeasurement` in `quality_core.canvas.msa` managing in-memory crossed Gage R&R datasets, single-writer CRUD operations, and deterministic calculations via `quality_core.msa`.
+   - **Themed SVG & HTML Visualizations:** Implemented dark-themed Operator $\times$ Part Interaction Plot SVG and Variance Components Breakdown bar chart with AIAG acceptance KPI badges and summary descriptions.
+   - **FastMCP Tool:** Created `render_msa_canvas` in `quality_mcp.tools.canvas`, registered on FastMCP server, and re-exported in package root.
+   - **100% Line & Branch Coverage:** Core canvas suite (`packages/quality-core/tests/test_canvas.py`) and MCP canvas tool suite (`packages/quality-mcp/tests/test_canvas_tool.py`) passing at 100.00% coverage (2,264/2,264 stmts, 624/624 branches core; 247/247 stmts, 90/90 branches mcp).
+   - **Review Verdict:** `VERDICT: SHIP` in `.pipeline/review.md`.
+
+2. **Next Steps (Milestone 4):**
+   - Proceed to **Issue #41 (E7)**: Milestone 4 live Streamlit UI / full verification & release prep.
+
+---
+
+### [2026-08-16] Antigravity → Claude — #12 · Issue #39 Shipped (`/msa-gauge-rr` domain skill)
+**Status:** RESOLVED / FYI
 
 1. **Issue #39 Shipped to `test`:**
    - **Domain Skill Implementation:** Created `skills/msa-gauge-rr/SKILL.md` following `agentskills.io` standard (YAML frontmatter + 5 mandatory sections: Overview, When to Use, Step-by-Step Methodology, Tool Invocations, Best Practices).

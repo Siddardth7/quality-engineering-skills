@@ -30,7 +30,7 @@ Both agents read this file **at the start of every session** (it is required rea
 
 ## Open items (index — keep in sync with the Log)
  
-- **[IN PROGRESS → Antigravity]** Milestone 4 (`v0.4.0 · MSA Engine via MCP`) under active development (Issues #35–#38 shipped, next: Issue #39). — see 2026-08-16 #11
+- **[IN PROGRESS → Antigravity]** Milestone 4 (`v0.4.0 · MSA Engine via MCP`) under active development (Issues #35–#39 shipped, next: Issue #40). — see 2026-08-16 #12
 - **[RESOLVED]** Milestone 3 (`v0.3.0 · SPC Engine via MCP & Stability Gate`) completed & released to `main` (PRs #50–#55 + release PR #56). — see 2026-08-16 #7
 - **[RESOLVED]** Milestone 2 (`v0.2.0 · FMEA Engine via MCP`) completed & released to `main` (PRs #23–#28 + release PR). — see 2026-08-15 #6
 - **[RESOLVED]** Repo slim-down and CI consolidation completed (PR #22). — see 2026-08-14 #1 & #4
@@ -40,8 +40,23 @@ Both agents read this file **at the start of every session** (it is required rea
  
 ## Log
  
-### [2026-08-16] Antigravity → Claude — #11 · Issue #38 Shipped (MSA Client Round-Trip & Transcripts)
+### [2026-08-16] Antigravity → Claude — #12 · Issue #39 Shipped (`/msa-gauge-rr` domain skill)
 **Status:** IN PROGRESS / FYI
+
+1. **Issue #39 Shipped to `test`:**
+   - **Domain Skill Implementation:** Created `skills/msa-gauge-rr/SKILL.md` following `agentskills.io` standard (YAML frontmatter + 5 mandatory sections: Overview, When to Use, Step-by-Step Methodology, Tool Invocations, Best Practices).
+   - **Zero Inline Math:** Strictly enforces no inline Python execution/math logic; delegates all crossed Gage R&R variance components, ANOVA sums of squares, and ndc calculations to `calculate_gage_rr` on `quality-mcp`.
+   - **AIAG MSA 4th Edition Discipline:** Implements standards-compliant %GRR acceptance bands (<10%, 10–30%, >30%), ndc (>=5), and interaction diagnostics.
+   - **Governance & Taxonomy:** Updated `skills/README.md` taxonomy table to `Active`; added positive and negative convention tests in `tests/test_skills_conventions.py` (20/20 passed, all 47 governance tests passed).
+   - **Review Verdict:** `VERDICT: SHIP` in `.pipeline/review.md`.
+
+2. **Next Steps (Milestone 4):**
+   - Proceed to **Issue #40 (E6)**: Live Streamlit UI app wiring MSA Gage R&R to `quality_core.msa`.
+
+---
+
+### [2026-08-16] Antigravity → Claude — #11 · Issue #38 Shipped (MSA Client Round-Trip & Transcripts)
+**Status:** RESOLVED / FYI
 
 1. **Issue #38 Shipped to `test`:**
    - **Client Round-Trip Test:** `test_msa_client_roundtrip.py` in `packages/quality-mcp/tests/` validating `calculate_gage_rr` over in-process memory transport across AIAG 10x3x3 reference dataset and synthetic Example B.

@@ -30,7 +30,7 @@ Both agents read this file **at the start of every session** (it is required rea
 
 ## Open items (index — keep in sync with the Log)
  
-- **[IN PROGRESS → Antigravity]** Milestone 4 (`v0.4.0 · MSA Engine via MCP`) under active development (Issues #35–#37 shipped, next: Issue #38). — see 2026-08-16 #10
+- **[IN PROGRESS → Antigravity]** Milestone 4 (`v0.4.0 · MSA Engine via MCP`) under active development (Issues #35–#38 shipped, next: Issue #39). — see 2026-08-16 #11
 - **[RESOLVED]** Milestone 3 (`v0.3.0 · SPC Engine via MCP & Stability Gate`) completed & released to `main` (PRs #50–#55 + release PR #56). — see 2026-08-16 #7
 - **[RESOLVED]** Milestone 2 (`v0.2.0 · FMEA Engine via MCP`) completed & released to `main` (PRs #23–#28 + release PR). — see 2026-08-15 #6
 - **[RESOLVED]** Repo slim-down and CI consolidation completed (PR #22). — see 2026-08-14 #1 & #4
@@ -40,8 +40,23 @@ Both agents read this file **at the start of every session** (it is required rea
  
 ## Log
  
-### [2026-08-16] Antigravity → Claude — #10 · Issue #37 Shipped (CI Headless Guard & MSA Coverage)
+### [2026-08-16] Antigravity → Claude — #11 · Issue #38 Shipped (MSA Client Round-Trip & Transcripts)
 **Status:** IN PROGRESS / FYI
+
+1. **Issue #38 Shipped to `test`:**
+   - **Client Round-Trip Test:** `test_msa_client_roundtrip.py` in `packages/quality-mcp/tests/` validating `calculate_gage_rr` over in-process memory transport across AIAG 10x3x3 reference dataset and synthetic Example B.
+   - **Fixture & Dual-Payload Parity:** Dual-payload parity asserted between `structuredContent` and serialized text; exact ANOVA decomposition match with AIAG published Table A 4 / A 5 values and `quality_core.msa`.
+   - **Protocol Negative Controls:** 8 protocol-level error paths verified returning `isError == True` without server crashes.
+   - **Transcripts & Docs:** Updated `docs/mcp-client-setup.md` with verified JSON-RPC 2.0 message exchanges and testing commands; updated `CHANGELOG.md`.
+   - **Review Verdict:** `VERDICT: SHIP` in `.pipeline/review.md`.
+
+2. **Next Steps (Milestone 4):**
+   - Proceed to **Issue #39 (E5)**: `/msa-gage-rr` domain skill with zero inline math.
+
+---
+
+### [2026-08-16] Antigravity → Claude — #10 · Issue #37 Shipped (CI Headless Guard & MSA Coverage)
+**Status:** RESOLVED / FYI
 
 1. **Issue #37 Shipped to `test`:**
    - **CI Updates:** Documented and verified `quality_mcp.tools.msa` within the strict headless containment contract (zero UI-chain packages) and the 100% line & branch coverage gate in `.github/workflows/ci.yml`.

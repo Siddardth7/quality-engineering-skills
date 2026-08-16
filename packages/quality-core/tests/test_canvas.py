@@ -784,3 +784,56 @@ def test_spc_canvas_to_html_standalone_and_embedded() -> None:
     empty_html = empty_canvas.to_html(standalone=False)
     assert "No data to display." in empty_html
 
+
+def test_spc_canvas_set_data_with_sample_sizes_and_empty_recalculate() -> None:
+    """Test set_data updating sample_sizes on initialized canvas and empty data recalculation."""
+    canvas = SPCCanvas(chart_type="p")
+    # Calling _recalculate with no data
+    canvas._recalculate()
+    assert canvas.data == []
+
+    # Updating data with explicit sample_sizes in set_data
+    canvas.set_data([3.0, 4.0, 2.0], sample_sizes=[50.0, 50.0, 50.0])
+    assert canvas.sample_sizes == [50.0, 50.0, 50.0]
+    assert len(canvas.points) == 3
+
+
+def test_spc_canvas_svg_edge_cases_flat_and_single_point_and_many_points() -> None:
+    """Test SVG generation when dataset is flat, has 1 point, or has > 25 points."""
+    # Flat dataset (constant values)
+    flat_data = [[10.0, 10.0], [10.0, 10.0]]
+    flat_canvas = SPCCanvas(chart_type="Xbar-R", data=flat_data)
+    flat_html = flat_canvas.to_html()
+    assert "<svg" in flat_html
+
+    # Single subgroup (2D)
+    single_canvas = SPCCanvas(chart_type="Xbar-R", data=[[10.0, 10.1]])
+    single_html = single_canvas.to_html()
+    assert "<svg" in single_html
+
+    # Single observation (1D)
+    single_1d_canvas = SPCCanvas(chart_type="c", data=[5.0])
+    single_1d_html = single_1d_canvas.to_html()
+    assert "<svg" in single_1d_html
+
+    # More than 25 points to test x-axis label skipping
+    many_pts = [10.0 + (i % 3) * 0.1 for i in range(35)]
+    many_canvas = SPCCanvas(chart_type="I-MR", data=many_pts)
+    many_html = many_canvas.to_html()
+    assert "<svg" in many_html
+
+
+def test_spc_canvas_nelson_and_one_sided_specs() -> None:
+    """Test SPCCanvas with Nelson rules and one-sided specification limits."""
+    # Nelson rule set
+    nelson_canvas = SPCCanvas(chart_type="Xbar-R", rule_set="Nelson", usl=11.0, data=SAMPLE_SPC_XBAR_R_DATA)
+    assert nelson_canvas.rule_set == "Nelson"
+    assert nelson_canvas.capability is not None
+    assert nelson_canvas.capability["cpk"] is not None
+
+    # LSL only
+    lsl_canvas = SPCCanvas(chart_type="I-MR", lsl=8.0, data=[10.0, 10.2, 9.8, 10.1])
+    assert lsl_canvas.capability is not None
+    assert lsl_canvas.capability["cpk"] is not None
+
+

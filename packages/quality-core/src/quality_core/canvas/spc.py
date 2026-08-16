@@ -255,7 +255,7 @@ class SPCCanvas:
             self.sigma_hat = 0.0
             sigma_points = 0.0
 
-        elif self.chart_type == "u":
+        else:
             counts_1d = self.data  # type: ignore[assignment]
             assert self.sample_sizes is not None
             u_res = compute_u(counts_1d, self.sample_sizes)
@@ -283,7 +283,8 @@ class SPCCanvas:
             self.violations = []
 
         self.in_control = len(self.violations) == 0
-        self.stable, self.stability_note = stability_fields(self.violations)
+        stable_flag, self.stability_note = stability_fields(self.violations)
+        self.stable = stable_flag is True
 
         # Build subgroup objects
         violation_indices: dict[int, list[str]] = {}
@@ -349,12 +350,10 @@ class SPCCanvas:
         if not isinstance(new_values, list) or not new_values:
             raise ValueError("new_values must be a non-empty list of floats.")
         if self.chart_type in {"Xbar-R", "Xbar-S"}:
-            if not isinstance(self.data[0], list):
-                raise TypeError("Data structure is not 2D subgroups.")
-            expected_len = len(self.data[0])
+            subgroups_list: list[list[float]] = self.data  # type: ignore[assignment]
+            expected_len = len(subgroups_list[0])
             if len(new_values) != expected_len:
                 raise ValueError(f"Subgroup size mismatch: expected {expected_len}, got {len(new_values)}.")
-            subgroups_list: list[list[float]] = self.data  # type: ignore[assignment]
             subgroups_list[index] = [float(x) for x in new_values]
         else:
             raise TypeError(f"edit_subgroup is for 2D charts (Xbar-R, Xbar-S). Use edit_point for {self.chart_type}.")
@@ -557,8 +556,6 @@ class SPCCanvas:
         y_max += y_pad
 
         def to_y(val: float) -> float:
-            if y_max == y_min:
-                return margin_top + plot_h / 2
             return margin_top + (y_max - val) / (y_max - y_min) * plot_h
 
         n_pts = len(self.points)

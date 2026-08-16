@@ -825,11 +825,18 @@ def test_spc_canvas_svg_edge_cases_flat_and_single_point_and_many_points() -> No
 
 def test_spc_canvas_nelson_and_one_sided_specs() -> None:
     """Test SPCCanvas with Nelson rules and one-sided specification limits."""
-    # Nelson rule set
+    # Nelson rule set on sample data triggers Nelson Rule 7 (stratification) -> capability withheld
     nelson_canvas = SPCCanvas(chart_type="Xbar-R", rule_set="Nelson", usl=11.0, data=SAMPLE_SPC_XBAR_R_DATA)
     assert nelson_canvas.rule_set == "Nelson"
-    assert nelson_canvas.capability is not None
-    assert nelson_canvas.capability["cpk"] is not None
+    assert nelson_canvas.in_control is False
+    assert len(nelson_canvas.violations) > 0
+    assert nelson_canvas.capability is None
+
+    # Nelson on clean in-control data -> capability calculated
+    clean_nelson = SPCCanvas(chart_type="I-MR", rule_set="Nelson", usl=12.0, lsl=8.0, data=[10.0, 10.2, 9.8, 10.1, 9.9, 10.0])
+    assert clean_nelson.in_control is True
+    assert clean_nelson.capability is not None
+    assert clean_nelson.capability["cpk"] is not None
 
     # LSL only
     lsl_canvas = SPCCanvas(chart_type="I-MR", lsl=8.0, data=[10.0, 10.2, 9.8, 10.1])

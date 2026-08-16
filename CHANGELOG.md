@@ -16,7 +16,8 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 - Updated `docs/mcp-client-setup.md` with verified JSON-RPC 2.0 message exchange transcripts for `calculate_spc_chart` in-control, out-of-control, and parameter validation error workflows (#31).
 - AIAG SPC (4th Edition, 2005) Statistical Process Control skill in `skills/spc-control-charts/SKILL.md` guiding Shewhart chart selection (`Xbar-R`, `Xbar-S`, `I-MR`, `p`, `c`, `u`), rational subgrouping, Western Electric & Nelson run-rule violation diagnostics, and strict stability-gated capability analysis via `calculate_spc_chart` on `quality-mcp` with zero inline math (#32).
 - Updated `skills/README.md` taxonomy table marking `spc-control-charts` as Active (#32).
-- Extended skill governance test suite in `tests/test_skills_conventions.py` with `calculate_spc_chart` tool documentation, `quality-mcp` server reference, and AIAG stability gate assertions for `spc-control-charts` (#32).
+- Extended `quality_core.canvas` with `SPCCanvas` single-writer SPC control-chart controller supporting variable (`Xbar-R`, `Xbar-S`, `I-MR`) and attribute (`p`, `c`, `u`) charts, deterministic point/subgroup editing, strict stability-gated capability analysis, and Quality Platform dark-themed HTML5/SVG canvas generation (#33).
+- FastMCP tool `render_spc_canvas` in `quality_mcp.tools.canvas` registered on `quality-mcp` FastMCP server, re-exported across packages, and tested with in-process MCP client round-trip validation (#33).
 
 ### Changed
 - CI headless dependency guard and coverage gate comments in `.github/workflows/ci.yml` updated to document the headless containment contract and confirm 100% line & branch coverage scope for `quality_mcp.tools.spc` under `--cov=quality_mcp --cov-fail-under=100` (#30).

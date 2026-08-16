@@ -8,6 +8,14 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 
 ## [Unreleased]
 
+### Added
+- Extracted MSA Gage R&R engine from the source repository into `packages/quality-core/src/quality_core/msa/` (`gage_rr.py`, `schema.py`, `ASSUMPTIONS_LOG.md`, `CITATIONS.tsv`) implementing Average-and-Range and ANOVA methods with AIAG MSA 4th Edition standards fidelity (#35).
+- Machine-checkable citation test suite `packages/quality-core/tests/test_msa_citations.py` validating all 78 citation entries against `/Users/sid/Documents/Upskill/SixSigma/MSA_Reference_Manual_4th_Edition.md` with line tolerance $\pm 2$ (#35).
+- Comprehensive test suites `packages/quality-core/tests/test_msa_gage_rr_engine.py` and `packages/quality-core/tests/test_msa_schema.py` verifying standard AIAG benchmark datasets, hand-calculated worked examples, $6\sigma$ tolerance multipliers, ANOVA pooling & interaction tests, edge cases, and schema ingest at 100% line & branch coverage (#35).
+
+### Changed
+- Extended core coverage gate in `.github/workflows/ci.yml` to include `--cov=quality_core.msa` at 100% line & branch enforcement (#35).
+
 ## [0.3.0] - 2026-08-15
 
 ### Added

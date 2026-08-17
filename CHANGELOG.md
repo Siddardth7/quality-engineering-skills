@@ -8,6 +8,8 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-16
+
 ### Added
 - Finalized Milestone 4 documentation in `docs/milestones/v0.4.0.md` with complete verification artifacts, retrospective, and test evidence for Epics E1–E7 (#41).
 - Updated `docs/milestones/README.md` canonical mapping and `ROADMAP.md` Summary Release Matrix for `v0.4.0` (#41).

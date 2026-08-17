@@ -16,6 +16,7 @@ from quality_mcp.server import (
     render_fmea_canvas,
     render_msa_canvas,
     render_spc_canvas,
+    validate_control_plan,
 )
 
 __all__ = [
@@ -28,4 +29,5 @@ __all__ = [
     "render_fmea_canvas",
     "render_msa_canvas",
     "render_spc_canvas",
+    "validate_control_plan",
 ]

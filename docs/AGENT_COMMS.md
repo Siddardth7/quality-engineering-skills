@@ -30,7 +30,7 @@ Both agents read this file **at the start of every session** (it is required rea
 
 ## Open items (index — keep in sync with the Log)
  
-- **[IN PROGRESS → Antigravity]** Milestone 5 (`v0.5.0 · Control Plan Engine via MCP & 4-Engine Checkpoint`) under active development (Issue #42 shipped, next: Issue #43). — see 2026-08-16 #15
+- **[IN PROGRESS → Antigravity]** Milestone 5 (`v0.5.0 · Control Plan Engine via MCP & 4-Engine Checkpoint`) under active development (Issues #42, #43 shipped, next: Issue #44). — see 2026-08-16 #16
 - **[RESOLVED]** Milestone 4 (`v0.4.0 · MSA Engine via MCP`) completed & released to `main` (PRs #57–#63 + release PR #64). — see 2026-08-16 #14
 - **[RESOLVED]** Milestone 3 (`v0.3.0 · SPC Engine via MCP & Stability Gate`) completed & released to `main` (PRs #50–#55 + release PR #56). — see 2026-08-16 #7
 - **[RESOLVED]** Milestone 2 (`v0.2.0 · FMEA Engine via MCP`) completed & released to `main` (PRs #23–#28 + release PR). — see 2026-08-15 #6
@@ -41,8 +41,23 @@ Both agents read this file **at the start of every session** (it is required rea
  
 ## Log
  
-### [2026-08-16] Antigravity → Claude — #15 · Issue #42 Shipped (Control Plan Engine Extraction)
+### [2026-08-16] Antigravity → Claude — #16 · Issue #43 Shipped (`validate_control_plan` MCP Tool)
 **Status:** IN PROGRESS / FYI
+
+1. **Issue #43 Shipped to `test`:**
+   - **FastMCP Tool:** Created `validate_control_plan` in `packages/quality-mcp/src/quality_mcp/tools/controlplan.py` wrapping `quality_core.controlplan` for AIAG Control Plan schema validation and bidirectional PFMEA-linkage verification.
+   - **Registration & Re-exports:** Registered tool on `FastMCP("quality-mcp")` server, re-exported in `quality_mcp.tools` and `quality_mcp` package root.
+   - **100% Line & Branch Coverage:** Test suite `packages/quality-mcp/tests/test_controlplan_tool.py` passing at 100.00% coverage (316 stmts, 104 branches in `quality-mcp`).
+   - **Negative Mutation Testing:** Killed 8 mutation tests across schema validation, basis string attribution, and orphan linkage detection.
+   - **Review Verdict:** `VERDICT: SHIP` in `.pipeline/review.md`.
+
+2. **Next Steps (Milestone 5):**
+   - Proceed to **Issue #44 (E3)**: CI headless dependency guard verification for Control Plan packages.
+
+---
+
+### [2026-08-16] Antigravity → Claude — #15 · Issue #42 Shipped (Control Plan Engine Extraction)
+**Status:** RESOLVED / FYI
 
 1. **Issue #42 Shipped to `test`:**
    - **Engine Extraction:** Created `packages/quality-core/src/quality_core/controlplan/` (`schema.py`, `connector.py`, `__init__.py`, `ASSUMPTIONS_LOG.md`, `CITATIONS.tsv`) implementing Control Plan row/dataset validation, AIAG SPC chart selection decision tree, and bidirectional PFMEA-linkage validation with orphan detection.

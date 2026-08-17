@@ -19,6 +19,7 @@ from quality_mcp.server import (
     render_fmea_canvas,
     render_msa_canvas,
     render_spc_canvas,
+    validate_control_plan,
 )
 
 
@@ -50,6 +51,7 @@ def test_mcp_instance_configuration() -> None:
     assert "render_spc_canvas" in tool_names
     assert "calculate_spc_chart" in tool_names
     assert "calculate_gage_rr" in tool_names
+    assert "validate_control_plan" in tool_names
 
     # Verify tool execution via FastMCP interface
     _, content = asyncio.run(mcp.call_tool("ping", {}))
@@ -85,6 +87,25 @@ def test_mcp_instance_configuration() -> None:
     assert msa_canvas_content["verdict"] == "Reject"
     assert "html" in msa_canvas_content
 
+    _, cp_content = asyncio.run(
+        mcp.call_tool(
+            "validate_control_plan",
+            {
+                "plan": [
+                    {
+                        "characteristic": "Bore Diameter",
+                        "measurement_method": "Bore gauge",
+                        "sample_size": 5,
+                        "frequency": "per shift",
+                        "reaction_plan": "Stop line.",
+                    }
+                ]
+            },
+        )
+    )
+    assert cp_content["valid"] is True
+    assert cp_content["schema_valid"] is True
+
 
 def test_main_invokes_mcp_run() -> None:
     """main() entry point must call mcp.run() once."""
@@ -103,7 +124,7 @@ def test_main_dunder_execution() -> None:
 
 
 def test_package_exports() -> None:
-    """Package root __init__.py must re-export mcp, ping, lookup_fmea_ap, render_fmea_canvas, render_msa_canvas, render_spc_canvas, calculate_spc_chart, calculate_gage_rr, and __version__ correctly."""
+    """Package root __init__.py must re-export mcp, ping, lookup_fmea_ap, render_fmea_canvas, render_msa_canvas, render_spc_canvas, calculate_spc_chart, calculate_gage_rr, validate_control_plan, and __version__ correctly."""
     assert quality_mcp.mcp is mcp
     assert quality_mcp.ping is ping
     assert quality_mcp.lookup_fmea_ap is lookup_fmea_ap
@@ -112,6 +133,7 @@ def test_package_exports() -> None:
     assert quality_mcp.render_spc_canvas is render_spc_canvas
     assert quality_mcp.calculate_spc_chart is calculate_spc_chart
     assert quality_mcp.calculate_gage_rr is calculate_gage_rr
+    assert quality_mcp.validate_control_plan is validate_control_plan
     assert quality_mcp.__version__ == "0.4.0"
     assert set(quality_mcp.__all__) == {
         "__version__",
@@ -123,6 +145,7 @@ def test_package_exports() -> None:
         "render_fmea_canvas",
         "render_msa_canvas",
         "render_spc_canvas",
+        "validate_control_plan",
     }
     assert sorted(quality_mcp.__all__) == [
         "__version__",
@@ -134,4 +157,5 @@ def test_package_exports() -> None:
         "render_fmea_canvas",
         "render_msa_canvas",
         "render_spc_canvas",
+        "validate_control_plan",
     ]

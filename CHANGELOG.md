@@ -9,6 +9,9 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- AIAG APQP & Control Plan (2nd Edition) domain skill in `skills/control-plan/SKILL.md` guiding Control Plan structure audits, tolerance coherence checks, PFMEA bidirectional cause linkage verification, and SPC chart selection via `validate_control_plan` on `quality-mcp` with zero inline adjudication (#46).
+- Updated `skills/README.md` directory structure and taxonomy table marking `control-plan` as Active (#46).
+- Extended skills governance test suite `tests/test_skills_conventions.py` with `control-plan` discovery, tool specification, and isolation assertions (#46).
 - In-process JSON-RPC FastMCP client-server round-trip test suite `packages/quality-mcp/tests/test_controlplan_client_roundtrip.py` validating dual-payload parity, real-world Control Plan fixtures, PFMEA linkage, and protocol negative controls (#45).
 - End-to-end Milestone 5 4-Engine Checkpoint smoke test suite `packages/quality-mcp/tests/test_four_engine_smoke.py` validating sequential execution and error isolation of all four wrapped engines (FMEA, SPC, MSA, Control Plan) in a single FastMCP client session (#45).
 - Updated MCP client configuration guide `docs/mcp-client-setup.md` with verified `validate_control_plan` JSON-RPC transcripts, PFMEA linkage findings, and 4-Engine Checkpoint sequence diagram (#45).

@@ -165,7 +165,7 @@ def test_skills_readme_exists_and_documents_conventions() -> None:
 
 
 def test_discoverable_skill_directories_exist() -> None:
-    """At least _template, mcp-health, fmea-reviewer, spc-control-charts, and msa-gauge-rr skill directories must exist."""
+    """At least _template, mcp-health, fmea-reviewer, spc-control-charts, msa-gauge-rr, and control-plan skill directories must exist."""
     skill_dirs = _discover_skill_directories()
     dir_names = {d.name for d in skill_dirs}
     assert "_template" in dir_names, "skills/_template directory missing"
@@ -173,6 +173,7 @@ def test_discoverable_skill_directories_exist() -> None:
     assert "fmea-reviewer" in dir_names, "skills/fmea-reviewer directory missing"
     assert "spc-control-charts" in dir_names, "skills/spc-control-charts directory missing"
     assert "msa-gauge-rr" in dir_names, "skills/msa-gauge-rr directory missing"
+    assert "control-plan" in dir_names, "skills/control-plan directory missing"
 
 
 @pytest.mark.parametrize(
@@ -235,6 +236,18 @@ def test_msa_gauge_rr_skill_specifies_calculate_gage_rr_tool() -> None:
     assert "ndc" in content or "Distinct Categories" in content, "msa-gauge-rr skill must document ndc metric"
 
 
+def test_control_plan_skill_specifies_validate_control_plan_tool() -> None:
+    """skills/control-plan/SKILL.md must document validate_control_plan tool, reference quality-mcp, and cite AIAG & PFMEA linkage."""
+    control_plan_file = _SKILLS_DIR / "control-plan" / "SKILL.md"
+    assert control_plan_file.exists(), "skills/control-plan/SKILL.md does not exist"
+    content = control_plan_file.read_text(encoding="utf-8")
+    assert "validate_control_plan" in content, "control-plan skill must document validate_control_plan tool"
+    assert "quality-mcp" in content, "control-plan skill must reference quality-mcp"
+    assert "AIAG" in content, "control-plan skill must cite AIAG"
+    assert "linkage" in content.lower() or "pfmea" in content.lower(), "control-plan skill must mention PFMEA linkage"
+    assert "source_cause_id" in content or "orphan" in content, "control-plan skill must mention source_cause_id or orphan"
+
+
 def test_claude_skills_isolation() -> None:
     """.claude/skills/ must remain segregated from domain skills/."""
     if not _CLAUDE_SKILLS_DIR.exists():
@@ -246,6 +259,7 @@ def test_claude_skills_isolation() -> None:
     assert "fmea-reviewer" not in claude_dirs, "fmea-reviewer domain skill leaked into .claude/skills/"
     assert "spc-control-charts" not in claude_dirs, "spc-control-charts domain skill leaked into .claude/skills/"
     assert "msa-gauge-rr" not in claude_dirs, "msa-gauge-rr domain skill leaked into .claude/skills/"
+    assert "control-plan" not in claude_dirs, "control-plan domain skill leaked into .claude/skills/"
 
 
 # ---------------------------------------------------------------------------

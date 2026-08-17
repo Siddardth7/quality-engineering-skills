@@ -48,6 +48,10 @@ skills/
 │   └── SKILL.md
 ├── spc-control-charts/            # (v0.3.0) Statistical Process Control & WE rules
 │   └── SKILL.md
+├── msa-gauge-rr/                  # (v0.4.0) Crossed Gage R&R (ANOVA & Xbar-R)
+│   └── SKILL.md
+├── control-plan/                  # (v0.5.0) AIAG Control Plan & PFMEA Linkage
+│   └── SKILL.md
 └── ...
 ```
 
@@ -89,7 +93,7 @@ The skill catalog maps directly to the releases defined in `ROADMAP.md`:
 | **`v0.2.0`** | `fmea-reviewer` | AIAG & VDA FMEA Review & AP Matrix | `quality_mcp.tools.fmea` (`quality_core.scoring.ap_matrix`) | Active |
 | **`v0.3.0`** | `spc-control-charts` | SPC Charts, WE Rules 1–8, Capability | `quality_mcp.tools.spc` (`quality_core.spc`) | Active |
 | **`v0.4.0`** | `msa-gauge-rr` | Crossed Gage R&R (ANOVA & Xbar-R) | `quality_mcp.tools.msa` (`quality_core.msa`) | Active |
-| **`v0.5.0`** | `control-plan` | Control Plan Validation & PFMEA Linkage | `quality_mcp.tools.control_plan` (`controlplan_app.connector`) | Planned |
+| **`v0.5.0`** | `control-plan` | Control Plan Validation & PFMEA Linkage | `quality_mcp.tools.controlplan` (`quality_core.controlplan`) | Active |
 | **`v0.6.0`** | `5why-root-cause` | Reversible 5-Why Causal Logic | `quality_mcp.tools.rca` (`quality_core.rca`) | Planned |
 | **`v0.6.0`** | `fishbone-analysis` | 6M Ishikawa Categorization | `quality_mcp.tools.rca` (`quality_core.rca`) | Planned |
 | **`v0.6.0`** | `is-is-not-scoping` | Kepner-Tregoe Problem Boundary Scoping | `quality_mcp.tools.rca` (`quality_core.rca`) | Planned |

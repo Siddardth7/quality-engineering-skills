@@ -9,6 +9,7 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- Dedicated packaging metadata test `packages/quality-mcp/tests/test_packaging.py` asserting headless dependencies and zero UI-chain packages in `quality-mcp` (#44).
 - FastMCP tool `validate_control_plan` in `quality_mcp.tools.controlplan` wrapping `quality_core.controlplan` deterministic engines for AIAG Control Plan schema validation and bidirectional PFMEA linkage checking (#43).
 - Re-export `validate_control_plan` in `quality_mcp.tools`, register on `quality-mcp` FastMCP server, and export in package root (#43).
 - Comprehensive unit and integration test suite in `packages/quality-mcp/tests/test_controlplan_tool.py` achieving 100% line & branch coverage across `quality_mcp.tools.controlplan` with schema error handling, orphan linkage negative controls, and FastMCP round-trip validation (#43).
@@ -17,6 +18,7 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 - Comprehensive test suites `packages/quality-core/tests/test_controlplan_schema.py`, `packages/quality-core/tests/test_controlplan_connector.py`, and `packages/quality-core/tests/test_controlplan_linkage.py` enforcing 100% line & branch coverage across `quality_core.controlplan` (#42).
 
 ### Changed
+- Extended CI headless dependency guard and FastMCP coverage gate documentation in `.github/workflows/ci.yml` to assert `quality_mcp.tools.controlplan` coverage and zero UI-chain dependencies (#44).
 - Extended core coverage gate in `.github/workflows/ci.yml` to include `--cov=quality_core.controlplan` at 100% line & branch enforcement (#42).
 
 ## [0.4.0] - 2026-08-16

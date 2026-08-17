@@ -54,12 +54,13 @@ jobs:
             exit 1
           fi
 
-      # MCP server headless contract (#3, #17, #30, #37, audit A11): quality-mcp is a headless daemon
+      # MCP server headless contract (#3, #17, #30, #37, #44, audit A11): quality-mcp is a headless daemon
       # communicating via stdio with LLM hosts. It resolves quality-core engines directly
       # (including FMEA tools in quality_mcp.tools.fmea, SPC tools in quality_mcp.tools.spc,
-      # and MSA tools in quality_mcp.tools.msa) and must never resolve Streamlit or UI-chain packages
-      # (streamlit, gitpython, tornado, protobuf, pyarrow, pydeck). Resolve quality-mcp's subtree from
-      # the lock and fail if any UI-chain package is present.
+      # MSA tools in quality_mcp.tools.msa, and Control Plan tools in quality_mcp.tools.controlplan)
+      # and must never resolve Streamlit or UI-chain packages (streamlit, gitpython, tornado,
+      # protobuf, pyarrow, pydeck). Resolve quality-mcp's subtree from the lock and fail if any
+      # UI-chain package is present.
       - name: quality-mcp headless dependency guard (no UI chain in quality-mcp)
         run: |
           uv export --package quality-mcp --no-dev --no-emit-workspace --no-hashes \
@@ -102,8 +103,8 @@ jobs:
       # quality-mcp coverage gate: the FastMCP server, tools, and entry points in
       # packages/quality-mcp are testable surface exposing deterministic core engines
       # to LLMs. quality_mcp.tools.* (including quality_mcp.tools.fmea, quality_mcp.tools.canvas,
-      # quality_mcp.tools.spc, and quality_mcp.tools.msa) is in scope and verified at 100% line & branch
-      # coverage under --cov=quality_mcp --cov-fail-under=100 from packages/quality-mcp.
+      # quality_mcp.tools.spc, quality_mcp.tools.msa, and quality_mcp.tools.controlplan) is in scope
+      # and verified at 100% line & branch coverage under --cov=quality_mcp --cov-fail-under=100 from packages/quality-mcp.
       - name: quality-mcp coverage gate
         run: >
           uv run pytest packages/quality-mcp

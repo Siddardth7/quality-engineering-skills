@@ -9,6 +9,9 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- Finalized Milestone 4 documentation in `docs/milestones/v0.4.0.md` with complete verification artifacts, retrospective, and test evidence for Epics E1–E7 (#41).
+- Updated `docs/milestones/README.md` canonical mapping and `ROADMAP.md` Summary Release Matrix for `v0.4.0` (#41).
+- Extended milestone governance test suite `tests/test_milestones_convention.py` with `v0.4.0` traceability assertions across all 7 task issues (#35–#41) and verification artifacts (#41).
 - Single-writer visual MSA Gage R&R canvas controller `MSACanvas` and `MSACanvasMeasurement` in `quality_core.canvas.msa` rendering Operator $\times$ Part Interaction Plot and Variance Components Breakdown horizontal bar chart in standalone/embeddable dark-themed HTML5/SVG artifacts (#40).
 - FastMCP tool `render_msa_canvas` in `quality_mcp.tools.canvas` exposing Gage R&R visual canvas rendering with AIAG acceptance summary KPIs and interaction status over MCP transports (#40).
 - Re-export `render_msa_canvas` in `quality_mcp.tools`, register on `quality-mcp` FastMCP server, and export in package root (#40).

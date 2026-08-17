@@ -9,6 +9,9 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- FastMCP tool `validate_control_plan` in `quality_mcp.tools.controlplan` wrapping `quality_core.controlplan` deterministic engines for AIAG Control Plan schema validation and bidirectional PFMEA linkage checking (#43).
+- Re-export `validate_control_plan` in `quality_mcp.tools`, register on `quality-mcp` FastMCP server, and export in package root (#43).
+- Comprehensive unit and integration test suite in `packages/quality-mcp/tests/test_controlplan_tool.py` achieving 100% line & branch coverage across `quality_mcp.tools.controlplan` with schema error handling, orphan linkage negative controls, and FastMCP round-trip validation (#43).
 - Extracted Control Plan engine and PFMEA-linkage validator from source repository into `packages/quality-core/src/quality_core/controlplan/` (`schema.py`, `connector.py`, `ASSUMPTIONS_LOG.md`, `CITATIONS.tsv`) with AIAG APQP & Control Plan and SPC decision-tree standards fidelity (#42).
 - Machine-checkable citation verification test `packages/quality-core/tests/test_controlplan_citations.py` validating citation entries against on-machine reference manual (#42).
 - Comprehensive test suites `packages/quality-core/tests/test_controlplan_schema.py`, `packages/quality-core/tests/test_controlplan_connector.py`, and `packages/quality-core/tests/test_controlplan_linkage.py` enforcing 100% line & branch coverage across `quality_core.controlplan` (#42).

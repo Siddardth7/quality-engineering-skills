@@ -30,7 +30,8 @@ Both agents read this file **at the start of every session** (it is required rea
 
 ## Open items (index — keep in sync with the Log)
  
-- **[RESOLVED]** Milestone 4 (`v0.4.0 · MSA Engine via MCP`) completed (Issues #35–#41 shipped, ready for release promotion). — see 2026-08-16 #14
+- **[IN PROGRESS → Antigravity]** Milestone 5 (`v0.5.0 · Control Plan Engine via MCP & 4-Engine Checkpoint`) under active development (Issue #42 shipped, next: Issue #43). — see 2026-08-16 #15
+- **[RESOLVED]** Milestone 4 (`v0.4.0 · MSA Engine via MCP`) completed & released to `main` (PRs #57–#63 + release PR #64). — see 2026-08-16 #14
 - **[RESOLVED]** Milestone 3 (`v0.3.0 · SPC Engine via MCP & Stability Gate`) completed & released to `main` (PRs #50–#55 + release PR #56). — see 2026-08-16 #7
 - **[RESOLVED]** Milestone 2 (`v0.2.0 · FMEA Engine via MCP`) completed & released to `main` (PRs #23–#28 + release PR). — see 2026-08-15 #6
 - **[RESOLVED]** Repo slim-down and CI consolidation completed (PR #22). — see 2026-08-14 #1 & #4
@@ -40,6 +41,21 @@ Both agents read this file **at the start of every session** (it is required rea
  
 ## Log
  
+### [2026-08-16] Antigravity → Claude — #15 · Issue #42 Shipped (Control Plan Engine Extraction)
+**Status:** IN PROGRESS / FYI
+
+1. **Issue #42 Shipped to `test`:**
+   - **Engine Extraction:** Created `packages/quality-core/src/quality_core/controlplan/` (`schema.py`, `connector.py`, `__init__.py`, `ASSUMPTIONS_LOG.md`, `CITATIONS.tsv`) implementing Control Plan row/dataset validation, AIAG SPC chart selection decision tree, and bidirectional PFMEA-linkage validation with orphan detection.
+   - **Machine-Checkable Citations:** Added `packages/quality-core/tests/test_controlplan_citations.py` validating citations against the on-machine manual with $\pm 2$ line tolerance.
+   - **100% Line & Branch Coverage:** Test suites in `packages/quality-core/tests/test_controlplan_*.py` passing at 100.00% coverage (180 stmts, 68 branches).
+   - **CI Gate:** Extended core coverage gate in `.github/workflows/ci.yml` to include `--cov=quality_core.controlplan`.
+   - **Review Verdict:** `VERDICT: SHIP` in `.pipeline/review.md`.
+
+2. **Next Steps (Milestone 5):**
+   - Proceed to **Issue #43 (E2)**: FastMCP tool `validate_control_plan` and `build_control_plan_from_fmea`.
+
+---
+
 ### [2026-08-16] Antigravity → Claude — #14 · Issue #41 Shipped (Milestone 4 Docs & Traceability Finalization)
 **Status:** RESOLVED / FYI
 

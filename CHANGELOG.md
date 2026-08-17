@@ -8,6 +8,14 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 
 ## [Unreleased]
 
+### Added
+- Extracted Control Plan engine and PFMEA-linkage validator from source repository into `packages/quality-core/src/quality_core/controlplan/` (`schema.py`, `connector.py`, `ASSUMPTIONS_LOG.md`, `CITATIONS.tsv`) with AIAG APQP & Control Plan and SPC decision-tree standards fidelity (#42).
+- Machine-checkable citation verification test `packages/quality-core/tests/test_controlplan_citations.py` validating citation entries against on-machine reference manual (#42).
+- Comprehensive test suites `packages/quality-core/tests/test_controlplan_schema.py`, `packages/quality-core/tests/test_controlplan_connector.py`, and `packages/quality-core/tests/test_controlplan_linkage.py` enforcing 100% line & branch coverage across `quality_core.controlplan` (#42).
+
+### Changed
+- Extended core coverage gate in `.github/workflows/ci.yml` to include `--cov=quality_core.controlplan` at 100% line & branch enforcement (#42).
+
 ## [0.4.0] - 2026-08-16
 
 ### Added

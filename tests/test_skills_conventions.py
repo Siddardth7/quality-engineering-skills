@@ -165,13 +165,14 @@ def test_skills_readme_exists_and_documents_conventions() -> None:
 
 
 def test_discoverable_skill_directories_exist() -> None:
-    """At least _template, mcp-health, fmea-reviewer, and spc-control-charts skill directories must exist."""
+    """At least _template, mcp-health, fmea-reviewer, spc-control-charts, and msa-gauge-rr skill directories must exist."""
     skill_dirs = _discover_skill_directories()
     dir_names = {d.name for d in skill_dirs}
     assert "_template" in dir_names, "skills/_template directory missing"
     assert "mcp-health" in dir_names, "skills/mcp-health directory missing"
     assert "fmea-reviewer" in dir_names, "skills/fmea-reviewer directory missing"
     assert "spc-control-charts" in dir_names, "skills/spc-control-charts directory missing"
+    assert "msa-gauge-rr" in dir_names, "skills/msa-gauge-rr directory missing"
 
 
 @pytest.mark.parametrize(
@@ -223,6 +224,17 @@ def test_spc_control_charts_skill_specifies_calculate_spc_chart_tool() -> None:
     assert "stability" in content or "in_control" in content, "spc-control-charts skill must document stability gate rule"
 
 
+def test_msa_gauge_rr_skill_specifies_calculate_gage_rr_tool() -> None:
+    """skills/msa-gauge-rr/SKILL.md must document calculate_gage_rr tool, reference quality-mcp, and cite AIAG & acceptance criteria."""
+    msa_file = _SKILLS_DIR / "msa-gauge-rr" / "SKILL.md"
+    assert msa_file.exists(), "skills/msa-gauge-rr/SKILL.md does not exist"
+    content = msa_file.read_text(encoding="utf-8")
+    assert "calculate_gage_rr" in content, "msa-gauge-rr skill must document calculate_gage_rr tool"
+    assert "quality-mcp" in content, "msa-gauge-rr skill must reference quality-mcp"
+    assert "AIAG" in content, "msa-gauge-rr skill must cite AIAG"
+    assert "ndc" in content or "Distinct Categories" in content, "msa-gauge-rr skill must document ndc metric"
+
+
 def test_claude_skills_isolation() -> None:
     """.claude/skills/ must remain segregated from domain skills/."""
     if not _CLAUDE_SKILLS_DIR.exists():
@@ -233,6 +245,7 @@ def test_claude_skills_isolation() -> None:
     assert "_template" not in claude_dirs, "_template domain skill leaked into .claude/skills/"
     assert "fmea-reviewer" not in claude_dirs, "fmea-reviewer domain skill leaked into .claude/skills/"
     assert "spc-control-charts" not in claude_dirs, "spc-control-charts domain skill leaked into .claude/skills/"
+    assert "msa-gauge-rr" not in claude_dirs, "msa-gauge-rr domain skill leaked into .claude/skills/"
 
 
 # ---------------------------------------------------------------------------

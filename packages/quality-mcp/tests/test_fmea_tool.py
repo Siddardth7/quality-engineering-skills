@@ -277,12 +277,14 @@ def test_client_session_call_fmea_invalid_type_negative_control() -> None:
 
 
 def test_tools_package_exports() -> None:
-    """quality_mcp.tools package re-exports lookup_fmea_ap, render_fmea_canvas, calculate_spc_chart, and render_spc_canvas."""
+    """quality_mcp.tools package re-exports lookup_fmea_ap, render_fmea_canvas, render_msa_canvas, calculate_spc_chart, render_spc_canvas, and calculate_gage_rr."""
     assert quality_mcp.tools.lookup_fmea_ap is lookup_fmea_ap
     assert quality_mcp.tools.render_fmea_canvas is quality_mcp.tools.render_fmea_canvas
     assert sorted(quality_mcp.tools.__all__) == [
+        "calculate_gage_rr",
         "calculate_spc_chart",
         "lookup_fmea_ap",
         "render_fmea_canvas",
+        "render_msa_canvas",
         "render_spc_canvas",
     ]

@@ -1,8 +1,8 @@
 """
 canvas.py
-FMEA and SPC visual canvas rendering tools for Model Context Protocol (MCP).
+FMEA, SPC, and MSA visual canvas rendering tools for Model Context Protocol (MCP).
 
-Exposes styled interactive HTML canvas generation and risk/stability summary metrics
+Exposes styled interactive HTML canvas generation and risk/stability/MSA summary metrics
 from quality_core.canvas to AI agents and MCP client hosts.
 """
 
@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Annotated, Any
 
 from pydantic import Field
-from quality_core.canvas import FMEACanvas, SPCCanvas
+from quality_core.canvas import FMEACanvas, MSACanvas, SPCCanvas
 
 
 def render_fmea_canvas(
@@ -224,7 +224,109 @@ def render_spc_canvas(
     }
 
 
+def render_msa_canvas(
+    measurements: Annotated[
+        list[dict[str, Any]] | None,
+        Field(
+            description=(
+                "Optional list of Gage R&R measurement records with keys 'part', 'appraiser', 'trial', and 'measurement'. "
+                "If omitted or None, loads the standard reference AIAG MSA 4th Edition 10x3x3 crossed study benchmark dataset."
+            ),
+        ),
+    ] = None,
+    method: Annotated[
+        str,
+        Field(description="Gage R&R method: 'anova' (recommended) or 'average_and_range'. Default is 'anova'."),
+    ] = "anova",
+    tolerance: Annotated[
+        float | None,
+        Field(description="Optional engineering tolerance (USL - LSL) for % Tolerance metrics."),
+    ] = None,
+    title: Annotated[
+        str,
+        Field(description="Title displayed on the canvas header."),
+    ] = "AIAG MSA Gage R&R Canvas",
+    standalone: Annotated[
+        bool,
+        Field(description="If True, returns a complete standalone HTML document; if False, returns an embeddable container."),
+    ] = True,
+) -> dict[str, Any]:
+    """Render an interactive visual HTML/SVG canvas for a Gage R&R dataset.
+
+    Deterministic function wrapping `quality_core.canvas.MSACanvas`. Ingests Gage R&R
+    measurements, calculates variance components, ANOVA interaction test, %GRR, and ndc
+    via `quality_core.msa`, and generates a themed HTML5/SVG canvas view with an Operator x Part
+    Interaction Plot and Variance Components bar chart.
+
+    Parameters
+    ----------
+    measurements : list[dict[str, Any]] | None, optional
+        List of measurement records. If None, loads the AIAG reference benchmark study.
+    method : str, default "anova"
+        Analysis method: "anova" or "average_and_range".
+    tolerance : float | None, optional
+        Engineering specification tolerance.
+    title : str, default "AIAG MSA Gage R&R Canvas"
+        Title of the MSA canvas.
+    standalone : bool, default True
+        Whether to generate a full standalone HTML5 document or embeddable container.
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary containing:
+        - ``"title"``: Canvas title (str).
+        - ``"method"``: Method used (str).
+        - ``"verdict"``: AIAG acceptance verdict (str).
+        - ``"ndc"``: Number of distinct categories (int).
+        - ``"pgrr_study"``: %GRR of study variation (float).
+        - ``"pgrr_tolerance"``: %GRR of tolerance if tolerance provided, else None (float | None).
+        - ``"interaction_significant"``: Whether part x appraiser interaction is statistically significant (bool | None).
+        - ``"summary"``: Statistical summary dictionary (dict).
+        - ``"html"``: Rendered HTML string (str).
+    """
+    if isinstance(standalone, int) and not isinstance(standalone, bool):
+        raise TypeError(f"standalone must be a boolean, got {type(standalone).__name__}: {standalone!r}")
+    if not isinstance(standalone, bool):
+        raise TypeError(f"standalone must be a boolean, got {type(standalone).__name__}: {standalone!r}")
+
+    if isinstance(title, bool) or not isinstance(title, str):
+        raise TypeError(f"title must be a string, got {type(title).__name__}: {title!r}")
+    if not title.strip():
+        raise ValueError("title must not be empty.")
+
+    if measurements is None:
+        canvas = MSACanvas.load_sample(
+            method=method,
+            title=title,
+            tolerance=tolerance if tolerance is not None else 4.42,
+        )
+    else:
+        canvas = MSACanvas(
+            method=method,
+            title=title,
+            tolerance=tolerance,
+            measurements=measurements,
+        )
+
+    html_content = canvas.to_html(standalone=standalone)
+    summary = canvas.get_summary()
+
+    return {
+        "title": canvas.title,
+        "method": canvas.method,
+        "verdict": canvas.verdict,
+        "ndc": canvas.ndc,
+        "pgrr_study": canvas.pgrr_study,
+        "pgrr_tolerance": canvas.pgrr_tolerance,
+        "interaction_significant": canvas.interaction_significant,
+        "summary": summary,
+        "html": html_content,
+    }
+
+
 __all__ = [
     "render_fmea_canvas",
+    "render_msa_canvas",
     "render_spc_canvas",
 ]

@@ -27,6 +27,7 @@ _MILESTONES_README = _MILESTONES_DIR / "README.md"
 _V010_MILESTONE = _MILESTONES_DIR / "v0.1.0.md"
 _V020_MILESTONE = _MILESTONES_DIR / "v0.2.0.md"
 _V030_MILESTONE = _MILESTONES_DIR / "v0.3.0.md"
+_V040_MILESTONE = _MILESTONES_DIR / "v0.4.0.md"
 _ROADMAP = _REPO_ROOT / "ROADMAP.md"
 _CHANGELOG = _REPO_ROOT / "CHANGELOG.md"
 
@@ -342,6 +343,88 @@ def test_roadmap_links_v030_milestone() -> None:
     )
 
 
+def test_v040_milestone_epics_and_issues_traceability() -> None:
+    """Verify docs/milestones/v0.4.0.md defines Epics E1-E7 and links issues #35 through #41 with branch names."""
+    assert _V040_MILESTONE.is_file(), f"Missing milestone v0.4.0 file: {_V040_MILESTONE}"
+    content = _V040_MILESTONE.read_text(encoding="utf-8")
+
+    # Verify all 7 Epics are present
+    for epic_num in range(1, 8):
+        assert f"Epic {epic_num} (E{epic_num})" in content or f"E{epic_num}:" in content, (
+            f"Missing Epic {epic_num} in v0.4.0.md"
+        )
+
+    # Verify all 7 issues are present with canonical URLs and branch names
+    issue_tuples = _extract_issue_urls(content)
+    issue_numbers = {num for _, num in issue_tuples}
+
+    expected_issues = {
+        35: "feat/msa-extract-core-35",
+        36: "feat/msa-mcp-tool-36",
+        37: "feat/ci-msa-guard-37",
+        38: "feat/mcp-msa-client-roundtrip-38",
+        39: "feat/msa-gauge-rr-skill-39",
+        40: "feat/msa-canvas-view-40",
+        41: "feat/m4-closure-docs-41",
+    }
+
+    for expected_issue, branch_name in expected_issues.items():
+        assert expected_issue in issue_numbers, f"Missing issue #{expected_issue} in v0.4.0.md"
+        expected_url = f"https://github.com/Siddardth7/quality-engineering-skills/issues/{expected_issue}"
+        assert expected_url in content, f"Missing canonical URL for issue #{expected_issue}: {expected_url}"
+        assert branch_name in content, f"Missing branch {branch_name} for issue #{expected_issue} in v0.4.0.md"
+
+
+def test_v040_milestone_release_gate_and_artifacts() -> None:
+    """Verify v0.4.0.md specifies the 7 release gate criteria and catalogs verification artifacts."""
+    assert _V040_MILESTONE.is_file(), f"Missing milestone v0.4.0 file: {_V040_MILESTONE}"
+    content = _V040_MILESTONE.read_text(encoding="utf-8")
+
+    # Release gate criteria
+    assert "calculate_gage_rr" in content
+    assert "render_msa_canvas" in content
+    assert "msa-gauge-rr" in content
+    assert "ANOVA" in content or "anova" in content
+    assert "Single-Writer" in content or "single-writer" in content
+    assert "100%" in content
+    assert "CITATIONS.tsv" in content
+
+    # Key verification artifacts cataloged
+    expected_artifacts = [
+        "packages/quality-core/src/quality_core/msa/gage_rr.py",
+        "packages/quality-core/src/quality_core/msa/schema.py",
+        "packages/quality-core/src/quality_core/msa/ASSUMPTIONS_LOG.md",
+        "packages/quality-core/src/quality_core/msa/CITATIONS.tsv",
+        "packages/quality-core/src/quality_core/canvas/msa.py",
+        "packages/quality-core/tests/test_msa_gage_rr_engine.py",
+        "packages/quality-core/tests/test_msa_schema.py",
+        "packages/quality-core/tests/test_msa_citations.py",
+        "packages/quality-core/tests/test_canvas.py",
+        "packages/quality-mcp/src/quality_mcp/tools/msa.py",
+        "packages/quality-mcp/src/quality_mcp/tools/canvas.py",
+        "packages/quality-mcp/tests/test_msa_tool.py",
+        "packages/quality-mcp/tests/test_canvas_tool.py",
+        "packages/quality-mcp/tests/test_msa_client_roundtrip.py",
+        "skills/msa-gauge-rr/SKILL.md",
+        "docs/mcp-client-setup.md",
+        "tests/test_skills_conventions.py",
+        "tests/test_milestones_convention.py",
+        ".github/workflows/ci.yml",
+    ]
+    for artifact in expected_artifacts:
+        assert artifact in content, f"Missing expected verification artifact in v0.4.0.md: {artifact}"
+
+
+def test_roadmap_links_v040_milestone() -> None:
+    """Verify ROADMAP.md links v0.4.0 in Summary Release Matrix to docs/milestones/v0.4.0.md."""
+    assert _ROADMAP.is_file(), f"Missing ROADMAP: {_ROADMAP}"
+    content = _ROADMAP.read_text(encoding="utf-8")
+
+    assert "[**`v0.4.0`**](docs/milestones/v0.4.0.md)" in content or "[`v0.4.0`](docs/milestones/v0.4.0.md)" in content, (
+        "ROADMAP.md Summary Release Matrix must link v0.4.0 to docs/milestones/v0.4.0.md"
+    )
+
+
 def test_milestones_markdown_links_resolve() -> None:
     """Verify all relative markdown links in docs/milestones/*.md resolve to existing repository files."""
     for md_file in _MILESTONES_DIR.glob("*.md"):
@@ -354,17 +437,19 @@ def test_milestones_markdown_links_resolve() -> None:
 
 
 def test_changelog_entry_unreleased() -> None:
-    """Verify CHANGELOG.md contains the issue #7, #21, and #34 entries under [0.1.0], [0.2.0], or [Unreleased]."""
+    """Verify CHANGELOG.md contains the issue #7, #21, #34, and #41 entries under [0.1.0], [0.2.0], or [Unreleased]."""
     assert _CHANGELOG.is_file(), f"Missing CHANGELOG file: {_CHANGELOG}"
     content = _CHANGELOG.read_text(encoding="utf-8")
 
     assert "#7" in content, "CHANGELOG.md must reference issue #7"
     assert "#21" in content, "CHANGELOG.md must reference issue #21"
     assert "#34" in content, "CHANGELOG.md must reference issue #34"
+    assert "#41" in content, "CHANGELOG.md must reference issue #41"
     assert "docs/milestones/README.md" in content
     assert "docs/milestones/v0.1.0.md" in content
     assert "docs/milestones/v0.2.0.md" in content
     assert "docs/milestones/v0.3.0.md" in content
+    assert "docs/milestones/v0.4.0.md" in content
     assert "tests/test_milestones_convention.py" in content
 
 

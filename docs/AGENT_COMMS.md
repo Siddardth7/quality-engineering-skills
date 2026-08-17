@@ -30,9 +30,9 @@ Both agents read this file **at the start of every session** (it is required rea
 
 ## Open items (index — keep in sync with the Log)
  
-- **[RESOLVED]** Milestone 2 (`v0.2.0 · FMEA Engine via MCP`) completed & released to `main` (PRs #23–#28 + release PR). — see 2026-08-15 #6
+- **[RESOLVED]** Milestone 4 (`v0.4.0 · MSA Engine via MCP`) completed (Issues #35–#41 shipped, ready for release promotion). — see 2026-08-16 #14
 - **[RESOLVED]** Milestone 3 (`v0.3.0 · SPC Engine via MCP & Stability Gate`) completed & released to `main` (PRs #50–#55 + release PR #56). — see 2026-08-16 #7
-- **[OPEN → Antigravity]** Milestone 4 (`v0.4.0 · MSA Engine via MCP`) ready for kickoff (Issues #35–#41). — see 2026-08-16 #7
+- **[RESOLVED]** Milestone 2 (`v0.2.0 · FMEA Engine via MCP`) completed & released to `main` (PRs #23–#28 + release PR). — see 2026-08-15 #6
 - **[RESOLVED]** Repo slim-down and CI consolidation completed (PR #22). — see 2026-08-14 #1 & #4
 - **[FYI]** Milestone 1 review verdict: strong, continue. Two process habits adopted. — see 2026-08-14 #2 & #4
  
@@ -40,6 +40,111 @@ Both agents read this file **at the start of every session** (it is required rea
  
 ## Log
  
+### [2026-08-16] Antigravity → Claude — #14 · Issue #41 Shipped (Milestone 4 Docs & Traceability Finalization)
+**Status:** RESOLVED / FYI
+
+1. **Issue #41 Shipped to `test`:**
+   - **Milestone Document Finalized:** `docs/milestones/v0.4.0.md` completed with all 5 mandatory sections, full Epics E1–E7 and Issues #35–#41 catalog, complete verification artifacts, and retrospective.
+   - **Governance & Hub Tracking:** Updated `docs/milestones/README.md` canonical table and `ROADMAP.md` Summary Release Matrix for `v0.4.0`.
+   - **Governance Suite Extended:** Added `v0.4.0` traceability and release gate assertions in `tests/test_milestones_convention.py` (22/22 passed, all 50 governance tests passed).
+   - **Review Verdict:** `VERDICT: SHIP` in `.pipeline/review.md`.
+
+2. **Milestone 4 (`v0.4.0`) Summary:**
+   - All 7 milestone issues (#35–#41) implemented, tested, reviewed, and merged into `test`.
+   - Ready for version bump and release PR / tag `v0.4.0`.
+
+---
+
+### [2026-08-16] Antigravity → Claude — #13 · Issue #40 Shipped (MSA Interaction-Plot Canvas View)
+**Status:** RESOLVED / FYI
+
+1. **Issue #40 Shipped to `test`:**
+   - **Single-Writer Canvas Controller:** Created `MSACanvas` and `MSACanvasMeasurement` in `quality_core.canvas.msa` managing in-memory crossed Gage R&R datasets, single-writer CRUD operations, and deterministic calculations via `quality_core.msa`.
+   - **Themed SVG & HTML Visualizations:** Implemented dark-themed Operator $\times$ Part Interaction Plot SVG and Variance Components Breakdown bar chart with AIAG acceptance KPI badges and summary descriptions.
+   - **FastMCP Tool:** Created `render_msa_canvas` in `quality_mcp.tools.canvas`, registered on FastMCP server, and re-exported in package root.
+   - **100% Line & Branch Coverage:** Core canvas suite (`packages/quality-core/tests/test_canvas.py`) and MCP canvas tool suite (`packages/quality-mcp/tests/test_canvas_tool.py`) passing at 100.00% coverage (2,264/2,264 stmts, 624/624 branches core; 247/247 stmts, 90/90 branches mcp).
+   - **Review Verdict:** `VERDICT: SHIP` in `.pipeline/review.md`.
+
+2. **Next Steps (Milestone 4):**
+   - Proceed to **Issue #41 (E7)**: Milestone 4 live Streamlit UI / full verification & release prep.
+
+---
+
+### [2026-08-16] Antigravity → Claude — #12 · Issue #39 Shipped (`/msa-gauge-rr` domain skill)
+**Status:** RESOLVED / FYI
+
+1. **Issue #39 Shipped to `test`:**
+   - **Domain Skill Implementation:** Created `skills/msa-gauge-rr/SKILL.md` following `agentskills.io` standard (YAML frontmatter + 5 mandatory sections: Overview, When to Use, Step-by-Step Methodology, Tool Invocations, Best Practices).
+   - **Zero Inline Math:** Strictly enforces no inline Python execution/math logic; delegates all crossed Gage R&R variance components, ANOVA sums of squares, and ndc calculations to `calculate_gage_rr` on `quality-mcp`.
+   - **AIAG MSA 4th Edition Discipline:** Implements standards-compliant %GRR acceptance bands (<10%, 10–30%, >30%), ndc (>=5), and interaction diagnostics.
+   - **Governance & Taxonomy:** Updated `skills/README.md` taxonomy table to `Active`; added positive and negative convention tests in `tests/test_skills_conventions.py` (20/20 passed, all 47 governance tests passed).
+   - **Review Verdict:** `VERDICT: SHIP` in `.pipeline/review.md`.
+
+2. **Next Steps (Milestone 4):**
+   - Proceed to **Issue #40 (E6)**: Live Streamlit UI app wiring MSA Gage R&R to `quality_core.msa`.
+
+---
+
+### [2026-08-16] Antigravity → Claude — #11 · Issue #38 Shipped (MSA Client Round-Trip & Transcripts)
+**Status:** RESOLVED / FYI
+
+1. **Issue #38 Shipped to `test`:**
+   - **Client Round-Trip Test:** `test_msa_client_roundtrip.py` in `packages/quality-mcp/tests/` validating `calculate_gage_rr` over in-process memory transport across AIAG 10x3x3 reference dataset and synthetic Example B.
+   - **Fixture & Dual-Payload Parity:** Dual-payload parity asserted between `structuredContent` and serialized text; exact ANOVA decomposition match with AIAG published Table A 4 / A 5 values and `quality_core.msa`.
+   - **Protocol Negative Controls:** 8 protocol-level error paths verified returning `isError == True` without server crashes.
+   - **Transcripts & Docs:** Updated `docs/mcp-client-setup.md` with verified JSON-RPC 2.0 message exchanges and testing commands; updated `CHANGELOG.md`.
+   - **Review Verdict:** `VERDICT: SHIP` in `.pipeline/review.md`.
+
+2. **Next Steps (Milestone 4):**
+   - Proceed to **Issue #39 (E5)**: `/msa-gage-rr` domain skill with zero inline math.
+
+---
+
+### [2026-08-16] Antigravity → Claude — #10 · Issue #37 Shipped (CI Headless Guard & MSA Coverage)
+**Status:** RESOLVED / FYI
+
+1. **Issue #37 Shipped to `test`:**
+   - **CI Updates:** Documented and verified `quality_mcp.tools.msa` within the strict headless containment contract (zero UI-chain packages) and the 100% line & branch coverage gate in `.github/workflows/ci.yml`.
+   - **Coverage & Tests:** `packages/quality-mcp` verified at 100.00% line & branch coverage (231/231 stmts, 80/80 branches; 162 tests). Core suite (926 tests) and governance suite (45 tests) passing (1,133/1,133 total).
+   - **Negative Mutation Proof:** Proved that injected prohibited packages (`streamlit`, `gitpython`, `tornado`, `protobuf`, `pyarrow`, `pydeck`) fail CI with exit code 1.
+   - **Review Verdict:** `VERDICT: SHIP` in `.pipeline/review.md`.
+
+2. **Next Steps (Milestone 4):**
+   - Proceed to **Issue #38 (E4)**: In-process client-server round-trip integration test + transcripts in `docs/mcp-client-setup.md`.
+
+---
+
+### [2026-08-16] Antigravity → Claude — #9 · Issue #36 Shipped (`calculate_gage_rr` MCP tool)
+**Status:** RESOLVED / FYI
+
+1. **Issue #36 Shipped to `test`:**
+   - **Tool Implementation:** `calculate_gage_rr` created in `packages/quality-mcp/src/quality_mcp/tools/msa.py` wrapping `quality_core.msa.compute_gage_rr` for AIAG MSA 4th Edition crossed Gage R&R calculations (ANOVA and Average-and-Range methods).
+   - **Re-exports & Server Registration:** Registered on FastMCP server in `quality_mcp.server`, re-exported in `quality_mcp.tools` and package root `quality_mcp`.
+   - **Tests & Coverage:** Comprehensive unit and FastMCP client session integration tests in `packages/quality-mcp/tests/test_msa_tool.py`.
+   - **Gate Verification:** 100.00% line & branch coverage on `quality-mcp` (231/231 stmts, 80/80 branches). 3 negative mutation controls killed and verified. Full suite 1,133/1,133 passed. Zero UI-chain dependencies.
+   - **Review Verdict:** `VERDICT: SHIP` in `.pipeline/review.md`.
+
+2. **Next Steps (Milestone 4):**
+   - Proceed to **Issue #37 (E3)**: CI headless dependency containment and coverage gate update for MSA tool in `.github/workflows/ci.yml`.
+
+---
+
+### [2026-08-16] Antigravity → Claude — #8 · Issue #35 Shipped (`quality_core.msa` extraction)
+**Status:** RESOLVED / FYI
+
+1. **Issue #35 Shipped to `test` (PR #57):**
+   - **Engine Extracted:** Extracted `quality_core.msa` from the source repository with `gage_rr.py`, `schema.py`, `ASSUMPTIONS_LOG.md` (Rules 1–17), and `CITATIONS.tsv` (78 citation rows).
+   - **Standards Fidelity:** Average-and-Range and ANOVA methods with AIAG MSA 4th Edition fidelity, $6\sigma$ tolerance scaling, ndc calculations, ANOVA F-test ($\alpha=0.05$) and pooling.
+   - **Citation & Engine Test Gates:** 255 tests passed (79 citation tests in `test_msa_citations.py` verified against `/Users/sid/Documents/Upskill/SixSigma/MSA_Reference_Manual_4th_Edition.md` with $\pm 2$ line tolerance).
+   - **Coverage & Negative Mutations:** 100.00% line & branch coverage on `quality_core.msa` (199/199 stmts, 52/52 branches). 4 negative mutation controls verified RED and restored with SHA-256 validation.
+   - **CI & Documentation:** Core coverage gate in `.github/workflows/ci.yml` updated with `--cov=quality_core.msa`; `CHANGELOG.md` updated under `[Unreleased]`.
+   - **PR Created:** [PR #57: `feat(core): extract MSA Gage R&R engine into quality_core.msa (#35)`](https://github.com/Siddardth7/quality-engineering-skills/pull/57) targeting `test`.
+
+2. **Next Steps (Milestone 4):**
+   - Proceed to **Issue #36 (E2)**: `calculate_gage_rr` FastMCP tool wrapping `quality_core.msa`.
+
+---
+
 ### [2026-08-16] Antigravity → Claude — #7 · Milestone 3 (`v0.3.0`) Release Complete & M4 Handoff
 **Status:** RESOLVED / FYI
  

@@ -8,6 +8,29 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-16
+
+### Added
+- Finalized Milestone 4 documentation in `docs/milestones/v0.4.0.md` with complete verification artifacts, retrospective, and test evidence for Epics E1–E7 (#41).
+- Updated `docs/milestones/README.md` canonical mapping and `ROADMAP.md` Summary Release Matrix for `v0.4.0` (#41).
+- Extended milestone governance test suite `tests/test_milestones_convention.py` with `v0.4.0` traceability assertions across all 7 task issues (#35–#41) and verification artifacts (#41).
+- Single-writer visual MSA Gage R&R canvas controller `MSACanvas` and `MSACanvasMeasurement` in `quality_core.canvas.msa` rendering Operator $\times$ Part Interaction Plot and Variance Components Breakdown horizontal bar chart in standalone/embeddable dark-themed HTML5/SVG artifacts (#40).
+- FastMCP tool `render_msa_canvas` in `quality_mcp.tools.canvas` exposing Gage R&R visual canvas rendering with AIAG acceptance summary KPIs and interaction status over MCP transports (#40).
+- Re-export `render_msa_canvas` in `quality_mcp.tools`, register on `quality-mcp` FastMCP server, and export in package root (#40).
+- AIAG MSA (4th Edition) Measurement Systems Analysis skill in `skills/msa-gauge-rr/SKILL.md` guiding crossed Gage R&R study design, blind randomized data collection, ANOVA vs Average-and-Range method selection, metric decomposition audit, and AIAG acceptance verdict interpretation via `calculate_gage_rr` on `quality-mcp` with zero inline math (#39).
+- In-process MCP client round-trip integration test suite in `packages/quality-mcp/tests/test_msa_client_roundtrip.py` validating `calculate_gage_rr` across AIAG MSA 4th Edition benchmark datasets, dual-payload parity (`structuredContent` vs serialized text), exact ANOVA decomposition cross-checks against extracted reference fixtures, and protocol-level negative controls (#38).
+- Updated `docs/mcp-client-setup.md` with verified JSON-RPC 2.0 message exchange transcripts for `calculate_gage_rr` ANOVA, Average-and-Range, and validation error workflows (#38).
+- FastMCP tool `calculate_gage_rr` in `quality_mcp.tools.msa` wrapping `quality_core.msa` deterministic engines for AIAG MSA 4th Edition crossed Gage R&R analysis (ANOVA and Average-and-Range methods, $6\sigma$ tolerance-basis and study-basis metrics, ndc, and AIAG acceptance verdicts) (#36).
+- Re-export `calculate_gage_rr` in `quality_mcp.tools`, register on `quality-mcp` FastMCP server, and export in package root (#36).
+- Unit and FastMCP integration test suite in `packages/quality-mcp/tests/test_msa_tool.py` achieving 100% line & branch coverage across `quality_mcp.tools.msa` with AIAG benchmark oracle parity and structured error handling (#36).
+- Extracted MSA Gage R&R engine from the source repository into `packages/quality-core/src/quality_core/msa/` (`gage_rr.py`, `schema.py`, `ASSUMPTIONS_LOG.md`, `CITATIONS.tsv`) implementing Average-and-Range and ANOVA methods with AIAG MSA 4th Edition standards fidelity (#35).
+- Machine-checkable citation test suite `packages/quality-core/tests/test_msa_citations.py` validating all 78 citation entries against `/Users/sid/Documents/Upskill/SixSigma/MSA_Reference_Manual_4th_Edition.md` with line tolerance $\pm 2$ (#35).
+- Comprehensive test suites `packages/quality-core/tests/test_msa_gage_rr_engine.py` and `packages/quality-core/tests/test_msa_schema.py` verifying standard AIAG benchmark datasets, hand-calculated worked examples, $6\sigma$ tolerance multipliers, ANOVA pooling & interaction tests, edge cases, and schema ingest at 100% line & branch coverage (#35).
+
+### Changed
+- CI headless dependency guard and coverage gate comments in `.github/workflows/ci.yml` updated to document the headless containment contract and confirm 100% line & branch coverage scope for `quality_mcp.tools.msa` under `--cov=quality_mcp --cov-fail-under=100` (#37).
+- Extended core coverage gate in `.github/workflows/ci.yml` to include `--cov=quality_core.msa` at 100% line & branch enforcement (#35).
+
 ## [0.3.0] - 2026-08-15
 
 ### Added

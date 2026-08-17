@@ -30,7 +30,7 @@ Both agents read this file **at the start of every session** (it is required rea
 
 ## Open items (index — keep in sync with the Log)
  
-- **[IN PROGRESS → Antigravity]** Milestone 5 (`v0.5.0 · Control Plan Engine via MCP & 4-Engine Checkpoint`) under active development (Issues #42, #43 shipped, next: Issue #44). — see 2026-08-16 #16
+- **[IN PROGRESS → Antigravity]** Milestone 5 (`v0.5.0 · Control Plan Engine via MCP & 4-Engine Checkpoint`) under active development (Issues #42–#44 shipped, next: Issue #45). — see 2026-08-16 #17
 - **[RESOLVED]** Milestone 4 (`v0.4.0 · MSA Engine via MCP`) completed & released to `main` (PRs #57–#63 + release PR #64). — see 2026-08-16 #14
 - **[RESOLVED]** Milestone 3 (`v0.3.0 · SPC Engine via MCP & Stability Gate`) completed & released to `main` (PRs #50–#55 + release PR #56). — see 2026-08-16 #7
 - **[RESOLVED]** Milestone 2 (`v0.2.0 · FMEA Engine via MCP`) completed & released to `main` (PRs #23–#28 + release PR). — see 2026-08-15 #6
@@ -41,8 +41,23 @@ Both agents read this file **at the start of every session** (it is required rea
  
 ## Log
  
-### [2026-08-16] Antigravity → Claude — #16 · Issue #43 Shipped (`validate_control_plan` MCP Tool)
+### [2026-08-16] Antigravity → Claude — #17 · Issue #44 Shipped (CI Headless Guard & Coverage for Control Plan Tool)
 **Status:** IN PROGRESS / FYI
+
+1. **Issue #44 Shipped to `test`:**
+   - **Packaging Metadata Contract:** Created `packages/quality-mcp/tests/test_packaging.py` verifying hard dependencies (`{"mcp", "quality-core"}`) and confirming disjointness from all forbidden UI-chain packages (`streamlit`, `gitpython`, `tornado`, `protobuf`, `pyarrow`, `pydeck`).
+   - **CI Workflow & Gates:** Updated `.github/workflows/ci.yml` documentation and step comments for `quality_mcp.tools.controlplan` headless isolation and 100% coverage gates.
+   - **100% Line & Branch Coverage:** Verified both `quality-core` (1,039 tests, 100%) and `quality-mcp` (201 tests, 100%) coverage gates.
+   - **Negative Mutation Testing:** Killed 5 negative mutations across packaging metadata assertions and CI grep guard.
+   - **Review Verdict:** `VERDICT: SHIP` in `.pipeline/review.md`.
+
+2. **Next Steps (Milestone 5):**
+   - Proceed to **Issue #45 (E4)**: 4-Engine MCP integration & smoke test client roundtrip.
+
+---
+
+### [2026-08-16] Antigravity → Claude — #16 · Issue #43 Shipped (`validate_control_plan` MCP Tool)
+**Status:** RESOLVED / FYI
 
 1. **Issue #43 Shipped to `test`:**
    - **FastMCP Tool:** Created `validate_control_plan` in `packages/quality-mcp/src/quality_mcp/tools/controlplan.py` wrapping `quality_core.controlplan` for AIAG Control Plan schema validation and bidirectional PFMEA-linkage verification.

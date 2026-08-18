@@ -1,8 +1,8 @@
 """
 canvas.py
-FMEA, SPC, and MSA visual canvas rendering tools for Model Context Protocol (MCP).
+FMEA, SPC, MSA, and Control Plan visual canvas rendering tools for Model Context Protocol (MCP).
 
-Exposes styled interactive HTML canvas generation and risk/stability/MSA summary metrics
+Exposes styled interactive HTML canvas generation and risk/stability/MSA/ControlPlan summary metrics
 from quality_core.canvas to AI agents and MCP client hosts.
 """
 
@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Annotated, Any
 
 from pydantic import Field
-from quality_core.canvas import FMEACanvas, MSACanvas, SPCCanvas
+from quality_core.canvas import ControlPlanCanvas, FMEACanvas, MSACanvas, SPCCanvas
 
 
 def render_fmea_canvas(
@@ -325,7 +325,128 @@ def render_msa_canvas(
     }
 
 
+def render_controlplan_canvas(
+    dataset: Annotated[
+        list[dict[str, Any]] | None,
+        Field(
+            description=(
+                "Optional list of Control Plan row dictionaries. Each dictionary contains "
+                "characteristic, measurement_method, sample_size, frequency, reaction_plan, "
+                "and optional lsl, usl, target, recommended_chart, source_cause_id, and "
+                "sample_plan_is_placeholder. If omitted or None, loads the standard reference sample dataset."
+            ),
+        ),
+    ] = None,
+    fmea: Annotated[
+        list[dict[str, Any]] | None,
+        Field(
+            description=(
+                "Optional list of FMEA row dictionaries to evaluate bidirectional PFMEA linkage. "
+                "If provided, flags orphan characteristics and identifies uncovered FMEA failure modes."
+            ),
+        ),
+    ] = None,
+    title: Annotated[
+        str,
+        Field(description="Title displayed on the canvas header."),
+    ] = "AIAG APQP Control Plan Matrix Canvas",
+    standalone: Annotated[
+        bool,
+        Field(description="If True, returns a complete standalone HTML document; if False, returns an embeddable container."),
+    ] = True,
+) -> dict[str, Any]:
+    """Render an interactive visual HTML matrix canvas for an AIAG APQP Control Plan dataset.
+
+    Deterministic function wrapping `quality_core.canvas.ControlPlanCanvas`. Ingests Control Plan
+    rows, performs specification tolerance checks and optional PFMEA bidirectional linkage verification
+    using `quality_core.controlplan`, and generates a themed HTML canvas view with summary metrics.
+
+    Parameters
+    ----------
+    dataset : list[dict[str, Any]] | None, optional
+        List of Control Plan row dictionaries. If None, loads the reference sample dataset.
+    fmea : list[dict[str, Any]] | None, optional
+        List of FMEA row dictionaries to evaluate bidirectional PFMEA linkage.
+    title : str, default "AIAG APQP Control Plan Matrix Canvas"
+        Title of the Control Plan canvas.
+    standalone : bool, default True
+        Whether to generate a full standalone HTML5 document or embeddable markup.
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary containing:
+        - ``"title"``: The canvas title (str).
+        - ``"rows_count"``: Total number of rendered rows (int).
+        - ``"valid"``: Boolean indicating whether all characteristics are valid without orphan linkages (bool).
+        - ``"summary"``: Control Plan summary statistics breakdown (dict).
+        - ``"findings"``: List of validation findings and orphan warnings (list[str]).
+        - ``"html"``: Rendered HTML string (str).
+
+    Raises
+    ------
+    TypeError
+        If dataset or fmea is not a list/None, title is not a string, standalone is not a boolean,
+        or any item in dataset/fmea is not a dictionary.
+    ValueError
+        If title is empty, or any row contains invalid/out-of-range data.
+    """
+    if isinstance(standalone, int) and not isinstance(standalone, bool):
+        raise TypeError(f"standalone must be a boolean, got {type(standalone).__name__}: {standalone!r}")
+    if not isinstance(standalone, bool):
+        raise TypeError(f"standalone must be a boolean, got {type(standalone).__name__}: {standalone!r}")
+
+    if isinstance(title, bool) or not isinstance(title, str):
+        raise TypeError(f"title must be a string, got {type(title).__name__}: {title!r}")
+    if not title.strip():
+        raise ValueError("title must not be empty.")
+
+    if fmea is not None:
+        if isinstance(fmea, (str, dict, int, bool)) or not isinstance(fmea, list):
+            raise TypeError(f"fmea must be a list of dictionaries or None, got {type(fmea).__name__}: {fmea!r}")
+        for idx, item in enumerate(fmea):
+            if not isinstance(item, dict):
+                raise TypeError(f"fmea item at index {idx} must be a dict, got {type(item).__name__}: {item!r}")
+
+    if dataset is None:
+        canvas = ControlPlanCanvas.load_sample(title=title)
+        if fmea is not None:
+            canvas.validate_linkage(fmea)
+    else:
+        if isinstance(dataset, (str, dict, int, bool)) or not isinstance(dataset, list):
+            raise TypeError(f"dataset must be a list of dictionaries or None, got {type(dataset).__name__}: {dataset!r}")
+        canvas = ControlPlanCanvas(title=title)
+        for idx, item in enumerate(dataset):
+            if not isinstance(item, dict):
+                raise TypeError(f"dataset item at index {idx} must be a dict, got {type(item).__name__}: {item!r}")
+            row_dict = dict(item)
+            if "id" not in row_dict and "ID" not in row_dict:
+                row_dict["id"] = idx + 1
+            canvas.add_row(row_dict)
+        if fmea is not None:
+            canvas.validate_linkage(fmea)
+
+    html_content = canvas.to_html(standalone=standalone)
+    summary = canvas.get_summary()
+    valid = (
+        (summary["orphan_count"] == 0)
+        and (summary["uncovered_fms_count"] == 0)
+        and (summary["warning_count"] == 0)
+    )
+    findings = list(summary["all_findings"])
+
+    return {
+        "title": canvas.title,
+        "rows_count": len(canvas.rows),
+        "valid": valid,
+        "summary": summary,
+        "findings": findings,
+        "html": html_content,
+    }
+
+
 __all__ = [
+    "render_controlplan_canvas",
     "render_fmea_canvas",
     "render_msa_canvas",
     "render_spc_canvas",

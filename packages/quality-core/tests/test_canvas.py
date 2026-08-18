@@ -10,9 +10,12 @@ from typing import Any
 
 import pytest
 from quality_core.canvas import (
+    SAMPLE_CONTROL_PLAN_ROWS,
     SAMPLE_FMEA_ROWS,
     SAMPLE_MSA_STUDY_DATA,
     SAMPLE_SPC_XBAR_R_DATA,
+    ControlPlanCanvas,
+    ControlPlanCanvasRow,
     FMEACanvas,
     FMEACanvasRow,
     MSACanvas,
@@ -20,9 +23,11 @@ from quality_core.canvas import (
     SPCCanvas,
     SPCCanvasSubgroup,
     load_sample_canvas,
+    load_sample_controlplan_canvas,
     load_sample_msa_canvas,
     load_sample_spc_canvas,
 )
+from quality_core.schema import FMEADataset, FMEARow, flat_to_relational
 from quality_core.scoring import HIGH, LOW, MEDIUM
 
 # ---------------------------------------------------------------------------
@@ -1159,3 +1164,826 @@ def test_msa_canvas_svg_edge_cases_and_non_zero_interaction() -> None:
     )
     sparse_html = sparse_canvas.to_html()
     assert "<svg" in sparse_html
+
+
+# ---------------------------------------------------------------------------
+# ControlPlanCanvasRow Unit Tests
+# ---------------------------------------------------------------------------
+
+
+def test_controlplan_row_valid_construction() -> None:
+    """Instantiate a valid ControlPlanCanvasRow with full and minimal parameters."""
+    # Full parameters
+    row_full = ControlPlanCanvasRow(
+        id=1,
+        characteristic="Bore diameter",
+        measurement_method="Air gage",
+        sample_size=5,
+        frequency="hourly",
+        reaction_plan="Adjust tool offset and re-measure",
+        lsl=10.0,
+        usl=10.5,
+        target=10.25,
+        recommended_chart="Xbar-R",
+        source_cause_id="1::1::1-C1",
+        sample_plan_is_placeholder=False,
+        validation_status="valid",
+        findings=[],
+    )
+    assert row_full.id == 1
+    assert row_full.characteristic == "Bore diameter"
+    assert row_full.lsl == 10.0
+    assert row_full.usl == 10.5
+    assert row_full.target == 10.25
+    assert row_full.recommended_chart == "Xbar-R"
+    assert row_full.source_cause_id == "1::1::1-C1"
+    assert row_full.sample_plan_is_placeholder is False
+    assert row_full.validation_status == "valid"
+    assert row_full.findings == []
+
+    # Minimal parameters
+    row_min = ControlPlanCanvasRow(
+        id=2,
+        characteristic="Weld bead width",
+        measurement_method="Visual inspection",
+        sample_size=1,
+        frequency="per shift",
+        reaction_plan="Stop line and quarantine batch",
+    )
+    assert row_min.id == 2
+    assert row_min.lsl is None
+    assert row_min.usl is None
+    assert row_min.target is None
+    assert row_min.recommended_chart is None
+    assert row_min.source_cause_id is None
+    assert row_min.sample_plan_is_placeholder is False
+    assert row_min.validation_status == "valid"
+    assert row_min.findings == []
+
+
+def test_controlplan_row_to_dict_and_from_dict_snake_case() -> None:
+    """to_dict and from_dict roundtrip with snake_case keys."""
+    data = {
+        "id": 3,
+        "characteristic": "Coating thickness",
+        "measurement_method": "Magnetic eddy current",
+        "sample_size": 3,
+        "frequency": "per roll",
+        "reaction_plan": "Adjust coater speed",
+        "lsl": 20.0,
+        "usl": 30.0,
+        "target": 25.0,
+        "recommended_chart": "Xbar-S",
+        "source_cause_id": "3::1::1-C1",
+        "sample_plan_is_placeholder": False,
+        "validation_status": "valid",
+        "findings": [],
+    }
+    row = ControlPlanCanvasRow.from_dict(data)
+    assert row.id == 3
+    assert row.characteristic == "Coating thickness"
+    assert row.recommended_chart == "Xbar-S"
+    assert row.to_dict() == data
+
+
+def test_controlplan_row_from_dict_pascal_case() -> None:
+    """from_dict parses PascalCase keys correctly."""
+    data = {
+        "ID": 4,
+        "Characteristic": "Crimping pull force",
+        "Measurement_Method": "Tensile pull tester",
+        "Sample_Size": 10,
+        "Frequency": "per lot",
+        "Reaction_Plan": "Quarantine lot and notify QA",
+        "LSL": 50.0,
+        "USL": 100.0,
+        "Target": 75.0,
+        "Recommended_Chart": "p",
+        "Source_Cause_ID": "4::1::2-C1",
+        "Sample_Plan_Is_Placeholder": False,
+        "Validation_Status": "valid",
+        "Findings": ["Initial review ok."],
+    }
+    row = ControlPlanCanvasRow.from_dict(data)
+    assert row.id == 4
+    assert row.characteristic == "Crimping pull force"
+    assert row.measurement_method == "Tensile pull tester"
+    assert row.sample_size == 10
+    assert row.frequency == "per lot"
+    assert row.reaction_plan == "Quarantine lot and notify QA"
+    assert row.lsl == 50.0
+    assert row.usl == 100.0
+    assert row.target == 75.0
+    assert row.recommended_chart == "p"
+    assert row.source_cause_id == "4::1::2-C1"
+    assert row.findings == ["Initial review ok."]
+
+
+def test_controlplan_row_from_dict_enum_and_defaults() -> None:
+    """from_dict handles recommended_chart with .value attribute and default fields."""
+    class ChartEnum:
+        value = "I-MR"
+
+    data = {
+        "id": 5,
+        "characteristic": "Voltage output",
+        "measurement_method": "DMM",
+        "sample_size": 1,
+        "frequency": "continuous",
+        "reaction_plan": "Isolate circuit",
+        "recommended_chart": ChartEnum(),
+    }
+    row = ControlPlanCanvasRow.from_dict(data)
+    assert row.recommended_chart == "I-MR"
+    assert row.lsl is None
+    assert row.usl is None
+    assert row.target is None
+    assert row.source_cause_id is None
+    assert row.sample_plan_is_placeholder is False
+    assert row.validation_status == "valid"
+    assert row.findings == []
+
+
+def test_controlplan_row_from_dict_errors() -> None:
+    """from_dict raises TypeError on non-dict and ValueError on missing required fields."""
+    with pytest.raises(TypeError, match="data must be a dictionary"):
+        ControlPlanCanvasRow.from_dict(["not a dict"])  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="Missing required field 'id' or 'ID'"):
+        ControlPlanCanvasRow.from_dict({"characteristic": "Test", "measurement_method": "M", "sample_size": 1, "frequency": "F", "reaction_plan": "R"})
+
+    with pytest.raises(ValueError, match="Missing required field 'characteristic' or 'Characteristic'"):
+        ControlPlanCanvasRow.from_dict({"id": 1, "measurement_method": "M", "sample_size": 1, "frequency": "F", "reaction_plan": "R"})
+
+
+def test_controlplan_row_placeholder_derivation() -> None:
+    """Automatic finding and status derivation when sample_plan_is_placeholder=True."""
+    # When status is "valid", flips to "placeholder" and appends finding
+    row1 = ControlPlanCanvasRow(
+        id=1,
+        characteristic="Characteristic 1",
+        measurement_method="Method",
+        sample_size=1,
+        frequency="hourly",
+        reaction_plan="Reaction",
+        sample_plan_is_placeholder=True,
+    )
+    assert row1.validation_status == "placeholder"
+    assert "Sample plan contains placeholder values." in row1.findings
+
+    # When finding already present, does not duplicate
+    row2 = ControlPlanCanvasRow(
+        id=2,
+        characteristic="Characteristic 2",
+        measurement_method="Method",
+        sample_size=1,
+        frequency="hourly",
+        reaction_plan="Reaction",
+        sample_plan_is_placeholder=True,
+        findings=["Sample plan contains placeholder values."],
+    )
+    assert row2.findings.count("Sample plan contains placeholder values.") == 1
+
+    # When status is "warning", preserves status
+    row3 = ControlPlanCanvasRow(
+        id=3,
+        characteristic="Characteristic 3",
+        measurement_method="Method",
+        sample_size=1,
+        frequency="hourly",
+        reaction_plan="Reaction",
+        sample_plan_is_placeholder=True,
+        validation_status="warning",
+    )
+    assert row3.validation_status == "warning"
+    assert "Sample plan contains placeholder values." in row3.findings
+
+
+def test_controlplan_row_whitespace_stripping_and_source_cause_coercion() -> None:
+    """String fields are stripped and blank source_cause_id is coerced to None."""
+    row = ControlPlanCanvasRow(
+        id=1,
+        characteristic="  Bore diameter  ",
+        measurement_method="  Air gage  ",
+        sample_size=5,
+        frequency="  hourly  ",
+        reaction_plan="  Adjust tool  ",
+        source_cause_id="   ",
+    )
+    assert row.characteristic == "Bore diameter"
+    assert row.measurement_method == "Air gage"
+    assert row.frequency == "hourly"
+    assert row.reaction_plan == "Adjust tool"
+    assert row.source_cause_id is None
+
+
+@pytest.mark.parametrize(
+    ("field_name", "kwargs", "expected_err", "match_str"),
+    [
+        ("id", {"id": "1"}, TypeError, "id must be an integer"),
+        ("id_bool", {"id": True}, TypeError, "id must be an integer"),
+        ("id_neg", {"id": 0}, ValueError, "id must be a positive integer"),
+        ("char_type", {"characteristic": 123}, TypeError, "characteristic must be a string"),
+        ("char_empty", {"characteristic": "   "}, ValueError, "characteristic must be a non-empty string"),
+        ("method_type", {"measurement_method": None}, TypeError, "measurement_method must be a string"),
+        ("method_empty", {"measurement_method": ""}, ValueError, "measurement_method must be a non-empty string"),
+        ("freq_type", {"frequency": False}, TypeError, "frequency must be a string"),
+        ("freq_empty", {"frequency": "  "}, ValueError, "frequency must be a non-empty string"),
+        ("react_type", {"reaction_plan": 456}, TypeError, "reaction_plan must be a string"),
+        ("react_empty", {"reaction_plan": ""}, ValueError, "reaction_plan must be a non-empty string"),
+        ("sample_size_type", {"sample_size": "5"}, TypeError, "sample_size must be an integer"),
+        ("sample_size_bool", {"sample_size": True}, TypeError, "sample_size must be an integer"),
+        ("sample_size_val", {"sample_size": 0}, ValueError, "sample_size must be >= 1"),
+        ("placeholder_type", {"sample_plan_is_placeholder": "yes"}, TypeError, "sample_plan_is_placeholder must be a boolean"),
+        ("source_cause_type", {"source_cause_id": 123}, TypeError, "source_cause_id must be a string or None"),
+        ("lsl_type", {"lsl": "low"}, TypeError, "lsl must be a float or None"),
+        ("lsl_bool", {"lsl": True}, TypeError, "lsl must be a float or None"),
+        ("usl_type", {"usl": "high"}, TypeError, "usl must be a float or None"),
+        ("target_type", {"target": "mid"}, TypeError, "target must be a float or None"),
+        ("lsl_nan", {"lsl": float("nan")}, ValueError, "lsl cannot be NaN or Inf"),
+        ("usl_inf", {"usl": float("inf")}, ValueError, "usl cannot be NaN or Inf"),
+        ("target_neginf", {"target": float("-inf")}, ValueError, "target cannot be NaN or Inf"),
+        ("usl_le_lsl", {"lsl": 10.0, "usl": 5.0}, ValueError, "usl must be greater than lsl"),
+        ("usl_eq_lsl", {"lsl": 10.0, "usl": 10.0}, ValueError, "usl must be greater than lsl"),
+        ("target_lt_lsl", {"lsl": 10.0, "usl": 20.0, "target": 9.0}, ValueError, "target cannot be less than lsl"),
+        ("target_gt_usl", {"lsl": 10.0, "usl": 20.0, "target": 21.0}, ValueError, "target cannot be greater than usl"),
+        ("chart_type", {"recommended_chart": 123}, TypeError, "recommended_chart must be a string or None"),
+        ("chart_val", {"recommended_chart": "invalid_chart"}, ValueError, "Invalid recommended_chart 'invalid_chart'"),
+        ("findings_type", {"findings": "not a list"}, TypeError, "findings must be a list"),
+        ("status_type", {"validation_status": 123}, TypeError, "validation_status must be a string"),
+    ],
+)
+def test_controlplan_row_validation_errors(
+    field_name: str,
+    kwargs: dict[str, Any],
+    expected_err: type[Exception],
+    match_str: str,
+) -> None:
+    """Invalid parameter types and values raise descriptive Type/ValueError."""
+    base_kwargs: dict[str, Any] = {
+        "id": 1,
+        "characteristic": "Characteristic",
+        "measurement_method": "Method",
+        "sample_size": 5,
+        "frequency": "hourly",
+        "reaction_plan": "Reaction",
+    }
+    base_kwargs.update(kwargs)
+    with pytest.raises(expected_err, match=match_str):
+        ControlPlanCanvasRow(**base_kwargs)
+
+
+# ---------------------------------------------------------------------------
+# ControlPlanCanvas Controller Unit Tests
+# ---------------------------------------------------------------------------
+
+
+def test_controlplan_canvas_initialization() -> None:
+    """Initialize ControlPlanCanvas with defaults, custom metadata, and rows."""
+    # Default init
+    canvas_default = ControlPlanCanvas()
+    assert canvas_default.title == "AIAG APQP Control Plan Matrix Canvas"
+    assert canvas_default.description == "Interactive single-writer visual Control Plan canvas with validation findings."
+    assert canvas_default.rows == []
+
+    # Custom metadata and rows
+    row1 = ControlPlanCanvasRow(
+        id=1,
+        characteristic="Length",
+        measurement_method="Caliper",
+        sample_size=3,
+        frequency="per hour",
+        reaction_plan="Adjust cutter",
+        source_cause_id="1::1::1-C1",
+    )
+    row2_dict = {
+        "id": 2,
+        "characteristic": "Width",
+        "measurement_method": "Micrometer",
+        "sample_size": 5,
+        "frequency": "per shift",
+        "reaction_plan": "Adjust guide",
+        "source_cause_id": "1::1::2-C1",
+    }
+    canvas_custom = ControlPlanCanvas(
+        rows=[row1, row2_dict],
+        title="Custom Canvas",
+        description="Custom Description",
+    )
+    assert canvas_custom.title == "Custom Canvas"
+    assert canvas_custom.description == "Custom Description"
+    assert len(canvas_custom.rows) == 2
+    assert canvas_custom.get_row(1) == row1
+    assert canvas_custom.get_row(2) is not None
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "expected_err", "match_str"),
+    [
+        ({"title": ""}, ValueError, "title must be a non-empty string"),
+        ({"title": "   "}, ValueError, "title must be a non-empty string"),
+        ({"title": 123}, ValueError, "title must be a non-empty string"),
+        ({"title": True}, ValueError, "title must be a non-empty string"),
+        ({"description": ""}, ValueError, "description must be a non-empty string"),
+        ({"description": "  "}, ValueError, "description must be a non-empty string"),
+        ({"description": None}, ValueError, "description must be a non-empty string"),
+        ({"description": False}, ValueError, "description must be a non-empty string"),
+        ({"rows": "not a list"}, TypeError, "rows must be a list"),
+        ({"rows": 123}, TypeError, "rows must be a list"),
+    ],
+)
+def test_controlplan_canvas_init_validation_errors(
+    kwargs: dict[str, Any], expected_err: type[Exception], match_str: str
+) -> None:
+    """Invalid title, description, or rows parameter types raise errors."""
+    with pytest.raises(expected_err, match=match_str):
+        ControlPlanCanvas(**kwargs)
+
+
+def test_controlplan_canvas_load_sample() -> None:
+    """load_sample returns canvas with the 6 benchmark items and expected summary metrics."""
+    assert len(SAMPLE_CONTROL_PLAN_ROWS) == 6
+    canvas = ControlPlanCanvas.load_sample()
+    assert len(canvas.rows) == 6
+    assert canvas.rows[0].characteristic == "Gate driver desaturation during high-torque acceleration"
+    assert canvas.rows[1].lsl == 0.0
+    assert canvas.rows[1].usl == 100.0
+    assert canvas.rows[1].target == 50.0
+
+    summary = canvas.get_summary()
+    assert summary["total_rows"] == 6
+    assert summary["valid_count"] == 4
+    assert summary["orphan_count"] == 1  # Row 6 has source_cause_id=None
+    assert summary["placeholder_count"] == 1  # Row 5 has sample_plan_is_placeholder=True with source_cause_id
+    assert summary["warning_count"] == 0
+    assert summary["uncovered_fms_count"] == 0
+
+
+def test_controlplan_canvas_crud_operations() -> None:
+    """Perform CRUD operations on ControlPlanCanvas."""
+    canvas = ControlPlanCanvas()
+
+    # 1. add_row with ControlPlanCanvasRow
+    row1 = ControlPlanCanvasRow(
+        id=10,
+        characteristic="Bore diameter",
+        measurement_method="Air gage",
+        sample_size=5,
+        frequency="hourly",
+        reaction_plan="Adjust tool",
+        source_cause_id="1::1::1-C1",
+    )
+    added1 = canvas.add_row(row1)
+    assert added1.id == 10
+    assert canvas.get_row(10) == row1
+
+    # 2. add_row with dict
+    added2 = canvas.add_row(
+        {
+            "id": 20,
+            "characteristic": "Seal height",
+            "measurement_method": "Height gage",
+            "sample_size": 2,
+            "frequency": "per batch",
+            "reaction_plan": "Adjust press",
+            "source_cause_id": "2::1::1-C1",
+        }
+    )
+    assert added2.id == 20
+    assert canvas.get_row(20) is not None
+
+    # 3. add_row auto-stamps orphan when source_cause_id is None
+    added3 = canvas.add_row(
+        {
+            "id": 30,
+            "characteristic": "Paint gloss",
+            "measurement_method": "Gloss meter",
+            "sample_size": 1,
+            "frequency": "per shift",
+            "reaction_plan": "Adjust viscosity",
+            "source_cause_id": None,
+        }
+    )
+    assert added3.validation_status == "orphan"
+    assert "Orphan characteristic 'Paint gloss': missing source_cause_id." in added3.findings
+
+    # 4. get_row missing and type checks
+    assert canvas.get_row(999) is None
+    with pytest.raises(TypeError, match="row_id must be an integer"):
+        canvas.get_row("10")  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match="row_id must be an integer"):
+        canvas.get_row(True)  # type: ignore[arg-type]
+
+    # 5. add_row duplicate ID error and type error
+    with pytest.raises(ValueError, match="Row with ID 10 already exists"):
+        canvas.add_row(row1)
+    with pytest.raises(TypeError, match="row must be a ControlPlanCanvasRow or dict"):
+        canvas.add_row(["not a row"])  # type: ignore[arg-type]
+
+    # 6. edit_row in place and PascalCase
+    edited = canvas.edit_row(10, Characteristic="Updated Bore", Sample_Size=8, Target=10.2)
+    assert edited.characteristic == "Updated Bore"
+    assert edited.sample_size == 8
+    assert edited.target == 10.2
+
+    # 7. edit_row changing ID to new ID
+    edited_id = canvas.edit_row(10, id=15)
+    assert edited_id.id == 15
+    assert canvas.get_row(10) is None
+    assert canvas.get_row(15) is not None
+
+    # 8. edit_row errors (non-existent, duplicate ID, unknown field, invalid type)
+    with pytest.raises(KeyError, match="Row with ID 999 not found"):
+        canvas.edit_row(999, characteristic="Does not exist")
+    with pytest.raises(ValueError, match="Cannot change row ID to 20: ID already exists"):
+        canvas.edit_row(15, id=20)
+    with pytest.raises(ValueError, match="Unknown field 'unknown_column'"):
+        canvas.edit_row(15, unknown_column="value")
+    with pytest.raises(TypeError, match="row_id must be an integer"):
+        canvas.edit_row("15", characteristic="Test")  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match="row_id must be an integer"):
+        canvas.edit_row(False, characteristic="Test")  # type: ignore[arg-type]
+
+    # 9. edit_row setting source_cause_id to None stamps orphan finding
+    edited_orphan = canvas.edit_row(15, source_cause_id=None)
+    assert edited_orphan.validation_status == "orphan"
+    assert "missing source_cause_id" in edited_orphan.findings[0]
+
+    # 10. delete_row
+    deleted = canvas.delete_row(15)
+    assert deleted.id == 15
+    assert canvas.get_row(15) is None
+    with pytest.raises(KeyError, match="Row with ID 15 not found"):
+        canvas.delete_row(15)
+    with pytest.raises(TypeError, match="row_id must be an integer"):
+        canvas.delete_row("20")  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match="row_id must be an integer"):
+        canvas.delete_row(True)  # type: ignore[arg-type]
+
+
+def test_controlplan_canvas_validate_linkage_fmea_none() -> None:
+    """validate_linkage with fmea=None evaluates orphan status based solely on source_cause_id."""
+    canvas = ControlPlanCanvas()
+    canvas.add_row(
+        {
+            "id": 1,
+            "characteristic": "Char 1",
+            "measurement_method": "Method 1",
+            "sample_size": 1,
+            "frequency": "hourly",
+            "reaction_plan": "Reaction 1",
+            "source_cause_id": "1::1::1-C1",
+            "sample_plan_is_placeholder": False,
+        }
+    )
+    canvas.add_row(
+        {
+            "id": 2,
+            "characteristic": "Char 2",
+            "measurement_method": "Method 2",
+            "sample_size": 1,
+            "frequency": "hourly",
+            "reaction_plan": "Reaction 2",
+            "source_cause_id": None,
+            "sample_plan_is_placeholder": False,
+        }
+    )
+    canvas.add_row(
+        {
+            "id": 3,
+            "characteristic": "Char 3",
+            "measurement_method": "Method 3",
+            "sample_size": 1,
+            "frequency": "hourly",
+            "reaction_plan": "Reaction 3",
+            "source_cause_id": "1::1::2-C1",
+            "sample_plan_is_placeholder": True,
+        }
+    )
+
+    res = canvas.validate_linkage(None)
+    assert res["valid"] is False
+    assert res["total_rows"] == 3
+    assert res["linked_rows"] == 2
+    assert res["orphan_characteristics"] == ["Char 2"]
+    assert res["uncovered_failure_modes"] == []
+    assert len(res["findings"]) == 1
+
+    assert canvas.get_row(1).validation_status == "valid"
+    assert canvas.get_row(2).validation_status == "orphan"
+    assert canvas.get_row(3).validation_status == "placeholder"
+
+
+def test_controlplan_canvas_validate_linkage_with_fmea_list_and_relational() -> None:
+    """validate_linkage with FMEA list and RelationalFMEA models."""
+    fmea_list = [
+        {
+            "ID": 1,
+            "Process_Step": "Inverter SMT",
+            "Component": "Gate Driver",
+            "Function": "Desat Protection",
+            "Failure_Mode": "Overcurrent tripping",
+            "Effect": "Loss of propulsion",
+            "Severity": 10,
+            "Cause": "Voltage transient",
+            "Occurrence": 4,
+            "Current_Control": "AOI",
+            "Detection": 4,
+        },
+        {
+            "ID": 2,
+            "Process_Step": "Machining",
+            "Component": "Brake Valve",
+            "Function": "Pressure control",
+            "Failure_Mode": "Calibration drift",
+            "Effect": "Degraded braking",
+            "Severity": 9,
+            "Cause": "Thermal fatigue",
+            "Occurrence": 5,
+            "Current_Control": "Sweep",
+            "Detection": 1,
+        },
+    ]
+
+    cp_rows = [
+        {
+            "id": 1,
+            "characteristic": "Gate Driver Desat",
+            "measurement_method": "AOI",
+            "sample_size": 5,
+            "frequency": "hourly",
+            "reaction_plan": "Investigate",
+            "source_cause_id": "F1::F1-M1::F1-M1-C1",  # Linked to step 1
+            "sample_plan_is_placeholder": False,
+        },
+        {
+            "id": 2,
+            "characteristic": "Unlinked Char",
+            "measurement_method": "Visual",
+            "sample_size": 1,
+            "frequency": "daily",
+            "reaction_plan": "Quarantine",
+            "source_cause_id": "99::99::99-C1",  # Invalid source_cause_id
+            "sample_plan_is_placeholder": False,
+        },
+        {
+            "id": 3,
+            "characteristic": "Missing ID Char",
+            "measurement_method": "Gage",
+            "sample_size": 1,
+            "frequency": "hourly",
+            "reaction_plan": "Stop",
+            "source_cause_id": None,
+            "sample_plan_is_placeholder": True,
+        },
+        {
+            "id": 4,
+            "characteristic": "Linked Placeholder Char",
+            "measurement_method": "AOI",
+            "sample_size": 1,
+            "frequency": "per batch",
+            "reaction_plan": "Investigate",
+            "source_cause_id": "F1::F1-M1::F1-M1-C1",  # Linked and placeholder
+            "sample_plan_is_placeholder": True,
+        },
+    ]
+
+    # Test with list of dicts
+    canvas = ControlPlanCanvas(rows=cp_rows)
+    linkage_res = canvas.validate_linkage(fmea_list)
+    assert linkage_res["valid"] is False
+    assert "Unlinked Char" in linkage_res["orphan_characteristics"]
+    assert "Missing ID Char" in linkage_res["orphan_characteristics"]
+    assert "F2::F2-M1" in linkage_res["uncovered_failure_modes"]
+
+    assert canvas.get_row(1).validation_status == "valid"
+    assert canvas.get_row(2).validation_status == "orphan"
+    assert "not found in FMEA" in canvas.get_row(2).findings[0]
+    assert canvas.get_row(3).validation_status == "orphan"
+    assert "missing source_cause_id" in canvas.get_row(3).findings[0]
+    assert canvas.get_row(4).validation_status == "placeholder"
+
+    # Test with RelationalFMEA object directly
+    fmea_rows = [FMEARow(**r) for r in fmea_list]
+    relational = flat_to_relational(FMEADataset(rows=fmea_rows))
+    canvas2 = ControlPlanCanvas(rows=cp_rows, fmea=relational)
+    summary2 = canvas2.get_summary()
+    assert summary2["uncovered_fms_count"] == 1
+    assert "F2::F2-M1" in summary2["uncovered_failure_modes"]
+
+
+def test_controlplan_canvas_add_and_edit_row_orphan_branch_coverage() -> None:
+    """Exercise branches where orphan finding is already present and validation_status is error."""
+    canvas = ControlPlanCanvas()
+
+    # 1. add_row with pre-existing orphan finding and validation_status="error"
+    orphan_msg = "Orphan characteristic 'Pre-existing Orphan': missing source_cause_id."
+    row_err = ControlPlanCanvasRow(
+        id=1,
+        characteristic="Pre-existing Orphan",
+        measurement_method="Method",
+        sample_size=1,
+        frequency="hourly",
+        reaction_plan="Plan",
+        source_cause_id=None,
+        validation_status="error",
+        findings=[orphan_msg],
+    )
+    added = canvas.add_row(row_err)
+    assert added.validation_status == "error"
+    assert added.findings.count(orphan_msg) == 1
+
+    # 2. edit_row setting source_cause_id=None when orphan message already in findings
+    # and validation_status is error
+    edited = canvas.edit_row(
+        1,
+        source_cause_id=None,
+        findings=[orphan_msg],
+        validation_status="error",
+    )
+    assert edited.validation_status == "error"
+    assert edited.findings.count(orphan_msg) == 1
+
+
+def test_controlplan_canvas_validate_linkage_type_error() -> None:
+    """validate_linkage raises TypeError on invalid fmea input."""
+    canvas = ControlPlanCanvas()
+    with pytest.raises(TypeError, match="fmea must be a RelationalFMEA, list of dicts, or None"):
+        canvas.validate_linkage("invalid_fmea")  # type: ignore[arg-type]
+
+
+def test_controlplan_canvas_get_summary_and_to_dict() -> None:
+    """get_summary and to_dict provide complete state inspection."""
+    canvas = ControlPlanCanvas()
+    canvas.add_row(
+        {
+            "id": 1,
+            "characteristic": "C1",
+            "measurement_method": "M1",
+            "sample_size": 1,
+            "frequency": "F1",
+            "reaction_plan": "R1",
+            "source_cause_id": "1::1::1-C1",
+        }
+    )
+    # Add a row with error validation_status
+    err_row = ControlPlanCanvasRow(
+        id=2,
+        characteristic="C2",
+        measurement_method="M2",
+        sample_size=1,
+        frequency="F2",
+        reaction_plan="R2",
+        source_cause_id="1::1::2-C1",
+        validation_status="error",
+        findings=["Tolerance error"],
+    )
+    canvas.add_row(err_row)
+
+    summary = canvas.get_summary()
+    assert summary["total_rows"] == 2
+    assert summary["valid_count"] == 1
+    assert summary["warning_count"] == 1
+
+    d = canvas.to_dict()
+    assert d["title"] == canvas.title
+    assert d["description"] == canvas.description
+    assert len(d["rows"]) == 2
+    assert d["summary"] == summary
+    assert d["linkage_checked"] is False
+
+
+def test_controlplan_canvas_to_html_themes_and_modes() -> None:
+    """to_html supports standalone/embedded modes, dark/light themes, and custom badges."""
+    canvas = ControlPlanCanvas.load_sample()
+
+    # 1. Standalone dark theme (default)
+    html_dark = canvas.to_html(standalone=True, theme="dark")
+    assert "<!DOCTYPE html>" in html_dark
+    assert "<html lang=\"en\">" in html_dark
+    assert "AIAG APQP Control Plan Matrix Canvas" in html_dark
+    assert "Total Characteristics" in html_dark
+    assert "Fully Verified" in html_dark
+    assert "Orphan Characteristics" in html_dark
+    assert "Placeholder Plans" in html_dark
+    assert "Uncovered FMEA Modes" in html_dark
+    assert "Deterministic computation via quality_core.controlplan" in html_dark
+
+    # 2. Embeddable container light theme
+    html_light = canvas.to_html(standalone=False, theme="light")
+    assert "<!DOCTYPE html>" not in html_light
+    assert "<div class=\"qes-controlplan-canvas\"" in html_light
+    assert "#ffffff" in html_light  # Light card background
+
+    # 3. Empty canvas state
+    empty_canvas = ControlPlanCanvas(title="Empty Canvas", description="No rows")
+    empty_html = empty_canvas.to_html(standalone=False)
+    assert "No Control Plan items recorded in canvas." in empty_html
+
+    # 4. Custom status badge and error badge
+    custom_canvas = ControlPlanCanvas()
+    custom_canvas.add_row(
+        ControlPlanCanvasRow(
+            id=1,
+            characteristic="Custom Row",
+            measurement_method="Method",
+            sample_size=1,
+            frequency="hourly",
+            reaction_plan="Plan",
+            source_cause_id="1::1::1-C1",
+            validation_status="custom_status",
+        )
+    )
+    custom_canvas.add_row(
+        ControlPlanCanvasRow(
+            id=2,
+            characteristic="Error Row",
+            measurement_method="Method",
+            sample_size=1,
+            frequency="hourly",
+            reaction_plan="Plan",
+            source_cause_id="1::1::2-C1",
+            validation_status="error",
+        )
+    )
+    custom_html = custom_canvas.to_html()
+    assert "Custom_Status" in custom_html
+    assert "Tolerance Error" in custom_html
+
+
+def test_controlplan_canvas_to_html_uncovered_failure_modes_alert() -> None:
+    """to_html renders alert box when uncovered FMEA failure modes exist."""
+    fmea_list = [
+        {
+            "ID": 1,
+            "Process_Step": "Step 1",
+            "Component": "Comp 1",
+            "Function": "Func 1",
+            "Failure_Mode": "Critical Stalling Mode",
+            "Effect": "Vehicle Stop",
+            "Severity": 10,
+            "Cause": "Cause 1",
+            "Occurrence": 5,
+            "Current_Control": "Ctrl",
+            "Detection": 5,
+        }
+    ]
+    canvas = ControlPlanCanvas(fmea=fmea_list)
+    html_out = canvas.to_html()
+    assert "Uncovered PFMEA Failure Modes" in html_out
+    assert "F1::F1-M1" in html_out
+
+
+def test_controlplan_canvas_to_html_escaping() -> None:
+    """to_html escapes special HTML characters in text fields."""
+    dangerous_canvas = ControlPlanCanvas(
+        title="<script>alert('title')</script>",
+        description="<b>bold & daring</b>",
+    )
+    dangerous_canvas.add_row(
+        {
+            "id": 1,
+            "characteristic": "<img src=x onerror=alert('char')>",
+            "measurement_method": "Method & <test>",
+            "sample_size": 1,
+            "frequency": "freq > 1 & < 5",
+            "reaction_plan": "Plan \"quoted\" & dangerous",
+            "source_cause_id": "1::1::<test>-C1",
+        }
+    )
+    html_out = dangerous_canvas.to_html()
+    assert "<script>alert" not in html_out
+    assert "&lt;script&gt;alert" in html_out
+    assert "&lt;img src=x" in html_out
+    assert "&amp;" in html_out
+    assert "&quot;quoted&quot;" in html_out
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "expected_err", "match_str"),
+    [
+        ({"standalone": "yes"}, TypeError, "standalone must be a boolean"),
+        ({"standalone": 1}, TypeError, "standalone must be a boolean"),
+        ({"theme": "neon"}, ValueError, "theme must be 'dark' or 'light'"),
+        ({"theme": "dark_mode"}, ValueError, "theme must be 'dark' or 'light'"),
+    ],
+)
+def test_controlplan_canvas_to_html_parameter_errors(
+    kwargs: dict[str, Any], expected_err: type[Exception], match_str: str
+) -> None:
+    """Invalid standalone and theme parameters raise errors."""
+    canvas = ControlPlanCanvas()
+    with pytest.raises(expected_err, match=match_str):
+        canvas.to_html(**kwargs)
+
+
+def test_load_sample_controlplan_canvas_helper() -> None:
+    """load_sample_controlplan_canvas helper constructs loaded canvas correctly."""
+    canvas = load_sample_controlplan_canvas(
+        title="Convenience Canvas",
+        description="Convenience Description",
+    )
+    assert canvas.title == "Convenience Canvas"
+    assert canvas.description == "Convenience Description"
+    assert len(canvas.rows) == 6
+

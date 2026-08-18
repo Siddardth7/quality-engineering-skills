@@ -11,6 +11,7 @@ from mcp.server.fastmcp import FastMCP
 
 from quality_mcp import __version__
 from quality_mcp.tools.canvas import (
+    render_controlplan_canvas,
     render_fmea_canvas,
     render_msa_canvas,
     render_spc_canvas,
@@ -24,6 +25,7 @@ mcp = FastMCP("quality-mcp")
 
 # Register tools on the FastMCP instance
 mcp.tool()(lookup_fmea_ap)
+mcp.tool()(render_controlplan_canvas)
 mcp.tool()(render_fmea_canvas)
 mcp.tool()(render_msa_canvas)
 mcp.tool()(render_spc_canvas)
@@ -57,6 +59,7 @@ __all__ = [
     "main",
     "mcp",
     "ping",
+    "render_controlplan_canvas",
     "render_fmea_canvas",
     "render_msa_canvas",
     "render_spc_canvas",

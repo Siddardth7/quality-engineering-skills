@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from quality_mcp.tools.canvas import (
+    render_controlplan_canvas,
     render_fmea_canvas,
     render_msa_canvas,
     render_spc_canvas,
@@ -16,6 +17,7 @@ __all__ = [
     "calculate_gage_rr",
     "calculate_spc_chart",
     "lookup_fmea_ap",
+    "render_controlplan_canvas",
     "render_fmea_canvas",
     "render_msa_canvas",
     "render_spc_canvas",

@@ -30,7 +30,7 @@ Both agents read this file **at the start of every session** (it is required rea
 
 ## Open items (index — keep in sync with the Log)
  
-- **[IN PROGRESS → Antigravity]** Milestone 5 (`v0.5.0 · Control Plan Engine via MCP & 4-Engine Checkpoint`) under active development (Issues #42–#46 shipped, next: Issue #47). — see 2026-08-17 #19
+- **[IN PROGRESS → Antigravity]** Milestone 5 (`v0.5.0 · Control Plan Engine via MCP & 4-Engine Checkpoint`) under active development (Issues #42–#47 shipped, next: Issue #48). — see 2026-08-17 #20
 - **[RESOLVED]** Milestone 4 (`v0.4.0 · MSA Engine via MCP`) completed & released to `main` (PRs #57–#63 + release PR #64). — see 2026-08-16 #14
 - **[RESOLVED]** Milestone 3 (`v0.3.0 · SPC Engine via MCP & Stability Gate`) completed & released to `main` (PRs #50–#55 + release PR #56). — see 2026-08-16 #7
 - **[RESOLVED]** Milestone 2 (`v0.2.0 · FMEA Engine via MCP`) completed & released to `main` (PRs #23–#28 + release PR). — see 2026-08-15 #6
@@ -41,8 +41,24 @@ Both agents read this file **at the start of every session** (it is required rea
  
 ## Log
  
-### [2026-08-17] Antigravity → Claude — #19 · Issue #46 Shipped (`/control-plan` Domain Skill)
+### [2026-08-17] Antigravity → Claude — #20 · Issue #47 Shipped (Control Plan Matrix Canvas View)
 **Status:** IN PROGRESS / FYI
+
+1. **Issue #47 Shipped to `test`:**
+   - **Single-Writer Canvas Controller:** Created `ControlPlanCanvas` and `ControlPlanCanvasRow` in `quality_core.canvas.controlplan` managing in-memory Control Plan matrix state, deterministic CRUD lifecycle, automatic orphan stamping, bidirectional PFMEA linkage validation against `RelationalFMEA`, and KPI summary calculation.
+   - **Themed HTML5/SVG Visualization:** Implemented dark-themed and light-themed Control Plan matrix tables with row-level validation findings (`Verified`, `Orphan Linkage`, `Placeholder Plan`, `Tolerance Error`), KPI metric cards, and uncovered PFMEA failure mode callout alerts.
+   - **FastMCP Tool:** Implemented `render_controlplan_canvas` in `quality_mcp.tools.canvas`, registered on `quality-mcp` server, and re-exported in package root.
+   - **100% Line & Branch Coverage:** Core canvas suite (`packages/quality-core/tests/test_canvas.py`) and MCP canvas tool suite (`packages/quality-mcp/tests/test_canvas_tool.py`) passing at 100.00% coverage (2,763/2,763 stmts, 856/856 branches core; 353/353 stmts, 134/134 branches mcp).
+   - **Negative Mutation Testing:** Killed 3 mutation controls across sample size validation bounds, orphan characteristic finding attribution, and empty canvas title checks.
+   - **Review Verdict:** `VERDICT: SHIP` in `.pipeline/review.md`.
+
+2. **Next Steps (Milestone 5):**
+   - Proceed to **Issue #48 (E7)**: Milestone 5 documentation finalization (`docs/milestones/v0.5.0.md`), README, ROADMAP, CHANGELOG roll, and governance suites.
+
+---
+
+### [2026-08-17] Antigravity → Claude — #19 · Issue #46 Shipped (`/control-plan` Domain Skill)
+**Status:** RESOLVED / FYI
 
 1. **Issue #46 Shipped to `test`:**
    - **Domain Skill Implementation:** Authored `skills/control-plan/SKILL.md` adhering strictly to `agentskills.io` standard (YAML frontmatter + 5 mandatory sections: Overview, When to Use, Step-by-Step Methodology, Tool Invocations, Best Practices).

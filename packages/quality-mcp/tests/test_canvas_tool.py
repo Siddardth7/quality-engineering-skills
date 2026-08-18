@@ -10,6 +10,7 @@ import quality_mcp.tools
 from mcp.shared.memory import create_connected_server_and_client_session
 from quality_mcp.server import mcp
 from quality_mcp.tools.canvas import (
+    render_controlplan_canvas,
     render_fmea_canvas,
     render_msa_canvas,
     render_spc_canvas,
@@ -486,5 +487,261 @@ def test_mcp_client_roundtrip_render_msa_canvas_error() -> None:
             assert result.isError
 
     asyncio.run(_run())
+
+
+# ---------------------------------------------------------------------------
+# Control Plan Canvas Tool Tests
+# ---------------------------------------------------------------------------
+
+
+def test_render_controlplan_canvas_default_sample() -> None:
+    """Invoking render_controlplan_canvas with default arguments renders reference sample canvas."""
+    result = render_controlplan_canvas()
+
+    assert result["title"] == "AIAG APQP Control Plan Matrix Canvas"
+    assert result["rows_count"] == 6
+    assert result["valid"] is False  # Row 6 is an orphan characteristic
+    assert isinstance(result["summary"], dict)
+    assert result["summary"]["total_rows"] == 6
+    assert result["summary"]["valid_count"] == 4
+    assert result["summary"]["orphan_count"] == 1
+    assert result["summary"]["placeholder_count"] == 1
+    assert result["summary"]["warning_count"] == 0
+    assert result["summary"]["uncovered_fms_count"] == 0
+    assert len(result["findings"]) == 3  # 1 orphan finding + 2 placeholder findings
+
+    html_str = result["html"]
+    assert "<!DOCTYPE html>" in html_str
+    assert "Gate driver desaturation during high-torque acceleration" in html_str
+    assert "AIAG APQP &amp; Control Plan" in html_str
+
+
+def test_render_controlplan_canvas_custom_dataset_embedded() -> None:
+    """Render custom Control Plan dataset without ID (auto-assigned) and standalone=False."""
+    custom_rows = [
+        {
+            "characteristic": "Busbar Weld Penetration",
+            "measurement_method": "Pyrometer in-line",
+            "sample_size": 1,
+            "frequency": "100% in-line",
+            "reaction_plan": "Quarantine battery pack",
+            "lsl": 2.5,
+            "usl": 3.5,
+            "target": 3.0,
+            "recommended_chart": "I-MR",
+            "source_cause_id": "1::1::1-C1",
+            "sample_plan_is_placeholder": False,
+        }
+    ]
+
+    result = render_controlplan_canvas(
+        dataset=custom_rows,
+        title="Battery Pack Welding Control Plan",
+        standalone=False,
+    )
+
+    assert result["title"] == "Battery Pack Welding Control Plan"
+    assert result["rows_count"] == 1
+    assert result["valid"] is True
+    assert result["summary"]["total_rows"] == 1
+    assert result["summary"]["valid_count"] == 1
+    assert result["summary"]["orphan_count"] == 0
+
+    html_str = result["html"]
+    assert "<!DOCTYPE html>" not in html_str
+    assert "Busbar Weld Penetration" in html_str
+    assert "[2.5, 3.0, 3.5]" in html_str
+    assert "I-MR" in html_str
+
+
+def test_render_controlplan_canvas_with_fmea_linkage() -> None:
+    """Render Control Plan dataset with PFMEA linkage evaluation."""
+    fmea_rows = [
+        {
+            "ID": 1,
+            "Process_Step": "Inverter SMT",
+            "Component": "Gate Driver",
+            "Function": "Desat Protection",
+            "Failure_Mode": "Overcurrent tripping",
+            "Effect": "Loss of propulsion",
+            "Severity": 10,
+            "Cause": "Voltage transient",
+            "Occurrence": 4,
+            "Current_Control": "AOI",
+            "Detection": 4,
+        },
+        {
+            "ID": 2,
+            "Process_Step": "Machining",
+            "Component": "Brake Valve",
+            "Function": "Pressure control",
+            "Failure_Mode": "Calibration drift",
+            "Effect": "Degraded braking",
+            "Severity": 9,
+            "Cause": "Thermal fatigue",
+            "Occurrence": 5,
+            "Current_Control": "Sweep",
+            "Detection": 1,
+        },
+    ]
+
+    # CP dataset covering cause F1::F1-M1::F1-M1-C1
+    cp_rows = [
+        {
+            "id": 1,
+            "characteristic": "Gate Driver Desat",
+            "measurement_method": "AOI",
+            "sample_size": 5,
+            "frequency": "hourly",
+            "reaction_plan": "Investigate",
+            "source_cause_id": "F1::F1-M1::F1-M1-C1",
+            "sample_plan_is_placeholder": False,
+        },
+        {
+            "id": 2,
+            "characteristic": "Orphan Char",
+            "measurement_method": "Visual",
+            "sample_size": 1,
+            "frequency": "daily",
+            "reaction_plan": "Quarantine",
+            "source_cause_id": "99::99::99-C1",
+            "sample_plan_is_placeholder": False,
+        },
+    ]
+
+    result = render_controlplan_canvas(dataset=cp_rows, fmea=fmea_rows)
+    assert result["valid"] is False
+    assert result["summary"]["orphan_count"] == 1
+    assert result["summary"]["uncovered_fms_count"] == 1
+    assert "F2::F2-M1" in result["summary"]["uncovered_failure_modes"]
+    assert "Uncovered PFMEA Failure Modes" in result["html"]
+
+
+def test_render_controlplan_canvas_default_sample_with_fmea() -> None:
+    """Render default sample Control Plan with FMEA dataset passed."""
+    fmea_rows = [
+        {
+            "ID": 1,
+            "Process_Step": "Step 1",
+            "Component": "Comp 1",
+            "Function": "Func 1",
+            "Failure_Mode": "Mode 1",
+            "Effect": "Effect 1",
+            "Severity": 8,
+            "Cause": "Cause 1",
+            "Occurrence": 4,
+            "Current_Control": "Ctrl 1",
+            "Detection": 3,
+        }
+    ]
+    result = render_controlplan_canvas(dataset=None, fmea=fmea_rows)
+    assert result["rows_count"] == 6
+    assert isinstance(result["html"], str)
+
+
+def test_render_controlplan_canvas_empty_dataset() -> None:
+    """Render canvas with empty dataset list."""
+    result = render_controlplan_canvas(dataset=[], title="Empty CP Canvas", standalone=True)
+    assert result["title"] == "Empty CP Canvas"
+    assert result["rows_count"] == 0
+    assert result["valid"] is True
+    assert result["summary"]["total_rows"] == 0
+    assert "No Control Plan items recorded in canvas." in result["html"]
+
+
+@pytest.mark.parametrize(
+    ("invalid_kwargs", "expected_err_type", "match_str"),
+    [
+        ({"standalone": "true"}, TypeError, "standalone must be a boolean"),
+        ({"standalone": 1}, TypeError, "standalone must be a boolean"),
+        ({"title": 123}, TypeError, "title must be a string"),
+        ({"title": True}, TypeError, "title must be a string"),
+        ({"title": "   "}, ValueError, "title must not be empty"),
+        ({"dataset": "not-a-list"}, TypeError, "dataset must be a list of dictionaries or None"),
+        ({"dataset": 123}, TypeError, "dataset must be a list of dictionaries or None"),
+        ({"dataset": {"id": 1}}, TypeError, "dataset must be a list of dictionaries or None"),
+        ({"dataset": ["not a dict"]}, TypeError, "dataset item at index 0 must be a dict"),
+        ({"fmea": "not-a-list"}, TypeError, "fmea must be a list of dictionaries or None"),
+        ({"fmea": 123}, TypeError, "fmea must be a list of dictionaries or None"),
+        ({"fmea": {"id": 1}}, TypeError, "fmea must be a list of dictionaries or None"),
+        ({"fmea": ["not a dict"]}, TypeError, "fmea item at index 0 must be a dict"),
+        (
+            {
+                "dataset": [
+                    {
+                        "characteristic": "",
+                        "measurement_method": "Method",
+                        "sample_size": 1,
+                        "frequency": "hourly",
+                        "reaction_plan": "Plan",
+                    }
+                ]
+            },
+            ValueError,
+            "characteristic must be a non-empty string",
+        ),
+    ],
+)
+def test_render_controlplan_canvas_invalid_arguments(
+    invalid_kwargs: dict[str, Any],
+    expected_err_type: type[Exception],
+    match_str: str,
+) -> None:
+    """Invalid arguments to render_controlplan_canvas raise descriptive Type/ValueError."""
+    with pytest.raises(expected_err_type, match=match_str):
+        render_controlplan_canvas(**invalid_kwargs)
+
+
+def test_render_controlplan_canvas_package_exports() -> None:
+    """render_controlplan_canvas is re-exported from quality_mcp and quality_mcp.tools."""
+    import quality_mcp
+    import quality_mcp.tools
+
+    assert hasattr(quality_mcp, "render_controlplan_canvas")
+    assert hasattr(quality_mcp.tools, "render_controlplan_canvas")
+    assert "render_controlplan_canvas" in quality_mcp.__all__
+    assert "render_controlplan_canvas" in quality_mcp.tools.__all__
+
+
+def test_mcp_client_roundtrip_render_controlplan_canvas_success() -> None:
+    """Call render_controlplan_canvas over in-process FastMCP client session successfully."""
+    async def _run() -> None:
+        async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+            tools_response = await client.list_tools()
+            tool_names = [tool.name for tool in tools_response.tools]
+            assert "render_controlplan_canvas" in tool_names
+
+            result = await client.call_tool("render_controlplan_canvas", {})
+            assert not result.isError
+            assert result.structuredContent is not None
+            assert result.structuredContent["rows_count"] == 6
+            assert result.structuredContent["valid"] is False
+            assert "<!DOCTYPE html>" in result.structuredContent["html"]
+
+    asyncio.run(_run())
+
+
+def test_mcp_client_roundtrip_render_controlplan_canvas_error() -> None:
+    """Call render_controlplan_canvas with invalid data over client session produces isError response."""
+    async def _run() -> None:
+        async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+            result = await client.call_tool(
+                "render_controlplan_canvas",
+                {
+                    "dataset": [
+                        {
+                            "characteristic": "",
+                            "measurement_method": "Method",
+                            "sample_size": 1,
+                            "frequency": "hourly",
+                            "reaction_plan": "Plan",
+                        }
+                    ],
+                },
+            )
+            assert result.isError
+
+    asyncio.run(_run())
+
 
 

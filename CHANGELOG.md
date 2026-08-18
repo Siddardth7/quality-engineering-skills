@@ -9,6 +9,9 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- Single-writer visual Control Plan matrix canvas controller `ControlPlanCanvas` and `ControlPlanCanvasRow` in `quality_core.canvas.controlplan` rendering characteristic specifications, tolerances, measurement methods, sample plans, recommended SPC charts, and reaction plans in standalone/embeddable dark-themed HTML5 artifacts with row-level validation and PFMEA orphan linkage findings highlighted (#47).
+- FastMCP tool `render_controlplan_canvas` in `quality_mcp.tools.canvas` exposing Control Plan visual matrix canvas generation and validation summary metrics over Model Context Protocol endpoints (#47).
+- Re-export `render_controlplan_canvas` in `quality_mcp.tools`, register on `quality-mcp` FastMCP server, and export in package root (#47).
 - AIAG APQP & Control Plan (2nd Edition) domain skill in `skills/control-plan/SKILL.md` guiding Control Plan structure audits, tolerance coherence checks, PFMEA bidirectional cause linkage verification, and SPC chart selection via `validate_control_plan` on `quality-mcp` with zero inline adjudication (#46).
 - Updated `skills/README.md` directory structure and taxonomy table marking `control-plan` as Active (#46).
 - Extended skills governance test suite `tests/test_skills_conventions.py` with `control-plan` discovery, tool specification, and isolation assertions (#46).

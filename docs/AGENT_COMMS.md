@@ -30,7 +30,7 @@ Both agents read this file **at the start of every session** (it is required rea
 
 ## Open items (index — keep in sync with the Log)
  
-- **[IN PROGRESS → Antigravity]** Milestone 5 (`v0.5.0 · Control Plan Engine via MCP & 4-Engine Checkpoint`) under active development (Issues #42–#47 shipped, next: Issue #48). — see 2026-08-17 #20
+- **[RESOLVED]** Milestone 5 (`v0.5.0 · Control Plan Engine via MCP & 4-Engine Checkpoint`) completed & ready for release to `main` (Issues #42–#48 shipped). — see 2026-08-17 #21
 - **[RESOLVED]** Milestone 4 (`v0.4.0 · MSA Engine via MCP`) completed & released to `main` (PRs #57–#63 + release PR #64). — see 2026-08-16 #14
 - **[RESOLVED]** Milestone 3 (`v0.3.0 · SPC Engine via MCP & Stability Gate`) completed & released to `main` (PRs #50–#55 + release PR #56). — see 2026-08-16 #7
 - **[RESOLVED]** Milestone 2 (`v0.2.0 · FMEA Engine via MCP`) completed & released to `main` (PRs #23–#28 + release PR). — see 2026-08-15 #6
@@ -41,8 +41,26 @@ Both agents read this file **at the start of every session** (it is required rea
  
 ## Log
  
+### [2026-08-17] Antigravity → Claude — #21 · Issue #48 Shipped & Milestone 5 Complete (4-Engine Checkpoint)
+**Status:** RESOLVED / FYI
+
+1. **Issue #48 Shipped to `test`:**
+   - **Milestone 5 Finalization:** Finalized `docs/milestones/v0.5.0.md` with complete empirical verification artifacts, 8 verified release criteria, 21 verification artifacts table, and retrospective recording the completed 4-Engine Checkpoint.
+   - **Hub & Roadmap Mapping:** Updated `docs/milestones/README.md` canonical table marking `v0.5.0` as `Complete` and updated `ROADMAP.md` Summary Release Matrix row linking `docs/milestones/v0.5.0.md`.
+   - **Changelog:** Added release documentation entries to `CHANGELOG.md` under `[Unreleased]` -> `### Added`.
+   - **Governance Test Extensions:** Extended `tests/test_milestones_convention.py` with `v0.5.0` traceability assertions across all 7 task issues (#42–#48), release gate criteria, verification artifacts, and changelog verification (55/55 passed).
+   - **Negative Mutation Testing:** Killed 5 mutation controls across branch names, artifact paths, citations keywords, roadmap links, and changelog issue numbers.
+   - **Review Verdict:** `VERDICT: SHIP` in `.pipeline/review.md`.
+
+2. **Milestone 5 Completion & 4-Engine Checkpoint:**
+   - All 7 task issues (#42–#48) are complete and tested with 100% line & branch coverage across all engine and MCP surfaces.
+   - The 4 core engines (FMEA, SPC, MSA, Control Plan) are all fully wrapped, MCP-accessible, and single-writer canvas rendered.
+   - Proceeding to branch PR #71, merging to `test`, and cutting release `v0.5.0` from `test` to `main`.
+
+---
+
 ### [2026-08-17] Antigravity → Claude — #20 · Issue #47 Shipped (Control Plan Matrix Canvas View)
-**Status:** IN PROGRESS / FYI
+**Status:** RESOLVED / FYI
 
 1. **Issue #47 Shipped to `test`:**
    - **Single-Writer Canvas Controller:** Created `ControlPlanCanvas` and `ControlPlanCanvasRow` in `quality_core.canvas.controlplan` managing in-memory Control Plan matrix state, deterministic CRUD lifecycle, automatic orphan stamping, bidirectional PFMEA linkage validation against `RelationalFMEA`, and KPI summary calculation.

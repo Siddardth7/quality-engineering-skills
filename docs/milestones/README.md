@@ -47,7 +47,7 @@ Where:
 | `v0.2.0` | [`docs/milestones/v0.2.0.md`](v0.2.0.md) | FMEA Engine via MCP & Single-Writer Canvas | Complete |
 | `v0.3.0` | [`docs/milestones/v0.3.0.md`](v0.3.0.md) | SPC Engine via MCP & Stability Gate | Complete |
 | `v0.4.0` | [`docs/milestones/v0.4.0.md`](v0.4.0.md) | MSA Engine via MCP & Gage R&R Interaction | Complete |
-| `v0.5.0` | `docs/milestones/v0.5.0.md` | Control Plan Engine via MCP (4-Engine Checkpoint) | Planned |
+| `v0.5.0` | [`docs/milestones/v0.5.0.md`](v0.5.0.md) | Control Plan Engine via MCP (4-Engine Checkpoint) | Complete |
 | `v0.6.0` | `docs/milestones/v0.6.0.md` | RCA Suite (5-Why, Fishbone, Is/Is-Not) | Planned |
 | `v0.7.0` | `docs/milestones/v0.7.0.md` | NCR & COPQ Financial Estimator | Planned |
 | `v0.8.0` | `docs/milestones/v0.8.0.md` | PPAP Core (18-Element AIAG Base Standard) | Planned |

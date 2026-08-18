@@ -30,7 +30,7 @@ Both agents read this file **at the start of every session** (it is required rea
 
 ## Open items (index — keep in sync with the Log)
  
-- **[IN PROGRESS → Antigravity]** Milestone 5 (`v0.5.0 · Control Plan Engine via MCP & 4-Engine Checkpoint`) under active development (Issues #42–#45 shipped, next: Issue #46). — see 2026-08-17 #18
+- **[IN PROGRESS → Antigravity]** Milestone 5 (`v0.5.0 · Control Plan Engine via MCP & 4-Engine Checkpoint`) under active development (Issues #42–#46 shipped, next: Issue #47). — see 2026-08-17 #19
 - **[RESOLVED]** Milestone 4 (`v0.4.0 · MSA Engine via MCP`) completed & released to `main` (PRs #57–#63 + release PR #64). — see 2026-08-16 #14
 - **[RESOLVED]** Milestone 3 (`v0.3.0 · SPC Engine via MCP & Stability Gate`) completed & released to `main` (PRs #50–#55 + release PR #56). — see 2026-08-16 #7
 - **[RESOLVED]** Milestone 2 (`v0.2.0 · FMEA Engine via MCP`) completed & released to `main` (PRs #23–#28 + release PR). — see 2026-08-15 #6
@@ -41,8 +41,25 @@ Both agents read this file **at the start of every session** (it is required rea
  
 ## Log
  
-### [2026-08-17] Antigravity → Claude — #18 · Issue #45 Shipped (`validate_control_plan` Round-Trip & 4-Engine Checkpoint)
+### [2026-08-17] Antigravity → Claude — #19 · Issue #46 Shipped (`/control-plan` Domain Skill)
 **Status:** IN PROGRESS / FYI
+
+1. **Issue #46 Shipped to `test`:**
+   - **Domain Skill Implementation:** Authored `skills/control-plan/SKILL.md` adhering strictly to `agentskills.io` standard (YAML frontmatter + 5 mandatory sections: Overview, When to Use, Step-by-Step Methodology, Tool Invocations, Best Practices).
+   - **Zero Inline Adjudication Invariant:** Strictly prohibits prompt-context math, tolerance arithmetic, or manual PFMEA linkage adjudication; delegates all validation to `validate_control_plan` on `quality-mcp`.
+   - **Standards Fidelity:** Aligns with AIAG APQP & Control Plan (2nd Edition), AIAG-VDA FMEA (2019) Sections 1.4 & 5, and AIAG SPC (4th Edition) chart selection decision tree ($n=1 \to$ I-MR, $2 \le n \le 9 \to$ Xbar-R, $10 \le n \le 12 \to$ Xbar-S, attribute $p/c/u$).
+   - **Ecosystem Documentation & Taxonomy:** Updated `skills/README.md` tree diagram and marked `control-plan` as `Active` backed by `quality_mcp.tools.controlplan` (`quality_core.controlplan`).
+   - **Governance Test Extensions:** Extended `tests/test_skills_conventions.py` with `control-plan` discovery, tool specification, and isolation assertions (52/52 passed).
+   - **Negative Mutation Testing:** Killed 3 mutation controls across frontmatter slug matching, tool documentation citation, and inline calculation regex patterns.
+   - **Review Verdict:** `VERDICT: SHIP` in `.pipeline/review.md`.
+
+2. **Next Steps (Milestone 5):**
+   - Proceed to **Issue #47 (E6)**: Control Plan matrix canvas view (`render_controlplan_canvas` + `ControlPlanCanvas`).
+
+---
+
+### [2026-08-17] Antigravity → Claude — #18 · Issue #45 Shipped (`validate_control_plan` Round-Trip & 4-Engine Checkpoint)
+**Status:** RESOLVED / FYI
 
 1. **Issue #45 Shipped to `test`:**
    - **Control Plan Client Round-Trip:** Created `packages/quality-mcp/tests/test_controlplan_client_roundtrip.py` validating FastMCP handshake, schema discovery, dual-payload parity, real-world FMEA fixture ingestion, PFMEA linkage verification, and protocol negative controls.

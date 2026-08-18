@@ -9,6 +9,9 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- Finalized Milestone 5 documentation in `docs/milestones/v0.5.0.md` with complete verification artifacts, 4-Engine Checkpoint empirical evidence, retrospective, and test evidence for Epics E1–E7 (#48).
+- Updated `docs/milestones/README.md` canonical mapping table marking `v0.5.0` as Complete and updated `ROADMAP.md` Summary Release Matrix linking `docs/milestones/v0.5.0.md` (#48).
+- Extended milestone governance test suite `tests/test_milestones_convention.py` with `v0.5.0` traceability assertions across all 7 task issues (#42–#48), release gate criteria, verification artifacts, and changelog verification (#48).
 - Single-writer visual Control Plan matrix canvas controller `ControlPlanCanvas` and `ControlPlanCanvasRow` in `quality_core.canvas.controlplan` rendering characteristic specifications, tolerances, measurement methods, sample plans, recommended SPC charts, and reaction plans in standalone/embeddable dark-themed HTML5 artifacts with row-level validation and PFMEA orphan linkage findings highlighted (#47).
 - FastMCP tool `render_controlplan_canvas` in `quality_mcp.tools.canvas` exposing Control Plan visual matrix canvas generation and validation summary metrics over Model Context Protocol endpoints (#47).
 - Re-export `render_controlplan_canvas` in `quality_mcp.tools`, register on `quality-mcp` FastMCP server, and export in package root (#47).

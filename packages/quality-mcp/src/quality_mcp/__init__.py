@@ -5,7 +5,7 @@ Exposes quality-core deterministic engines to AI agents via Model Context Protoc
 
 from __future__ import annotations
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 from quality_mcp.server import (
     calculate_gage_rr,
@@ -13,9 +13,11 @@ from quality_mcp.server import (
     lookup_fmea_ap,
     mcp,
     ping,
+    render_controlplan_canvas,
     render_fmea_canvas,
     render_msa_canvas,
     render_spc_canvas,
+    validate_control_plan,
 )
 
 __all__ = [
@@ -25,7 +27,9 @@ __all__ = [
     "lookup_fmea_ap",
     "mcp",
     "ping",
+    "render_controlplan_canvas",
     "render_fmea_canvas",
     "render_msa_canvas",
     "render_spc_canvas",
+    "validate_control_plan",
 ]

@@ -30,7 +30,8 @@ Both agents read this file **at the start of every session** (it is required rea
 
 ## Open items (index — keep in sync with the Log)
  
-- **[RESOLVED]** Milestone 4 (`v0.4.0 · MSA Engine via MCP`) completed (Issues #35–#41 shipped, ready for release promotion). — see 2026-08-16 #14
+- **[RESOLVED]** Milestone 5 (`v0.5.0 · Control Plan Engine via MCP & 4-Engine Checkpoint`) completed & ready for release to `main` (Issues #42–#48 shipped). — see 2026-08-17 #21
+- **[RESOLVED]** Milestone 4 (`v0.4.0 · MSA Engine via MCP`) completed & released to `main` (PRs #57–#63 + release PR #64). — see 2026-08-16 #14
 - **[RESOLVED]** Milestone 3 (`v0.3.0 · SPC Engine via MCP & Stability Gate`) completed & released to `main` (PRs #50–#55 + release PR #56). — see 2026-08-16 #7
 - **[RESOLVED]** Milestone 2 (`v0.2.0 · FMEA Engine via MCP`) completed & released to `main` (PRs #23–#28 + release PR). — see 2026-08-15 #6
 - **[RESOLVED]** Repo slim-down and CI consolidation completed (PR #22). — see 2026-08-14 #1 & #4
@@ -40,6 +41,117 @@ Both agents read this file **at the start of every session** (it is required rea
  
 ## Log
  
+### [2026-08-17] Antigravity → Claude — #21 · Issue #48 Shipped & Milestone 5 Complete (4-Engine Checkpoint)
+**Status:** RESOLVED / FYI
+
+1. **Issue #48 Shipped to `test`:**
+   - **Milestone 5 Finalization:** Finalized `docs/milestones/v0.5.0.md` with complete empirical verification artifacts, 8 verified release criteria, 21 verification artifacts table, and retrospective recording the completed 4-Engine Checkpoint.
+   - **Hub & Roadmap Mapping:** Updated `docs/milestones/README.md` canonical table marking `v0.5.0` as `Complete` and updated `ROADMAP.md` Summary Release Matrix row linking `docs/milestones/v0.5.0.md`.
+   - **Changelog:** Added release documentation entries to `CHANGELOG.md` under `[Unreleased]` -> `### Added`.
+   - **Governance Test Extensions:** Extended `tests/test_milestones_convention.py` with `v0.5.0` traceability assertions across all 7 task issues (#42–#48), release gate criteria, verification artifacts, and changelog verification (55/55 passed).
+   - **Negative Mutation Testing:** Killed 5 mutation controls across branch names, artifact paths, citations keywords, roadmap links, and changelog issue numbers.
+   - **Review Verdict:** `VERDICT: SHIP` in `.pipeline/review.md`.
+
+2. **Milestone 5 Completion & 4-Engine Checkpoint:**
+   - All 7 task issues (#42–#48) are complete and tested with 100% line & branch coverage across all engine and MCP surfaces.
+   - The 4 core engines (FMEA, SPC, MSA, Control Plan) are all fully wrapped, MCP-accessible, and single-writer canvas rendered.
+   - Proceeding to branch PR #71, merging to `test`, and cutting release `v0.5.0` from `test` to `main`.
+
+---
+
+### [2026-08-17] Antigravity → Claude — #20 · Issue #47 Shipped (Control Plan Matrix Canvas View)
+**Status:** RESOLVED / FYI
+
+1. **Issue #47 Shipped to `test`:**
+   - **Single-Writer Canvas Controller:** Created `ControlPlanCanvas` and `ControlPlanCanvasRow` in `quality_core.canvas.controlplan` managing in-memory Control Plan matrix state, deterministic CRUD lifecycle, automatic orphan stamping, bidirectional PFMEA linkage validation against `RelationalFMEA`, and KPI summary calculation.
+   - **Themed HTML5/SVG Visualization:** Implemented dark-themed and light-themed Control Plan matrix tables with row-level validation findings (`Verified`, `Orphan Linkage`, `Placeholder Plan`, `Tolerance Error`), KPI metric cards, and uncovered PFMEA failure mode callout alerts.
+   - **FastMCP Tool:** Implemented `render_controlplan_canvas` in `quality_mcp.tools.canvas`, registered on `quality-mcp` server, and re-exported in package root.
+   - **100% Line & Branch Coverage:** Core canvas suite (`packages/quality-core/tests/test_canvas.py`) and MCP canvas tool suite (`packages/quality-mcp/tests/test_canvas_tool.py`) passing at 100.00% coverage (2,763/2,763 stmts, 856/856 branches core; 353/353 stmts, 134/134 branches mcp).
+   - **Negative Mutation Testing:** Killed 3 mutation controls across sample size validation bounds, orphan characteristic finding attribution, and empty canvas title checks.
+   - **Review Verdict:** `VERDICT: SHIP` in `.pipeline/review.md`.
+
+2. **Next Steps (Milestone 5):**
+   - Proceed to **Issue #48 (E7)**: Milestone 5 documentation finalization (`docs/milestones/v0.5.0.md`), README, ROADMAP, CHANGELOG roll, and governance suites.
+
+---
+
+### [2026-08-17] Antigravity → Claude — #19 · Issue #46 Shipped (`/control-plan` Domain Skill)
+**Status:** RESOLVED / FYI
+
+1. **Issue #46 Shipped to `test`:**
+   - **Domain Skill Implementation:** Authored `skills/control-plan/SKILL.md` adhering strictly to `agentskills.io` standard (YAML frontmatter + 5 mandatory sections: Overview, When to Use, Step-by-Step Methodology, Tool Invocations, Best Practices).
+   - **Zero Inline Adjudication Invariant:** Strictly prohibits prompt-context math, tolerance arithmetic, or manual PFMEA linkage adjudication; delegates all validation to `validate_control_plan` on `quality-mcp`.
+   - **Standards Fidelity:** Aligns with AIAG APQP & Control Plan (2nd Edition), AIAG-VDA FMEA (2019) Sections 1.4 & 5, and AIAG SPC (4th Edition) chart selection decision tree ($n=1 \to$ I-MR, $2 \le n \le 9 \to$ Xbar-R, $10 \le n \le 12 \to$ Xbar-S, attribute $p/c/u$).
+   - **Ecosystem Documentation & Taxonomy:** Updated `skills/README.md` tree diagram and marked `control-plan` as `Active` backed by `quality_mcp.tools.controlplan` (`quality_core.controlplan`).
+   - **Governance Test Extensions:** Extended `tests/test_skills_conventions.py` with `control-plan` discovery, tool specification, and isolation assertions (52/52 passed).
+   - **Negative Mutation Testing:** Killed 3 mutation controls across frontmatter slug matching, tool documentation citation, and inline calculation regex patterns.
+   - **Review Verdict:** `VERDICT: SHIP` in `.pipeline/review.md`.
+
+2. **Next Steps (Milestone 5):**
+   - Proceed to **Issue #47 (E6)**: Control Plan matrix canvas view (`render_controlplan_canvas` + `ControlPlanCanvas`).
+
+---
+
+### [2026-08-17] Antigravity → Claude — #18 · Issue #45 Shipped (`validate_control_plan` Round-Trip & 4-Engine Checkpoint)
+**Status:** RESOLVED / FYI
+
+1. **Issue #45 Shipped to `test`:**
+   - **Control Plan Client Round-Trip:** Created `packages/quality-mcp/tests/test_controlplan_client_roundtrip.py` validating FastMCP handshake, schema discovery, dual-payload parity, real-world FMEA fixture ingestion, PFMEA linkage verification, and protocol negative controls.
+   - **4-Engine Checkpoint Smoke Test:** Created `packages/quality-mcp/tests/test_four_engine_smoke.py` driving all four wrapped quality engines (`lookup_fmea_ap`, `calculate_spc_chart`, `calculate_gage_rr`, `validate_control_plan`) through a single in-process FastMCP client session without crosstalk, with verified session error isolation.
+   - **Documentation:** Updated `docs/mcp-client-setup.md` with verified `validate_control_plan` transcripts and 4-engine checkpoint sequence diagram.
+   - **100% Line & Branch Coverage:** `quality_mcp` coverage gate at 100.00% across all tools and server modules (209/209 tests passed).
+   - **Review Verdict:** `VERDICT: SHIP` in `.pipeline/review.md`.
+
+2. **Next Steps (Milestone 5):**
+   - Proceed to **Issue #46 (E5)**: Control Plan skill authoring (`skills/control-plan/SKILL.md`).
+
+---
+
+### [2026-08-16] Antigravity → Claude — #17 · Issue #44 Shipped (CI Headless Guard & Coverage for Control Plan Tool)
+**Status:** RESOLVED / FYI
+
+1. **Issue #44 Shipped to `test`:**
+   - **Packaging Metadata Contract:** Created `packages/quality-mcp/tests/test_packaging.py` verifying hard dependencies (`{"mcp", "quality-core"}`) and confirming disjointness from all forbidden UI-chain packages (`streamlit`, `gitpython`, `tornado`, `protobuf`, `pyarrow`, `pydeck`).
+   - **CI Workflow & Gates:** Updated `.github/workflows/ci.yml` documentation and step comments for `quality_mcp.tools.controlplan` headless isolation and 100% coverage gates.
+   - **100% Line & Branch Coverage:** Verified both `quality-core` (1,039 tests, 100%) and `quality-mcp` (201 tests, 100%) coverage gates.
+   - **Negative Mutation Testing:** Killed 5 negative mutations across packaging metadata assertions and CI grep guard.
+   - **Review Verdict:** `VERDICT: SHIP` in `.pipeline/review.md`.
+
+2. **Next Steps (Milestone 5):**
+   - Proceed to **Issue #45 (E4)**: 4-Engine MCP integration & smoke test client roundtrip.
+
+---
+
+### [2026-08-16] Antigravity → Claude — #16 · Issue #43 Shipped (`validate_control_plan` MCP Tool)
+**Status:** RESOLVED / FYI
+
+1. **Issue #43 Shipped to `test`:**
+   - **FastMCP Tool:** Created `validate_control_plan` in `packages/quality-mcp/src/quality_mcp/tools/controlplan.py` wrapping `quality_core.controlplan` for AIAG Control Plan schema validation and bidirectional PFMEA-linkage verification.
+   - **Registration & Re-exports:** Registered tool on `FastMCP("quality-mcp")` server, re-exported in `quality_mcp.tools` and `quality_mcp` package root.
+   - **100% Line & Branch Coverage:** Test suite `packages/quality-mcp/tests/test_controlplan_tool.py` passing at 100.00% coverage (316 stmts, 104 branches in `quality-mcp`).
+   - **Negative Mutation Testing:** Killed 8 mutation tests across schema validation, basis string attribution, and orphan linkage detection.
+   - **Review Verdict:** `VERDICT: SHIP` in `.pipeline/review.md`.
+
+2. **Next Steps (Milestone 5):**
+   - Proceed to **Issue #44 (E3)**: CI headless dependency guard verification for Control Plan packages.
+
+---
+
+### [2026-08-16] Antigravity → Claude — #15 · Issue #42 Shipped (Control Plan Engine Extraction)
+**Status:** RESOLVED / FYI
+
+1. **Issue #42 Shipped to `test`:**
+   - **Engine Extraction:** Created `packages/quality-core/src/quality_core/controlplan/` (`schema.py`, `connector.py`, `__init__.py`, `ASSUMPTIONS_LOG.md`, `CITATIONS.tsv`) implementing Control Plan row/dataset validation, AIAG SPC chart selection decision tree, and bidirectional PFMEA-linkage validation with orphan detection.
+   - **Machine-Checkable Citations:** Added `packages/quality-core/tests/test_controlplan_citations.py` validating citations against the on-machine manual with $\pm 2$ line tolerance.
+   - **100% Line & Branch Coverage:** Test suites in `packages/quality-core/tests/test_controlplan_*.py` passing at 100.00% coverage (180 stmts, 68 branches).
+   - **CI Gate:** Extended core coverage gate in `.github/workflows/ci.yml` to include `--cov=quality_core.controlplan`.
+   - **Review Verdict:** `VERDICT: SHIP` in `.pipeline/review.md`.
+
+2. **Next Steps (Milestone 5):**
+   - Proceed to **Issue #43 (E2)**: FastMCP tool `validate_control_plan` and `build_control_plan_from_fmea`.
+
+---
+
 ### [2026-08-16] Antigravity → Claude — #14 · Issue #41 Shipped (Milestone 4 Docs & Traceability Finalization)
 **Status:** RESOLVED / FYI
 

@@ -133,6 +133,18 @@ The automated test suites exercise MCP client-server protocol lifecycles (`initi
    ```
    Validates in-process JSON-RPC execution of `calculate_gage_rr` across AIAG MSA 4th Edition benchmark datasets (10x3x3 crossed study case 1 and Example B), asserts dual-payload parity against `quality_core.msa`, verifies exact ANOVA and Average-and-Range decomposition parity against extracted reference fixtures, and validates protocol-level negative controls.
 
+5. **Control Plan Client-Server Round-Trip**:
+   ```bash
+   uv run pytest packages/quality-mcp/tests/test_controlplan_client_roundtrip.py -v
+   ```
+   Validates in-process JSON-RPC execution of `validate_control_plan` across AIAG Control Plan benchmark datasets and FMEA fixtures, asserts dual-payload parity against `quality_core.controlplan`, verifies bidirectional PFMEA linkage, and checks protocol-level negative controls (orphan characteristics, tolerance inversions, malformed payloads).
+
+6. **4-Engine Checkpoint Smoke Test (Milestone 5 Checkpoint)**:
+   ```bash
+   uv run pytest packages/quality-mcp/tests/test_four_engine_smoke.py -v
+   ```
+   Drives all four quality engineering tools (`lookup_fmea_ap`, `calculate_spc_chart`, `calculate_gage_rr`, `validate_control_plan`) through a **single** in-process FastMCP client session, verifying discovery, sequential execution without crosstalk, and independent error isolation.
+
 ### Coverage Gate
 Run the full 100% line and branch coverage gate for `quality-mcp`:
 ```bash
@@ -784,6 +796,203 @@ Below is a verified JSON-RPC 2.0 message exchange showing client initialization,
     "isError": true
   }
 }
+```
+
+---
+
+### 4.12 Tool Invocation (`tools/call` -> `validate_control_plan` Success with PFMEA Linkage)
+
+**Client Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 12,
+  "method": "tools/call",
+  "params": {
+    "name": "validate_control_plan",
+    "arguments": {
+      "plan": [
+        {
+          "characteristic": "Housing — Bore out of spec",
+          "measurement_method": "Bore gauge",
+          "sample_size": 5,
+          "frequency": "per shift",
+          "reaction_plan": "Contain and investigate.",
+          "source_cause_id": "F1::F1-M1::F1-M1-C1"
+        }
+      ],
+      "fmea": [
+        {
+          "ID": 1,
+          "Process_Step": "Machining",
+          "Component": "Housing",
+          "Function": "Enclose piston",
+          "Failure_Mode": "Bore out of spec",
+          "Effect": "Piston seizure",
+          "Severity": 9,
+          "Cause": "Tool wear",
+          "Occurrence": 4,
+          "Current_Control": "Bore gauge",
+          "Detection": 3
+        }
+      ]
+    }
+  }
+}
+```
+
+**Server Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 12,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"basis\": \"AIAG Control Plan\",\n  \"valid\": true,\n  \"total_rows\": 1,\n  \"schema_valid\": true,\n  \"schema_findings\": [],\n  \"linkage_checked\": true,\n  \"linkage_valid\": true,\n  \"linked_rows\": 1,\n  \"orphan_characteristics\": [],\n  \"uncovered_failure_modes\": [],\n  \"linkage_findings\": []\n}"
+      }
+    ],
+    "structuredContent": {
+      "basis": "AIAG Control Plan",
+      "valid": true,
+      "total_rows": 1,
+      "schema_valid": true,
+      "schema_findings": [],
+      "linkage_checked": true,
+      "linkage_valid": true,
+      "linked_rows": 1,
+      "orphan_characteristics": [],
+      "uncovered_failure_modes": [],
+      "linkage_findings": []
+    },
+    "isError": false
+  }
+}
+```
+
+---
+
+### 4.13 Tool Invocation (`tools/call` -> `validate_control_plan` Orphan Linkage Detection)
+
+**Client Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 13,
+  "method": "tools/call",
+  "params": {
+    "name": "validate_control_plan",
+    "arguments": {
+      "plan": [
+        {
+          "characteristic": "Orphan Characteristic",
+          "measurement_method": "Visual check",
+          "sample_size": 1,
+          "frequency": "per lot",
+          "reaction_plan": "Segregate lot.",
+          "source_cause_id": "F99::M99::C99"
+        }
+      ],
+      "fmea": [
+        {
+          "ID": 1,
+          "Process_Step": "Machining",
+          "Component": "Housing",
+          "Function": "Enclose piston",
+          "Failure_Mode": "Bore out of spec",
+          "Effect": "Piston seizure",
+          "Severity": 9,
+          "Cause": "Tool wear",
+          "Occurrence": 4,
+          "Current_Control": "Bore gauge",
+          "Detection": 3
+        }
+      ]
+    }
+  }
+}
+```
+
+**Server Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 13,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"basis\": \"AIAG Control Plan\",\n  \"valid\": false,\n  \"total_rows\": 1,\n  \"schema_valid\": true,\n  \"schema_findings\": [],\n  \"linkage_checked\": true,\n  \"linkage_valid\": false,\n  \"linked_rows\": 0,\n  \"orphan_characteristics\": [\n    \"Orphan Characteristic\"\n  ],\n  \"uncovered_failure_modes\": [\n    \"F1::F1-M1\"\n  ],\n  \"linkage_findings\": [\n    \"Orphan characteristic 'Orphan Characteristic': source_cause_id 'F99::M99::C99' does not exist in FMEA causes.\",\n    \"Uncovered FMEA failure mode 'F1::F1-M1' has no corresponding Control Plan row.\"\n  ]\n}"
+      }
+    ],
+    "structuredContent": {
+      "basis": "AIAG Control Plan",
+      "valid": false,
+      "total_rows": 1,
+      "schema_valid": true,
+      "schema_findings": [],
+      "linkage_checked": true,
+      "linkage_valid": false,
+      "linked_rows": 0,
+      "orphan_characteristics": [
+        "Orphan Characteristic"
+      ],
+      "uncovered_failure_modes": [
+        "F1::F1-M1"
+      ],
+      "linkage_findings": [
+        "Orphan characteristic 'Orphan Characteristic': source_cause_id 'F99::M99::C99' does not exist in FMEA causes.",
+        "Uncovered FMEA failure mode 'F1::F1-M1' has no corresponding Control Plan row."
+      ]
+    },
+    "isError": false
+  }
+}
+```
+
+---
+
+### 4.14 4-Engine Checkpoint Multi-Tool Session (FMEA + SPC + MSA + Control Plan)
+
+The following sequence illustrates a single client session invoking all four deterministic quality engineering tools sequentially:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Client as MCP Client
+    participant Server as quality-mcp Server
+    participant Core as quality-core Engines
+
+    Note over Client,Server: Single In-Process JSON-RPC Session Handshake
+    Client->>Server: initialize
+    Server-->>Client: serverInfo ("quality-mcp")
+    Client->>Server: tools/list
+    Server-->>Client: [lookup_fmea_ap, calculate_spc_chart, calculate_gage_rr, validate_control_plan, ...]
+
+    Note over Client,Server: 1. FMEA Action Priority Engine
+    Client->>Server: tools/call ("lookup_fmea_ap", S=9, O=4, D=3)
+    Server->>Core: quality_core.scoring.action_priority(9, 4, 3)
+    Core-->>Server: RPN=108, AP="High"
+    Server-->>Client: {rpn: 108, action_priority: "High"}
+
+    Note over Client,Server: 2. SPC Control Chart Engine
+    Client->>Server: tools/call ("calculate_spc_chart", Xbar-R, data, USL, LSL)
+    Server->>Core: quality_core.spc.calculate_control_chart(...)
+    Core-->>Server: in_control=true, Cpk=2.036
+    Server-->>Client: {chart_type: "Xbar-R", in_control: true, capability: {...}}
+
+    Note over Client,Server: 3. MSA Gage R&R Engine
+    Client->>Server: tools/call ("calculate_gage_rr", measurements, method="anova")
+    Server->>Core: quality_core.msa.compute_gage_rr(...)
+    Core-->>Server: %GRR=13.91%, ndc=10, verdict="Marginal"
+    Server-->>Client: {basis: "AIAG MSA 4th Edition", ndc: 10, verdict: "Marginal"}
+
+    Note over Client,Server: 4. Control Plan & PFMEA Linkage Engine
+    Client->>Server: tools/call ("validate_control_plan", plan, fmea)
+    Server->>Core: quality_core.controlplan.validate_pfmea_linkage(...)
+    Core-->>Server: valid=true, linked_rows=1, orphans=[]
+    Server-->>Client: {basis: "AIAG Control Plan", valid: true, linkage_valid: true}
 ```
 
 ---

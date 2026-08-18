@@ -8,6 +8,33 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-17
+
+### Added
+- Finalized Milestone 5 documentation in `docs/milestones/v0.5.0.md` with complete verification artifacts, 4-Engine Checkpoint empirical evidence, retrospective, and test evidence for Epics E1–E7 (#48).
+- Updated `docs/milestones/README.md` canonical mapping table marking `v0.5.0` as Complete and updated `ROADMAP.md` Summary Release Matrix linking `docs/milestones/v0.5.0.md` (#48).
+- Extended milestone governance test suite `tests/test_milestones_convention.py` with `v0.5.0` traceability assertions across all 7 task issues (#42–#48), release gate criteria, verification artifacts, and changelog verification (#48).
+- Single-writer visual Control Plan matrix canvas controller `ControlPlanCanvas` and `ControlPlanCanvasRow` in `quality_core.canvas.controlplan` rendering characteristic specifications, tolerances, measurement methods, sample plans, recommended SPC charts, and reaction plans in standalone/embeddable dark-themed HTML5 artifacts with row-level validation and PFMEA orphan linkage findings highlighted (#47).
+- FastMCP tool `render_controlplan_canvas` in `quality_mcp.tools.canvas` exposing Control Plan visual matrix canvas generation and validation summary metrics over Model Context Protocol endpoints (#47).
+- Re-export `render_controlplan_canvas` in `quality_mcp.tools`, register on `quality-mcp` FastMCP server, and export in package root (#47).
+- AIAG APQP & Control Plan (2nd Edition) domain skill in `skills/control-plan/SKILL.md` guiding Control Plan structure audits, tolerance coherence checks, PFMEA bidirectional cause linkage verification, and SPC chart selection via `validate_control_plan` on `quality-mcp` with zero inline adjudication (#46).
+- Updated `skills/README.md` directory structure and taxonomy table marking `control-plan` as Active (#46).
+- Extended skills governance test suite `tests/test_skills_conventions.py` with `control-plan` discovery, tool specification, and isolation assertions (#46).
+- In-process JSON-RPC FastMCP client-server round-trip test suite `packages/quality-mcp/tests/test_controlplan_client_roundtrip.py` validating dual-payload parity, real-world Control Plan fixtures, PFMEA linkage, and protocol negative controls (#45).
+- End-to-end Milestone 5 4-Engine Checkpoint smoke test suite `packages/quality-mcp/tests/test_four_engine_smoke.py` validating sequential execution and error isolation of all four wrapped engines (FMEA, SPC, MSA, Control Plan) in a single FastMCP client session (#45).
+- Updated MCP client configuration guide `docs/mcp-client-setup.md` with verified `validate_control_plan` JSON-RPC transcripts, PFMEA linkage findings, and 4-Engine Checkpoint sequence diagram (#45).
+- Dedicated packaging metadata test `packages/quality-mcp/tests/test_packaging.py` asserting headless dependencies and zero UI-chain packages in `quality-mcp` (#44).
+- FastMCP tool `validate_control_plan` in `quality_mcp.tools.controlplan` wrapping `quality_core.controlplan` deterministic engines for AIAG Control Plan schema validation and bidirectional PFMEA linkage checking (#43).
+- Re-export `validate_control_plan` in `quality_mcp.tools`, register on `quality-mcp` FastMCP server, and export in package root (#43).
+- Comprehensive unit and integration test suite in `packages/quality-mcp/tests/test_controlplan_tool.py` achieving 100% line & branch coverage across `quality_mcp.tools.controlplan` with schema error handling, orphan linkage negative controls, and FastMCP round-trip validation (#43).
+- Extracted Control Plan engine and PFMEA-linkage validator from source repository into `packages/quality-core/src/quality_core/controlplan/` (`schema.py`, `connector.py`, `ASSUMPTIONS_LOG.md`, `CITATIONS.tsv`) with AIAG APQP & Control Plan and SPC decision-tree standards fidelity (#42).
+- Machine-checkable citation verification test `packages/quality-core/tests/test_controlplan_citations.py` validating citation entries against on-machine reference manual (#42).
+- Comprehensive test suites `packages/quality-core/tests/test_controlplan_schema.py`, `packages/quality-core/tests/test_controlplan_connector.py`, and `packages/quality-core/tests/test_controlplan_linkage.py` enforcing 100% line & branch coverage across `quality_core.controlplan` (#42).
+
+### Changed
+- Extended CI headless dependency guard and FastMCP coverage gate documentation in `.github/workflows/ci.yml` to assert `quality_mcp.tools.controlplan` coverage and zero UI-chain dependencies (#44).
+- Extended core coverage gate in `.github/workflows/ci.yml` to include `--cov=quality_core.controlplan` at 100% line & branch enforcement (#42).
+
 ## [0.4.0] - 2026-08-16
 
 ### Added

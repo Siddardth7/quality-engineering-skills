@@ -12,12 +12,14 @@ from quality_mcp import __version__
 from quality_mcp.server import (
     calculate_gage_rr,
     calculate_spc_chart,
+    categorize_fishbone,
     lookup_fmea_ap,
     main,
     mcp,
     ping,
     render_5why_canvas,
     render_controlplan_canvas,
+    render_fishbone_canvas,
     render_fmea_canvas,
     render_is_is_not_canvas,
     render_isisnot_canvas,
@@ -52,15 +54,19 @@ def test_mcp_instance_configuration() -> None:
     tool_names = [tool.name for tool in tools]
     assert "ping" in tool_names
     assert "lookup_fmea_ap" in tool_names
+    assert "render_5why_canvas" in tool_names
     assert "render_controlplan_canvas" in tool_names
+    assert "render_fishbone_canvas" in tool_names
     assert "render_fmea_canvas" in tool_names
+    assert "render_isisnot_canvas" in tool_names
     assert "render_msa_canvas" in tool_names
     assert "render_spc_canvas" in tool_names
     assert "calculate_spc_chart" in tool_names
     assert "calculate_gage_rr" in tool_names
-    assert "validate_control_plan" in tool_names
+    assert "categorize_fishbone" in tool_names
     assert "scope_is_is_not" in tool_names
-    assert "render_isisnot_canvas" in tool_names
+    assert "validate_5why" in tool_names
+    assert "validate_control_plan" in tool_names
 
     # Verify tool execution via FastMCP interface
     _, content = asyncio.run(mcp.call_tool("ping", {}))
@@ -130,6 +136,26 @@ def test_mcp_instance_configuration() -> None:
     assert kt_canvas_content["verdict"] == "ACCEPT"
     assert "html" in kt_canvas_content
 
+    _, why_content = asyncio.run(mcp.call_tool("validate_5why", {}))
+    assert why_content["valid"] is True
+    assert why_content["verdict"] == "ACCEPT"
+    assert why_content["total_steps"] == 5
+
+    _, why_canvas_content = asyncio.run(mcp.call_tool("render_5why_canvas", {}))
+    assert why_canvas_content["rows_count"] == 5
+    assert why_canvas_content["verdict"] == "ACCEPT"
+    assert "html" in why_canvas_content
+
+    _, fishbone_content = asyncio.run(mcp.call_tool("categorize_fishbone", {}))
+    assert fishbone_content["valid"] is True
+    assert fishbone_content["verdict"] == "ACCEPT"
+    assert fishbone_content["total_causes"] == 12
+
+    _, fishbone_canvas_content = asyncio.run(mcp.call_tool("render_fishbone_canvas", {}))
+    assert fishbone_canvas_content["rows_count"] == 12
+    assert fishbone_canvas_content["verdict"] == "ACCEPT"
+    assert "html" in fishbone_canvas_content
+
 
 def test_main_invokes_mcp_run() -> None:
     """main() entry point must call mcp.run() once."""
@@ -148,24 +174,24 @@ def test_main_dunder_execution() -> None:
 
 
 def test_package_exports() -> None:
-    """Package root __init__.py must re-export mcp, ping, lookup_fmea_ap, render_controlplan_canvas, render_fmea_canvas, render_msa_canvas, render_spc_canvas, calculate_spc_chart, calculate_gage_rr, validate_control_plan, scope_is_is_not, render_isisnot_canvas, render_is_is_not_canvas, and __version__ correctly."""
+    """Package root __init__.py must re-export mcp, ping, lookup_fmea_ap, render_controlplan_canvas, render_fmea_canvas, render_msa_canvas, render_spc_canvas, calculate_spc_chart, calculate_gage_rr, validate_control_plan, scope_is_is_not, render_isisnot_canvas, render_is_is_not_canvas, categorize_fishbone, render_fishbone_canvas, and __version__ correctly."""
     assert quality_mcp.mcp is mcp
     assert quality_mcp.ping is ping
     assert quality_mcp.lookup_fmea_ap is lookup_fmea_ap
     assert quality_mcp.render_5why_canvas is render_5why_canvas
     assert quality_mcp.render_controlplan_canvas is render_controlplan_canvas
+    assert quality_mcp.render_fishbone_canvas is render_fishbone_canvas
     assert quality_mcp.render_fmea_canvas is render_fmea_canvas
     assert quality_mcp.render_msa_canvas is render_msa_canvas
     assert quality_mcp.render_spc_canvas is render_spc_canvas
     assert quality_mcp.calculate_spc_chart is calculate_spc_chart
     assert quality_mcp.calculate_gage_rr is calculate_gage_rr
+    assert quality_mcp.categorize_fishbone is categorize_fishbone
     assert quality_mcp.validate_5why is validate_5why
     assert quality_mcp.validate_control_plan is validate_control_plan
     assert quality_mcp.scope_is_is_not is scope_is_is_not
     assert quality_mcp.render_isisnot_canvas is render_isisnot_canvas
     assert quality_mcp.render_is_is_not_canvas is render_is_is_not_canvas
-    assert hasattr(quality_mcp, "categorize_fishbone")
-    assert hasattr(quality_mcp, "render_fishbone_canvas")
     assert quality_mcp.__version__ == "0.5.0"
     assert set(quality_mcp.__all__) == {
         "__version__",

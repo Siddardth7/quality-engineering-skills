@@ -1,4 +1,4 @@
-"""Test suite for milestone documentation, SemVer naming, and governance conventions (#7, #21, #34, #41, #48).
+"""Test suite for milestone documentation, SemVer naming, and governance conventions (#7, #21, #34, #41, #48, #80).
 
 Validates:
 1. Presence of docs/milestones/ directory and README.md governance documentation.
@@ -9,11 +9,12 @@ Validates:
 6. Milestone 3 (v0.3.0.md) Epic definitions (E1-E6), Issue traceability (#29 through #34), and branch mapping.
 7. Milestone 4 (v0.4.0.md) Epic definitions (E1-E7), Issue traceability (#35 through #41), and branch mapping.
 8. Milestone 5 (v0.5.0.md) Epic definitions (E1-E7), Issue traceability (#42 through #48), and branch mapping.
-9. Real MCP client release gate, 4-engine checkpoint, and verification artifacts cataloging.
-10. Summary Release Matrix table link updates in ROADMAP.md for v0.1.0 through v0.5.0.
-11. Markdown relative link resolution against repository filesystem.
-12. CHANGELOG.md entry formatting under [Unreleased] -> Added (#7, #21, #34, #41, #48).
-13. Negative controls: detection of invalid filenames, missing sections, invalid issue URLs, and broken links.
+9. Milestone 6 (v0.6.0.md) Epic definitions (E0-E6), Issue traceability (#74 through #80), and branch mapping.
+10. Real MCP client release gate, 4-engine checkpoint, and verification artifacts cataloging.
+11. Summary Release Matrix table link updates in ROADMAP.md for v0.1.0 through v0.6.0.
+12. Markdown relative link resolution against repository filesystem.
+13. CHANGELOG.md entry formatting under [Unreleased] -> Added (#7, #21, #34, #41, #48, #80).
+14. Negative controls: detection of invalid filenames, missing sections, invalid issue URLs, broken links, missing epics/issues/artifacts, and corrupted branch names.
 """
 
 from __future__ import annotations
@@ -32,6 +33,7 @@ _V020_MILESTONE = _MILESTONES_DIR / "v0.2.0.md"
 _V030_MILESTONE = _MILESTONES_DIR / "v0.3.0.md"
 _V040_MILESTONE = _MILESTONES_DIR / "v0.4.0.md"
 _V050_MILESTONE = _MILESTONES_DIR / "v0.5.0.md"
+_V060_MILESTONE = _MILESTONES_DIR / "v0.6.0.md"
 _ROADMAP = _REPO_ROOT / "ROADMAP.md"
 _CHANGELOG = _REPO_ROOT / "CHANGELOG.md"
 
@@ -513,6 +515,100 @@ def test_roadmap_links_v050_milestone() -> None:
     )
 
 
+def test_v060_milestone_epics_and_issues_traceability() -> None:
+    """Verify docs/milestones/v0.6.0.md defines Epics E0-E6 and links issues #74 through #80 with branch names."""
+    assert _V060_MILESTONE.is_file(), f"Missing milestone v0.6.0 file: {_V060_MILESTONE}"
+    content = _V060_MILESTONE.read_text(encoding="utf-8")
+
+    # Verify all 7 Epics are present (E0 through E6)
+    for epic_num in range(0, 7):
+        assert f"Epic {epic_num} (E{epic_num})" in content or f"E{epic_num}:" in content, (
+            f"Missing Epic {epic_num} in v0.6.0.md"
+        )
+
+    # Verify all 7 issues are present with canonical URLs and branch names
+    issue_tuples = _extract_issue_urls(content)
+    issue_numbers = {num for _, num in issue_tuples}
+
+    expected_issues = {
+        74: "chore/rca-literature-citations-74",
+        75: "feat/rca-engine-scaffold-schema-75",
+        76: "feat/rca-5why-validator-76",
+        77: "feat/rca-fishbone-engine-77",
+        78: "feat/rca-is-isnot-engine-78",
+        79: "feat/rca-unified-pipeline-79",
+        80: "feat/rca-suite-closeout-80",
+    }
+
+    for expected_issue, branch_name in expected_issues.items():
+        assert expected_issue in issue_numbers, f"Missing issue #{expected_issue} in v0.6.0.md"
+        expected_url = f"https://github.com/Siddardth7/quality-engineering-skills/issues/{expected_issue}"
+        assert expected_url in content, f"Missing canonical URL for issue #{expected_issue}: {expected_url}"
+        assert branch_name in content, f"Missing branch {branch_name} for issue #{expected_issue} in v0.6.0.md"
+
+
+def test_v060_milestone_release_gate_and_artifacts() -> None:
+    """Verify v0.6.0.md specifies the release gate criteria and catalogs verification artifacts."""
+    assert _V060_MILESTONE.is_file(), f"Missing milestone v0.6.0 file: {_V060_MILESTONE}"
+    content = _V060_MILESTONE.read_text(encoding="utf-8")
+
+    # Release gate criteria
+    assert "validate_5why" in content
+    assert "categorize_fishbone" in content
+    assert "scope_is_is_not" in content
+    assert "render_5why_canvas" in content
+    assert "render_fishbone_canvas" in content
+    assert "render_isisnot_canvas" in content
+    assert "5why-root-cause" in content
+    assert "fishbone-analysis" in content
+    assert "is-is-not-scoping" in content
+    assert "100%" in content
+    assert "CITATIONS.tsv" in content
+
+    # Key verification artifacts cataloged
+    expected_artifacts = [
+        "packages/quality-core/src/quality_core/rca/five_why.py",
+        "packages/quality-core/src/quality_core/rca/fishbone.py",
+        "packages/quality-core/src/quality_core/rca/is_is_not.py",
+        "packages/quality-core/src/quality_core/rca/schema.py",
+        "packages/quality-core/src/quality_core/rca/ASSUMPTIONS_LOG.md",
+        "packages/quality-core/src/quality_core/rca/CITATIONS.tsv",
+        "packages/quality-core/src/quality_core/canvas/rca.py",
+        "packages/quality-core/tests/test_five_why_engine.py",
+        "packages/quality-core/tests/test_five_why_scorecard.py",
+        "packages/quality-core/tests/test_fishbone_engine.py",
+        "packages/quality-core/tests/test_fishbone_scorecard.py",
+        "packages/quality-core/tests/test_is_is_not_engine.py",
+        "packages/quality-core/tests/test_is_is_not_scorecard.py",
+        "packages/quality-core/tests/test_rca_schema.py",
+        "packages/quality-core/tests/test_rca_canvas.py",
+        "packages/quality-core/tests/test_rca_citations.py",
+        "packages/quality-mcp/src/quality_mcp/tools/rca.py",
+        "packages/quality-mcp/src/quality_mcp/tools/canvas.py",
+        "packages/quality-mcp/tests/test_rca_tools.py",
+        "packages/quality-mcp/tests/test_rca_client_roundtrip.py",
+        "skills/5why-root-cause/SKILL.md",
+        "skills/fishbone-analysis/SKILL.md",
+        "skills/is-is-not-scoping/SKILL.md",
+        "docs/mcp-client-setup.md",
+        "tests/test_skills_conventions.py",
+        "tests/test_milestones_convention.py",
+        ".github/workflows/ci.yml",
+    ]
+    for artifact in expected_artifacts:
+        assert artifact in content, f"Missing expected verification artifact in v0.6.0.md: {artifact}"
+
+
+def test_roadmap_links_v060_milestone() -> None:
+    """Verify ROADMAP.md links v0.6.0 in Summary Release Matrix to docs/milestones/v0.6.0.md."""
+    assert _ROADMAP.is_file(), f"Missing ROADMAP: {_ROADMAP}"
+    content = _ROADMAP.read_text(encoding="utf-8")
+
+    assert "[**`v0.6.0`**](docs/milestones/v0.6.0.md)" in content or "[`v0.6.0`](docs/milestones/v0.6.0.md)" in content, (
+        "ROADMAP.md Summary Release Matrix must link v0.6.0 to docs/milestones/v0.6.0.md"
+    )
+
+
 def test_milestones_markdown_links_resolve() -> None:
     """Verify all relative markdown links in docs/milestones/*.md resolve to existing repository files."""
     for md_file in _MILESTONES_DIR.glob("*.md"):
@@ -525,7 +621,7 @@ def test_milestones_markdown_links_resolve() -> None:
 
 
 def test_changelog_entry_unreleased() -> None:
-    """Verify CHANGELOG.md contains the issue #7, #21, #34, #41, and #48 entries under [0.1.0], [0.2.0], [0.3.0], [0.4.0], [0.5.0], or [Unreleased]."""
+    """Verify CHANGELOG.md contains the issue #7, #21, #34, #41, #48, and #80 entries under [0.1.0], [0.2.0], [0.3.0], [0.4.0], [0.5.0], or [Unreleased]."""
     assert _CHANGELOG.is_file(), f"Missing CHANGELOG file: {_CHANGELOG}"
     content = _CHANGELOG.read_text(encoding="utf-8")
 
@@ -534,12 +630,14 @@ def test_changelog_entry_unreleased() -> None:
     assert "#34" in content, "CHANGELOG.md must reference issue #34"
     assert "#41" in content, "CHANGELOG.md must reference issue #41"
     assert "#48" in content, "CHANGELOG.md must reference issue #48"
+    assert "#80" in content, "CHANGELOG.md must reference issue #80"
     assert "docs/milestones/README.md" in content
     assert "docs/milestones/v0.1.0.md" in content
     assert "docs/milestones/v0.2.0.md" in content
     assert "docs/milestones/v0.3.0.md" in content
     assert "docs/milestones/v0.4.0.md" in content
     assert "docs/milestones/v0.5.0.md" in content
+    assert "docs/milestones/v0.6.0.md" in content
     assert "tests/test_milestones_convention.py" in content
 
 
@@ -602,3 +700,46 @@ def test_negative_control_broken_relative_link_detection(tmp_path: Path) -> None
     resolved_paths = _resolve_relative_links(test_file, content)
     assert len(resolved_paths) == 1
     assert not resolved_paths[0].exists(), "Non-existent path must be detected as not existing"
+
+
+def test_negative_control_v060_missing_epic_or_issue_rejected() -> None:
+    """Negative control: assert missing Epic or Issue in v0.6.0.md content is detected."""
+    content = _V060_MILESTONE.read_text(encoding="utf-8")
+
+    # Mutate by removing Epic 0
+    mutated_no_e0 = content.replace("Epic 0 (E0)", "Removed Epic 0")
+    assert "Epic 0 (E0)" not in mutated_no_e0
+
+    # Mutate by removing issue #80
+    mutated_no_issue80 = content.replace("https://github.com/Siddardth7/quality-engineering-skills/issues/80", "")
+    extracted = _extract_issue_urls(mutated_no_issue80)
+    issue_nums = {num for _, num in extracted}
+    assert 80 not in issue_nums
+
+
+def test_negative_control_v060_corrupted_branch_name_rejected() -> None:
+    """Negative control: assert altered or corrupted feature branch name in v0.6.0.md is detected."""
+    content = _V060_MILESTONE.read_text(encoding="utf-8")
+    mutated = content.replace("feat/rca-suite-closeout-80", "feat/rca-corrupted-branch-99")
+    assert "feat/rca-suite-closeout-80" not in mutated
+
+
+def test_negative_control_v060_missing_artifact_rejected() -> None:
+    """Negative control: assert missing critical verification artifact in v0.6.0.md is detected."""
+    content = _V060_MILESTONE.read_text(encoding="utf-8")
+    mutated = content.replace("packages/quality-mcp/tests/test_rca_client_roundtrip.py", "")
+    assert "packages/quality-mcp/tests/test_rca_client_roundtrip.py" not in mutated
+
+
+def test_negative_control_roadmap_missing_v060_rejected() -> None:
+    """Negative control: assert ROADMAP missing v0.6.0 link is detected."""
+    content = _ROADMAP.read_text(encoding="utf-8")
+    mutated = content.replace("[**`v0.6.0`**](docs/milestones/v0.6.0.md)", "**`v0.6.0`**")
+    assert "[**`v0.6.0`**](docs/milestones/v0.6.0.md)" not in mutated
+
+
+def test_negative_control_changelog_missing_issue_80_rejected() -> None:
+    """Negative control: assert CHANGELOG missing #80 reference is detected."""
+    content = _CHANGELOG.read_text(encoding="utf-8")
+    mutated = content.replace("#80", "#999")
+    assert "#80" not in mutated

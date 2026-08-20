@@ -63,6 +63,7 @@ def _csv_buf(rows: list[dict[str, Any]], name: str = "upload.csv") -> io.BytesIO
 def test_rca_module_all_exports() -> None:
     expected_exports = {
         "AntiPatternFinding",
+        "CandidateCause",
         "FIVE_WHY_SCHEMA",
         "FiveWhyChain",
         "FiveWhyLinkEval",
@@ -83,8 +84,10 @@ def test_rca_module_all_exports() -> None:
         "IS_IS_NOT_SCHEMA",
         "IsIsNotMatrix",
         "IsIsNotRow",
+        "IsIsNotScopingResult",
         "KTDimension",
         "load_is_is_not_csv",
+        "scope_is_is_not",
         "validate_is_is_not",
         "IngestError",
     }

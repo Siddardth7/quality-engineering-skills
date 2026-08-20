@@ -18,7 +18,12 @@ from quality_core.canvas import (
     SPCCanvas,
 )
 
-from quality_mcp.tools.rca import render_5why_canvas, render_fishbone_canvas
+from quality_mcp.tools.rca import (
+    render_5why_canvas,
+    render_fishbone_canvas,
+    render_is_is_not_canvas,
+    render_isisnot_canvas,
+)
 
 
 def render_fmea_canvas(
@@ -457,6 +462,8 @@ __all__ = [
     "render_controlplan_canvas",
     "render_fishbone_canvas",
     "render_fmea_canvas",
+    "render_is_is_not_canvas",
+    "render_isisnot_canvas",
     "render_msa_canvas",
     "render_spc_canvas",
 ]

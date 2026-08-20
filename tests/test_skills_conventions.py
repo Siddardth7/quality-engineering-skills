@@ -165,7 +165,7 @@ def test_skills_readme_exists_and_documents_conventions() -> None:
 
 
 def test_discoverable_skill_directories_exist() -> None:
-    """At least _template, mcp-health, fmea-reviewer, spc-control-charts, msa-gauge-rr, control-plan, 5why-root-cause, and fishbone-analysis skill directories must exist."""
+    """At least _template, mcp-health, fmea-reviewer, spc-control-charts, msa-gauge-rr, control-plan, 5why-root-cause, fishbone-analysis, and is-is-not-scoping skill directories must exist."""
     skill_dirs = _discover_skill_directories()
     dir_names = {d.name for d in skill_dirs}
     assert "_template" in dir_names, "skills/_template directory missing"
@@ -176,6 +176,7 @@ def test_discoverable_skill_directories_exist() -> None:
     assert "control-plan" in dir_names, "skills/control-plan directory missing"
     assert "5why-root-cause" in dir_names, "skills/5why-root-cause directory missing"
     assert "fishbone-analysis" in dir_names, "skills/fishbone-analysis directory missing"
+    assert "is-is-not-scoping" in dir_names, "skills/is-is-not-scoping directory missing"
 
 
 @pytest.mark.parametrize(
@@ -274,6 +275,22 @@ def test_fishbone_analysis_skill_specifies_tools() -> None:
     assert "CQI-20" in content or "ASQ" in content or "AIAG" in content, "fishbone-analysis skill must cite CQI-20, ASQ, or AIAG"
 
 
+def test_is_is_not_scoping_skill_specifies_tools() -> None:
+    """skills/is-is-not-scoping/SKILL.md must document scope_is_is_not and render_isisnot_canvas tools, reference quality-mcp, and cite Kepner-Tregoe."""
+    is_is_not_file = _SKILLS_DIR / "is-is-not-scoping" / "SKILL.md"
+    assert is_is_not_file.exists(), "skills/is-is-not-scoping/SKILL.md does not exist"
+    content = is_is_not_file.read_text(encoding="utf-8")
+    assert "scope_is_is_not" in content, "is-is-not-scoping skill must document scope_is_is_not tool"
+    assert "render_isisnot_canvas" in content or "render_is_is_not_canvas" in content, (
+        "is-is-not-scoping skill must document render_isisnot_canvas tool"
+    )
+    assert "quality-mcp" in content, "is-is-not-scoping skill must reference quality-mcp"
+    assert "Kepner" in content or "Tregoe" in content, "is-is-not-scoping skill must cite Kepner-Tregoe"
+    assert "WHAT" in content and "WHERE" in content and "WHEN" in content and "EXTENT" in content, (
+        "is-is-not-scoping skill must cite 4 KT dimensions"
+    )
+
+
 def test_claude_skills_isolation() -> None:
     """.claude/skills/ must remain segregated from domain skills/."""
     if not _CLAUDE_SKILLS_DIR.exists():
@@ -288,6 +305,7 @@ def test_claude_skills_isolation() -> None:
     assert "control-plan" not in claude_dirs, "control-plan domain skill leaked into .claude/skills/"
     assert "5why-root-cause" not in claude_dirs, "5why-root-cause domain skill leaked into .claude/skills/"
     assert "fishbone-analysis" not in claude_dirs, "fishbone-analysis domain skill leaked into .claude/skills/"
+    assert "is-is-not-scoping" not in claude_dirs, "is-is-not-scoping domain skill leaked into .claude/skills/"
 
 
 

@@ -8,6 +8,13 @@ diagrams, and Kepner-Tregoe Is/Is-Not scoping matrices.
 
 from __future__ import annotations
 
+from quality_core.rca.five_why import (
+    AntiPatternFinding,
+    FiveWhyLinkEval,
+    FiveWhyValidationResult,
+    SystemicAssessment,
+    validate_five_why_chain,
+)
 from quality_core.rca.schema import (
     FISHBONE_SCHEMA,
     FIVE_WHY_SCHEMA,
@@ -31,11 +38,16 @@ from quality_core.rca.schema import (
 
 __all__ = [
     # 5-Why
+    "AntiPatternFinding",
     "FIVE_WHY_SCHEMA",
     "FiveWhyChain",
+    "FiveWhyLinkEval",
     "FiveWhyStep",
+    "FiveWhyValidationResult",
+    "SystemicAssessment",
     "load_five_why_csv",
     "validate_five_why",
+    "validate_five_why_chain",
     # Fishbone
     "Category6M",
     "FISHBONE_SCHEMA",
@@ -53,3 +65,4 @@ __all__ = [
     # Error
     "IngestError",
 ]
+

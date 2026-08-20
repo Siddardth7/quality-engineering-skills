@@ -22,3 +22,8 @@ RULE 3	1771	Also called the "5-Why", "Repeated Why" & "3-Legged 5-Why" tool. The
 RULE 3	1774	Going back up the Why-Why replacing "Why" with "therefore" is a good technique to evaluate the Why-Why.
 RULE 3	2003	Essentially, this involves asking "why" of the root cause until the cause is established.
 RULE 3	2004	root of the root cause. The question can be asked more or less 5 times, it doesn't have to be 5!
+RULE 4	29531	Don’t stop when you reach a “who.” Keep asking why. “Whos” are convenient ways to point fingers, but they are not root causes.
+RULE 4	29533	The longer the chain of causes to the end point, the more likely it is that the end point deals with system issues such as management policies. These deeper causes usually lead to a more complete, fundamental solution to a problem. Addressing causes that arise early in the chain often amounts to applying a Band-Aid; addressing deeper causes provides long-term solutions to the problem.
+RULE 4	1991	there is normally a procedure, a policy, or a (systemic) practice that has allowed you pass. We call this the 'root cause of the root cause.' This must be established and resolved.
+RULE 4	2026	These systemic problems need to be fixed. The goal is to change the system that allowed the problem to occur in the first place and prevent problems from arising similar.
+RULE 4	1685	The systemic root cause(s) addresses, "Why did the system or planning process fail to identify the cause of the problem and the non-discovery?" The systemic root cause typically is understood last and diligence is required to address thoroughly.

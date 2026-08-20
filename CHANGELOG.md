@@ -9,7 +9,13 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- Deterministic 5-Why Root Cause Analysis (RCA) validator engine in `quality_core.rca.five_why` (`validate_five_why_chain`, `FiveWhyValidationResult`, `FiveWhyLinkEval`, `AntiPatternFinding`, `SystemicAssessment`) evaluating forward drill-down, reverse "therefore" logic necessity (AIAG CQI-20 RULE 3), anti-pattern detection (circular reasoning, superficial/blame-terminal operator causes per ASQ Quality Toolbox & Ford Global 8D RULE 4, premature termination, non-causal jumps), systemic classification, and reversibility scoring (#76).
+- Single-writer visual 5-Why canvas controller `FiveWhyCanvas` and `FiveWhyCanvasStep` in `quality_core.canvas.rca` supporting step CRUD, benchmark Ford Global 8D bearing induction sample dataset, reverse check flow, anti-pattern badges, and dark/light themed HTML canvas rendering (#76).
+- FastMCP tools `validate_5why` and `render_5why_canvas` in `quality_mcp.tools.rca` and `quality_mcp.tools.canvas` registered on `quality-mcp` FastMCP server (#76).
+- Reversible 5-Why Root Cause Analysis domain skill in `skills/5why-root-cause/SKILL.md` adhering to agentskills.io standard with 5 mandatory H2 sections and Zero Inline Math / Zero Inline Adjudication invariant (#76).
+- Extended standards assumptions log and citation manifest in `packages/quality-core/src/quality_core/rca/` (`ASSUMPTIONS_LOG.md`, `CITATIONS.tsv`) with RULE 4 citations from ASQ Quality Toolbox, Ford Global 8D, and AIAG CQI-20 (#76).
 - Root Cause Analysis (RCA) engine scaffold and shared schema in `quality_core.rca` (`FiveWhyStep`, `FiveWhyChain`, `FIVE_WHY_SCHEMA`, `Category6M`, `FishboneCause`, `FishboneDataset`, `FISHBONE_SCHEMA`, `KTDimension`, `IsIsNotRow`, `IsIsNotMatrix`, `IS_IS_NOT_SCHEMA`) with 5-Why sequential step validation, 6M Fishbone category alias normalization, Kepner-Tregoe 4-dimension scoping, and CSV upload validation (#75).
+
 - Standards-grounded assumptions and citation manifest in `packages/quality-core/src/quality_core/rca/` (`ASSUMPTIONS_LOG.md`, `CITATIONS.tsv`) covering Ishikawa 6M taxonomy, Kepner-Tregoe Problem Analysis, and AIAG CQI-20 / Ford G8D 5-Why logic (#75).
 - Reference material procurement and citation scaffold for Milestone 6 Root Cause Analysis (RCA) suite (`packages/quality-core/src/quality_core/rca/ASSUMPTIONS_LOG.md` and `packages/quality-core/src/quality_core/rca/CITATIONS.tsv`) (#74).
 - Per-domain reference manual path mapping in `CLAUDE.md` covering MSA, FMEA, SPC, Control Plan, and RCA (#74).

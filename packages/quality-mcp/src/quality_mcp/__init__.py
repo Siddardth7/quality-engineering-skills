@@ -13,10 +13,12 @@ from quality_mcp.server import (
     lookup_fmea_ap,
     mcp,
     ping,
+    render_5why_canvas,
     render_controlplan_canvas,
     render_fmea_canvas,
     render_msa_canvas,
     render_spc_canvas,
+    validate_5why,
     validate_control_plan,
 )
 
@@ -27,9 +29,12 @@ __all__ = [
     "lookup_fmea_ap",
     "mcp",
     "ping",
+    "render_5why_canvas",
     "render_controlplan_canvas",
     "render_fmea_canvas",
     "render_msa_canvas",
     "render_spc_canvas",
+    "validate_5why",
     "validate_control_plan",
 ]
+

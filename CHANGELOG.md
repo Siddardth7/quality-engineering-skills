@@ -9,6 +9,10 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- Finalized Milestone 6 documentation in `docs/milestones/v0.6.0.md` with complete verification artifacts, retrospective, and test evidence for Epics E0–E6 (#80).
+- Updated `docs/milestones/README.md` canonical mapping table marking `v0.6.0` as Complete and updated `ROADMAP.md` Summary Release Matrix linking `docs/milestones/v0.6.0.md` (#80).
+- Updated `README.md` milestone status table marking `v0.6.0` as Completed with `docs/milestones/v0.6.0.md` link and advancing `v0.7.0` to Up Next (#80).
+- Extended milestone governance test suite `tests/test_milestones_convention.py` with `v0.6.0` traceability assertions across all 7 task issues (#74–#80), release gate criteria, verification artifacts, and negative mutation controls (#80).
 - In-process JSON-RPC FastMCP client-server round-trip integration test suite `packages/quality-mcp/tests/test_rca_client_roundtrip.py` validating dual-payload parity, real-world benchmark datasets (Sentinel-8D Pneumatic Cylinder & Ford Global 8D bearing induction), multi-method chained workflow execution across a single session without state pollution, session error isolation, and protocol negative controls (#79).
 - Extended FastMCP server configuration tests in `packages/quality-mcp/tests/test_server.py` asserting discovery and direct execution of all six RCA tools (`validate_5why`, `categorize_fishbone`, `scope_is_is_not`, `render_5why_canvas`, `render_fishbone_canvas`, `render_isisnot_canvas`) (#79).
 - Updated CI headless dependency guard and coverage gate documentation in `.github/workflows/ci.yml` explicitly documenting `quality_mcp.tools.rca` alongside existing domain tools (#79).

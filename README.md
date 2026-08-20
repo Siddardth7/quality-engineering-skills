@@ -69,8 +69,9 @@ Setup     FMEA      SPC       MSA      Control    RCA       NCR &     PPAP      
 | **v0.3.0** | SPC Engine & Control Chart Skill | ✅ **Completed** | [docs/milestones/v0.3.0.md](docs/milestones/v0.3.0.md) |
 | **v0.4.0** | MSA Engine & Gage R&R Skill | ✅ **Completed** | [docs/milestones/v0.4.0.md](docs/milestones/v0.4.0.md) |
 | **v0.5.0** | Control Plan Engine via MCP (4-Engine Checkpoint) | ✅ **Completed** | [docs/milestones/v0.5.0.md](docs/milestones/v0.5.0.md) |
-| **v0.6.0** | RCA Suite (5-Why, Fishbone, Is/Is-Not) | ⏳ **Up Next** | Planned |
-| **v0.7.0–v1.0.0** | Extended Engines, Canvas UI & Release | ⏳ Queued | Planned |
+| **v0.6.0** | RCA Suite (5-Why, Fishbone, Is/Is-Not) | ✅ **Completed** | [docs/milestones/v0.6.0.md](docs/milestones/v0.6.0.md) |
+| **v0.7.0** | NCR & COPQ Financial Estimator | ⏳ **Up Next** | Planned |
+| **v0.8.0–v1.0.0** | Extended Engines, Canvas UI & Release | ⏳ Queued | Planned |
 
 Everything else — 8D, APQP/DVP&R, full ISO/IATF + VDA 6.3 audit, OEM CSR overlays, desktop packaging — is the named **v2 backlog** in **[ROADMAP.md](ROADMAP.md)**. Versions are milestone-driven, not date-driven.
 

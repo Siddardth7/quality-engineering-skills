@@ -19,8 +19,11 @@ from quality_mcp.server import (
     render_5why_canvas,
     render_controlplan_canvas,
     render_fmea_canvas,
+    render_is_is_not_canvas,
+    render_isisnot_canvas,
     render_msa_canvas,
     render_spc_canvas,
+    scope_is_is_not,
     validate_5why,
     validate_control_plan,
 )
@@ -56,6 +59,8 @@ def test_mcp_instance_configuration() -> None:
     assert "calculate_spc_chart" in tool_names
     assert "calculate_gage_rr" in tool_names
     assert "validate_control_plan" in tool_names
+    assert "scope_is_is_not" in tool_names
+    assert "render_isisnot_canvas" in tool_names
 
     # Verify tool execution via FastMCP interface
     _, content = asyncio.run(mcp.call_tool("ping", {}))
@@ -115,6 +120,16 @@ def test_mcp_instance_configuration() -> None:
     assert cp_content["valid"] is True
     assert cp_content["schema_valid"] is True
 
+    _, kt_content = asyncio.run(mcp.call_tool("scope_is_is_not", {}))
+    assert kt_content["valid"] is True
+    assert kt_content["verdict"] == "ACCEPT"
+    assert kt_content["total_rows"] == 4
+
+    _, kt_canvas_content = asyncio.run(mcp.call_tool("render_isisnot_canvas", {}))
+    assert kt_canvas_content["rows_count"] == 4
+    assert kt_canvas_content["verdict"] == "ACCEPT"
+    assert "html" in kt_canvas_content
+
 
 def test_main_invokes_mcp_run() -> None:
     """main() entry point must call mcp.run() once."""
@@ -133,7 +148,7 @@ def test_main_dunder_execution() -> None:
 
 
 def test_package_exports() -> None:
-    """Package root __init__.py must re-export mcp, ping, lookup_fmea_ap, render_controlplan_canvas, render_fmea_canvas, render_msa_canvas, render_spc_canvas, calculate_spc_chart, calculate_gage_rr, validate_control_plan, and __version__ correctly."""
+    """Package root __init__.py must re-export mcp, ping, lookup_fmea_ap, render_controlplan_canvas, render_fmea_canvas, render_msa_canvas, render_spc_canvas, calculate_spc_chart, calculate_gage_rr, validate_control_plan, scope_is_is_not, render_isisnot_canvas, render_is_is_not_canvas, and __version__ correctly."""
     assert quality_mcp.mcp is mcp
     assert quality_mcp.ping is ping
     assert quality_mcp.lookup_fmea_ap is lookup_fmea_ap
@@ -146,6 +161,9 @@ def test_package_exports() -> None:
     assert quality_mcp.calculate_gage_rr is calculate_gage_rr
     assert quality_mcp.validate_5why is validate_5why
     assert quality_mcp.validate_control_plan is validate_control_plan
+    assert quality_mcp.scope_is_is_not is scope_is_is_not
+    assert quality_mcp.render_isisnot_canvas is render_isisnot_canvas
+    assert quality_mcp.render_is_is_not_canvas is render_is_is_not_canvas
     assert hasattr(quality_mcp, "categorize_fishbone")
     assert hasattr(quality_mcp, "render_fishbone_canvas")
     assert quality_mcp.__version__ == "0.5.0"
@@ -161,8 +179,11 @@ def test_package_exports() -> None:
         "render_controlplan_canvas",
         "render_fishbone_canvas",
         "render_fmea_canvas",
+        "render_is_is_not_canvas",
+        "render_isisnot_canvas",
         "render_msa_canvas",
         "render_spc_canvas",
+        "scope_is_is_not",
         "validate_5why",
         "validate_control_plan",
     }
@@ -178,8 +199,11 @@ def test_package_exports() -> None:
         "render_controlplan_canvas",
         "render_fishbone_canvas",
         "render_fmea_canvas",
+        "render_is_is_not_canvas",
+        "render_isisnot_canvas",
         "render_msa_canvas",
         "render_spc_canvas",
+        "scope_is_is_not",
         "validate_5why",
         "validate_control_plan",
     ]

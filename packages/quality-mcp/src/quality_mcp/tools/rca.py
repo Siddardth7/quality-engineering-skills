@@ -1,16 +1,18 @@
 """
 rca.py
-FastMCP tools for 5-Why and 6M Fishbone Root Cause Analysis (RCA) validation and visual canvas rendering.
+FastMCP tools for 5-Why, 6M Fishbone, and Kepner-Tregoe Is/Is-Not Root Cause Analysis (RCA) validation and visual canvas rendering.
 
 Exposes deterministic 5-Why causal chain validation, reverse therefore logic checking,
 anti-pattern detection, systemic root cause classification, 6M Fishbone categorization,
-empty branch detection, and themed HTML canvas generation from quality_core.rca and
-quality_core.canvas to AI agents and MCP client hosts.
+empty branch detection, Kepner-Tregoe problem boundary scoping, candidate cause hypothesis
+synthesis, and themed HTML canvas generation from quality_core.rca and quality_core.canvas
+to AI agents and MCP client hosts.
 
 Standards References:
+- Charles H. Kepner & Benjamin B. Tregoe, The New Rational Manager (Updated Edition, 1997), Chapters 2 & 3.
 - Kaoru Ishikawa, Guide to Quality Control (2nd Revised Edition, 1986), Chapter 3.
-- AIAG CQI-20 Effective Problem Solving Guide (2nd Edition, 2018), Section 5 & Section G1.
-- Ford Motor Company, Global 8D (G8D) Problem Solving Manual, Section D4 & D7.
+- AIAG CQI-20 Effective Problem Solving Guide (2nd Edition, 2018), Section 4, Section 5 & Section G1.
+- Ford Motor Company, Global 8D (G8D) Problem Solving Manual, Section D2, D4 & D7.
 - Nancy R. Tague, The Quality Toolbox (2nd Edition, ASQ Quality Press, 2005), Chapter 5.
 """
 
@@ -23,23 +25,30 @@ from pydantic import Field
 from quality_core.canvas.rca import (
     SAMPLE_FISHBONE_CAUSES,
     SAMPLE_FIVE_WHY_STEPS,
+    SAMPLE_IS_IS_NOT_ROWS,
     FishboneCanvas,
     FiveWhyCanvas,
+    IsIsNotCanvas,
 )
 from quality_core.io.validate import clean_pydantic_message
 from quality_core.rca.fishbone import categorize_fishbone as _categorize_fishbone
 from quality_core.rca.five_why import validate_five_why_chain
+from quality_core.rca.is_is_not import scope_is_is_not as _scope_is_is_not
 from quality_core.rca.schema import CATEGORY_6M_VALUES
 
 __all__ = [
     "categorize_fishbone",
     "render_5why_canvas",
     "render_fishbone_canvas",
+    "render_is_is_not_canvas",
+    "render_isisnot_canvas",
+    "scope_is_is_not",
     "validate_5why",
 ]
 
 _STANDARDS_BASIS = "AIAG CQI-20 / Ford Global 8D / ASQ Quality Toolbox"
 _FISHBONE_STANDARDS_BASIS = "Ishikawa (1986) / AIAG CQI-20 / ASQ Quality Toolbox"
+_KT_STANDARDS_BASIS = "Kepner & Tregoe (1997) / AIAG CQI-20 / Ford Global 8D"
 
 
 def validate_5why(
@@ -619,4 +628,249 @@ def render_fishbone_canvas(
         "summary": summary,
         "html": html_content,
     }
+
+
+def scope_is_is_not(
+    matrix: Annotated[
+        list[dict[str, Any]] | None,
+        Field(
+            description=(
+                "List of Kepner-Tregoe Is/Is-Not row dictionaries. Each dictionary contains "
+                "'dimension' (str: 'WHAT', 'WHERE', 'WHEN', 'EXTENT'), 'is_data' (str), 'is_not_data' (str), "
+                "and optional 'distinctions' (str) and 'changes' (str). "
+                "If omitted or None, loads the standard reference Sentinel-8D Pneumatic Cylinder benchmark dataset."
+            ),
+        ),
+    ] = None,
+    problem_statement: Annotated[
+        str,
+        Field(description="Problem statement describing the observed failure deviation or defect."),
+    ] = "Problem Statement",
+) -> dict[str, Any]:
+    """Scope, validate, and synthesize root-cause hypotheses from a Kepner-Tregoe Is/Is-Not matrix.
+
+    Deterministic FastMCP tool wrapping `quality_core.rca.is_is_not.scope_is_is_not`.
+    Evaluates problem boundary completeness across the 4 canonical KT dimensions (WHAT, WHERE,
+    WHEN, EXTENT), detects missing distinctions and changes per Kepner & Tregoe (1997) Chapter 2,
+    synthesizes candidate root-cause hypotheses by pairing distinctions with changes per Chapter 3,
+    and outputs structured findings and recommendations.
+
+    Parameters
+    ----------
+    matrix : list[dict[str, Any]] | None, optional
+        List of row dictionaries with keys `dimension`, `is_data`, `is_not_data`, and optional
+        `distinctions`, `changes`. If None, loads the reference Sentinel-8D benchmark dataset.
+    problem_statement : str, default "Problem Statement"
+        The top-level problem statement describing the observed deviation or defect.
+
+    Returns
+    -------
+    dict[str, Any]
+        Structured scoping output containing:
+        - basis: Standards attribution string ("Kepner & Tregoe (1997) / AIAG CQI-20 / Ford Global 8D")
+        - valid: Boolean validity status
+        - verdict: Evaluation verdict ("ACCEPT", "WARNING", "REJECT")
+        - problem_statement: Evaluated problem statement
+        - total_rows: Number of evaluated rows
+        - dimension_coverage: Boolean mapping for WHAT, WHERE, WHEN, EXTENT
+        - complete_dimensions: List of populated dimensions
+        - missing_dimensions: List of unpopulated dimensions
+        - candidate_causes: List of synthesized candidate root-cause hypotheses
+        - warnings: Actionable warnings regarding missing dimensions, distinctions, or changes
+        - recommendations: Structured engineering guidance
+
+    Raises
+    ------
+    TypeError
+        If matrix is not a list/None, or problem_statement is not a string.
+    ValueError
+        If problem_statement is empty.
+    """
+    if isinstance(problem_statement, bool) or not isinstance(problem_statement, str):
+        raise TypeError(f"problem_statement must be a string, got {type(problem_statement).__name__}")
+    if not problem_statement.strip():
+        raise ValueError("problem_statement must not be empty.")
+
+    prob: str
+    raw_matrix: list[dict[str, Any]]
+
+    if matrix is None:
+        raw_matrix = SAMPLE_IS_IS_NOT_ROWS
+        prob = (
+            "Pneumatic cylinder functional defect requiring assembly rework (stroke binding & seal leakage)"
+            if problem_statement == "Problem Statement"
+            else problem_statement.strip()
+        )
+    else:
+        if isinstance(matrix, (str, dict, int, bool)) or not isinstance(matrix, list):
+            raise TypeError(f"matrix must be a list of dictionaries or None, got {type(matrix).__name__}: {matrix!r}")
+        for idx, item in enumerate(matrix):
+            if not isinstance(item, dict):
+                raise TypeError(f"matrix item at index {idx} must be a dict, got {type(item).__name__}: {item!r}")
+        raw_matrix = matrix
+        prob = problem_statement.strip()
+
+    if len(raw_matrix) == 0:
+        return {
+            "basis": _KT_STANDARDS_BASIS,
+            "valid": False,
+            "verdict": "REJECT",
+            "problem_statement": prob,
+            "total_rows": 0,
+            "dimension_coverage": {d: False for d in ("WHAT", "WHERE", "WHEN", "EXTENT")},
+            "complete_dimensions": [],
+            "missing_dimensions": ["WHAT", "WHERE", "WHEN", "EXTENT"],
+            "candidate_causes": [],
+            "warnings": ["Is/Is-Not matrix contains no scoping rows."],
+            "recommendations": [
+                "Populate problem boundary observations across all 4 Kepner-Tregoe dimensions (WHAT, WHERE, WHEN, EXTENT)."
+            ],
+        }
+
+    try:
+        result = _scope_is_is_not(
+            data=raw_matrix,
+            problem_statement=prob,
+        )
+        return result.to_dict()
+    except pydantic.ValidationError as exc:
+        errs = exc.errors()
+        err_msg = str(errs[0].get("msg", "invalid value")) if errs else "invalid value"
+        clean_msg = clean_pydantic_message(err_msg)
+        return {
+            "basis": _KT_STANDARDS_BASIS,
+            "valid": False,
+            "verdict": "REJECT",
+            "problem_statement": prob,
+            "total_rows": len(raw_matrix),
+            "dimension_coverage": {d: False for d in ("WHAT", "WHERE", "WHEN", "EXTENT")},
+            "complete_dimensions": [],
+            "missing_dimensions": ["WHAT", "WHERE", "WHEN", "EXTENT"],
+            "candidate_causes": [],
+            "warnings": [f"Schema validation error: {clean_msg}"],
+            "recommendations": [
+                "Correct row dimensions (must be WHAT, WHERE, WHEN, or EXTENT) or field constraints to enable scoping."
+            ],
+        }
+
+
+def render_isisnot_canvas(
+    matrix: Annotated[
+        list[dict[str, Any]] | None,
+        Field(
+            description=(
+                "Optional list of Kepner-Tregoe Is/Is-Not row dictionaries. Each dictionary contains "
+                "'dimension' (str: 'WHAT', 'WHERE', 'WHEN', 'EXTENT'), 'is_data' (str), 'is_not_data' (str), "
+                "and optional 'distinctions' (str) and 'changes' (str). "
+                "If omitted or None, loads the standard reference Sentinel-8D Pneumatic Cylinder benchmark dataset."
+            ),
+        ),
+    ] = None,
+    problem_statement: Annotated[
+        str,
+        Field(description="Problem statement describing the observed deviation or defect."),
+    ] = "Problem Statement",
+    title: Annotated[
+        str,
+        Field(description="Title displayed on the canvas header."),
+    ] = "Kepner-Tregoe Is/Is-Not Scoping Canvas",
+    theme: Annotated[
+        str,
+        Field(description="Color theme palette: 'dark' (default) or 'light'."),
+    ] = "dark",
+    standalone: Annotated[
+        bool,
+        Field(description="If True, returns a complete standalone HTML document; if False, returns an embeddable container."),
+    ] = True,
+) -> dict[str, Any]:
+    """Render an interactive visual HTML canvas for a Kepner-Tregoe Is/Is-Not dataset.
+
+    Deterministic FastMCP tool wrapping `quality_core.canvas.rca.IsIsNotCanvas`.
+    Ingests Is/Is-Not rows, evaluates dimensional coverage across WHAT, WHERE, WHEN, EXTENT,
+    synthesizes candidate causes from paired distinctions & changes, and generates a styled
+    HTML canvas view with summary KPI cards and 4-dimension comparative matrix cards.
+
+    Parameters
+    ----------
+    matrix : list[dict[str, Any]] | None, optional
+        List of Is/Is-Not row dictionaries. If None, loads the reference sample dataset.
+    problem_statement : str, default "Problem Statement"
+        The top-level problem statement.
+    title : str, default "Kepner-Tregoe Is/Is-Not Scoping Canvas"
+        Title of the Is/Is-Not canvas.
+    theme : str, default "dark"
+        Color theme: "dark" or "light".
+    standalone : bool, default True
+        Whether to generate a full standalone HTML5 document or embeddable markup.
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary containing:
+        - title: The canvas title (str)
+        - rows_count: Total number of rendered rows (int)
+        - dimensions_count: Total number of rendered dimensions (int)
+        - verdict: Validation verdict (str)
+        - valid: Boolean validity status (bool)
+        - summary: Summary metrics breakdown (dict)
+        - html: Rendered HTML string (str)
+
+    Raises
+    ------
+    TypeError
+        If matrix is not a list/None, title/theme/problem_statement are not strings,
+        standalone is not a boolean, or any row is not a dictionary.
+    ValueError
+        If title or problem_statement is empty, or theme is not 'dark'/'light'.
+    """
+    if isinstance(standalone, int) and not isinstance(standalone, bool):
+        raise TypeError(f"standalone must be a boolean, got {type(standalone).__name__}: {standalone!r}")
+    if not isinstance(standalone, bool):
+        raise TypeError(f"standalone must be a boolean, got {type(standalone).__name__}: {standalone!r}")
+
+    if isinstance(title, bool) or not isinstance(title, str):
+        raise TypeError(f"title must be a string, got {type(title).__name__}: {title!r}")
+    if not title.strip():
+        raise ValueError("title must not be empty.")
+
+    if isinstance(problem_statement, bool) or not isinstance(problem_statement, str):
+        raise TypeError(f"problem_statement must be a string, got {type(problem_statement).__name__}")
+    if not problem_statement.strip():
+        raise ValueError("problem_statement must not be empty.")
+
+    if theme not in ("dark", "light"):
+        raise ValueError(f"theme must be 'dark' or 'light', got {theme!r}")
+
+    if matrix is None:
+        canvas = IsIsNotCanvas.load_sample(title=title)
+        if problem_statement != "Problem Statement":
+            canvas.set_problem_statement(problem_statement.strip())
+    else:
+        if isinstance(matrix, (str, dict, int, bool)) or not isinstance(matrix, list):
+            raise TypeError(f"matrix must be a list of dictionaries or None, got {type(matrix).__name__}: {matrix!r}")
+        canvas = IsIsNotCanvas(
+            title=title,
+            problem_statement=problem_statement.strip(),
+        )
+        for idx, item in enumerate(matrix):
+            if not isinstance(item, dict):
+                raise TypeError(f"matrix item at index {idx} must be a dict, got {type(item).__name__}: {item!r}")
+            canvas.add_row(item)
+
+    html_content = canvas.to_html(theme=theme, standalone=standalone)  # type: ignore[arg-type]
+    summary = canvas.get_summary()
+
+    return {
+        "title": canvas.title,
+        "rows_count": len(canvas.rows),
+        "dimensions_count": len(canvas.rows),
+        "verdict": summary.get("verdict", "EMPTY"),
+        "valid": summary.get("valid", False),
+        "summary": summary,
+        "html": html_content,
+    }
+
+
+render_is_is_not_canvas = render_isisnot_canvas
+
 

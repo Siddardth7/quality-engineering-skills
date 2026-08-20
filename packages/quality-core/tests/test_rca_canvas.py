@@ -27,19 +27,27 @@ Tests:
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 from quality_core.canvas.rca import (
     SAMPLE_FISHBONE_CAUSES,
     SAMPLE_FISHBONE_DATASET,
     SAMPLE_FIVE_WHY_STEPS,
+    SAMPLE_IS_IS_NOT_MATRIX,
+    SAMPLE_IS_IS_NOT_ROWS,
     FishboneCanvas,
     FishboneCanvasCause,
     FiveWhyCanvas,
     FiveWhyCanvasStep,
+    IsIsNotCanvas,
+    IsIsNotCanvasRow,
     load_sample_5why_canvas,
     load_sample_fishbone_canvas,
+    load_sample_is_is_not_canvas,
     render_fishbone,
     render_five_why,
+    render_is_is_not,
 )
 from quality_core.rca.schema import (
     CATEGORY_6M_VALUES,
@@ -47,6 +55,8 @@ from quality_core.rca.schema import (
     FishboneDataset,
     FiveWhyChain,
     FiveWhyStep,
+    IsIsNotMatrix,
+    IsIsNotRow,
 )
 
 
@@ -977,4 +987,623 @@ def test_render_fishbone_helper() -> None:
 
     with pytest.raises(TypeError, match="Expected FishboneCanvasCause, FishboneCause, or dict in causes list"):
         render_fishbone(causes=["not-a-cause"])  # type: ignore[list-item]
+
+
+# ==============================================================================
+# 3. Kepner-Tregoe Is/Is-Not Canvas Controller & Rendering Unit Tests
+# ==============================================================================
+
+
+def test_sample_is_is_not_constants_structure() -> None:
+    """SAMPLE_IS_IS_NOT_ROWS and SAMPLE_IS_IS_NOT_MATRIX match Sentinel-8D benchmark structure."""
+    assert len(SAMPLE_IS_IS_NOT_ROWS) == 4
+    dims = [r["dimension"] for r in SAMPLE_IS_IS_NOT_ROWS]
+    assert dims == ["WHAT", "WHERE", "WHEN", "EXTENT"]
+    assert "problem_statement" in SAMPLE_IS_IS_NOT_MATRIX
+    assert SAMPLE_IS_IS_NOT_MATRIX["rows"] == SAMPLE_IS_IS_NOT_ROWS
+
+
+# ---------------------------------------------------------------------------
+# IsIsNotCanvasRow Dataclass Tests
+# ---------------------------------------------------------------------------
+
+
+def test_is_is_not_canvas_row_valid_construction_and_to_dict() -> None:
+    """IsIsNotCanvasRow constructs correctly and serializes to dictionary."""
+    row = IsIsNotCanvasRow(
+        dimension="WHAT",
+        is_data="Pneumatic cylinder stroke binding",
+        is_not_data="Piston rod surface damage",
+        distinctions="Bottom mounting face non-parallelism",
+        changes="Bar stock feed misalignment",
+        candidate_cause="Undersized blank causes clamping distortion",
+    )
+    assert row.dimension == "WHAT"
+    assert row.is_data == "Pneumatic cylinder stroke binding"
+    assert row.is_not_data == "Piston rod surface damage"
+    assert row.distinctions == "Bottom mounting face non-parallelism"
+    assert row.changes == "Bar stock feed misalignment"
+    assert row.candidate_cause == "Undersized blank causes clamping distortion"
+
+    d = row.to_dict()
+    assert d["dimension"] == "WHAT"
+    assert d["is_data"] == "Pneumatic cylinder stroke binding"
+    assert d["is_not_data"] == "Piston rod surface damage"
+    assert d["distinctions"] == "Bottom mounting face non-parallelism"
+    assert d["changes"] == "Bar stock feed misalignment"
+    assert d["candidate_cause"] == "Undersized blank causes clamping distortion"
+
+
+def test_is_is_not_canvas_row_from_dict_snake_and_pascal_case() -> None:
+    """IsIsNotCanvasRow.from_dict parses snake_case, PascalCase, and alias keys."""
+    # 1. snake_case
+    r1 = IsIsNotCanvasRow.from_dict({
+        "dimension": "WHERE",
+        "is_data": "CNC milling station",
+        "is_not_data": "CNC lathe station",
+        "distinctions": "Vice clamping standard",
+        "changes": "Backstop guide adjusted",
+        "candidate_cause": "Backstop adjustment without laser verification",
+    })
+    assert r1.dimension == "WHERE"
+    assert r1.is_data == "CNC milling station"
+    assert r1.is_not_data == "CNC lathe station"
+    assert r1.distinctions == "Vice clamping standard"
+    assert r1.changes == "Backstop guide adjusted"
+    assert r1.candidate_cause == "Backstop adjustment without laser verification"
+
+    # 2. PascalCase & aliases (dim, is, is_not, distinction, change, cause)
+    r2 = IsIsNotCanvasRow.from_dict({
+        "Dim": "WHEN",
+        "Is": "Post-assembly test",
+        "IsNot": "Receiving inspection",
+        "Distinction": "Pressurized stroke test",
+        "Change": "Shift handover",
+        "Cause": "Lack of checkweigher",
+    })
+    assert r2.dimension == "WHEN"
+    assert r2.is_data == "Post-assembly test"
+    assert r2.is_not_data == "Receiving inspection"
+    assert r2.distinctions == "Pressurized stroke test"
+    assert r2.changes == "Shift handover"
+    assert r2.candidate_cause == "Lack of checkweigher"
+
+    # 3. hypothesis alias
+    r3 = IsIsNotCanvasRow.from_dict({
+        "dimension": "EXTENT",
+        "is_data": "52 of 802 units",
+        "is_not_data": "All 802 units",
+        "hypothesis": "Weight variation driver",
+    })
+    assert r3.dimension == "EXTENT"
+    assert r3.candidate_cause == "Weight variation driver"
+    assert r3.distinctions is None
+    assert r3.changes is None
+
+
+def test_is_is_not_canvas_row_validation_errors() -> None:
+    """IsIsNotCanvasRow raises ValueError / TypeError on invalid fields."""
+    # 1. Invalid dimension: bool, non-str, empty, non-KT
+    with pytest.raises(ValueError, match="dimension must be a non-empty string"):
+        IsIsNotCanvasRow(dimension=True, is_data="X", is_not_data="Y")  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="dimension must be a non-empty string"):
+        IsIsNotCanvasRow(dimension="", is_data="X", is_not_data="Y")
+
+    with pytest.raises(ValueError, match="Invalid Kepner-Tregoe dimension"):
+        IsIsNotCanvasRow(dimension="WHO", is_data="X", is_not_data="Y")
+
+    # 2. Invalid is_data / is_not_data: bool, non-str, empty
+    with pytest.raises(ValueError, match="is_data must be a non-empty string"):
+        IsIsNotCanvasRow(dimension="WHAT", is_data=False, is_not_data="Y")  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="is_data must be a non-empty string"):
+        IsIsNotCanvasRow(dimension="WHAT", is_data="   ", is_not_data="Y")
+
+    with pytest.raises(ValueError, match="is_not_data must be a non-empty string"):
+        IsIsNotCanvasRow(dimension="WHAT", is_data="X", is_not_data=123)  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="is_not_data must be a non-empty string"):
+        IsIsNotCanvasRow(dimension="WHAT", is_data="X", is_not_data="   ")
+
+    # 3. Optional fields: bool -> TypeError, non-str -> TypeError
+    with pytest.raises(TypeError, match="distinctions must be a string or None"):
+        IsIsNotCanvasRow(dimension="WHAT", is_data="X", is_not_data="Y", distinctions=True)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="changes must be a string or None"):
+        IsIsNotCanvasRow(dimension="WHAT", is_data="X", is_not_data="Y", changes=123)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="candidate_cause must be a string or None"):
+        IsIsNotCanvasRow(dimension="WHAT", is_data="X", is_not_data="Y", candidate_cause=["bad"])  # type: ignore[arg-type]
+
+    # 4. Optional fields whitespace stripped to None
+    row_clean = IsIsNotCanvasRow(
+        dimension="WHAT",
+        is_data="X",
+        is_not_data="Y",
+        distinctions="   ",
+        changes="",
+        candidate_cause="  \t\n  ",
+    )
+    assert row_clean.distinctions is None
+    assert row_clean.changes is None
+    assert row_clean.candidate_cause is None
+
+    # 5. from_dict non-dict -> TypeError
+    with pytest.raises(TypeError, match="data must be a dictionary"):
+        IsIsNotCanvasRow.from_dict("not-a-dict")  # type: ignore[arg-type]
+
+    # 6. from_dict missing required fields -> KeyError
+    with pytest.raises(KeyError, match="Missing required field: 'dimension'"):
+        IsIsNotCanvasRow.from_dict({"is_data": "X", "is_not_data": "Y"})
+
+
+# ---------------------------------------------------------------------------
+# IsIsNotCanvas Controller Unit Tests
+# ---------------------------------------------------------------------------
+
+
+def test_is_is_not_canvas_init_and_validation() -> None:
+    """IsIsNotCanvas initializes with defaults and validates input arguments."""
+    canvas = IsIsNotCanvas()
+    assert canvas.title == "Kepner-Tregoe Is/Is-Not Scoping Canvas"
+    assert "Comparative Problem Boundary Scoping" in canvas.description
+    assert canvas.problem_statement == "Problem Statement"
+    assert len(canvas.rows) == 0
+
+    # Custom init
+    c2 = IsIsNotCanvas(
+        title="Custom Title",
+        description="Custom Desc",
+        problem_statement="Custom Problem",
+    )
+    assert c2.title == "Custom Title"
+    assert c2.description == "Custom Desc"
+    assert c2.problem_statement == "Custom Problem"
+
+    # Validation errors
+    with pytest.raises(ValueError, match="title must be a non-empty string"):
+        IsIsNotCanvas(title="")
+    with pytest.raises(ValueError, match="title must be a non-empty string"):
+        IsIsNotCanvas(title=True)  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match="description must be a string"):
+        IsIsNotCanvas(description=123)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="problem_statement must be a non-empty string"):
+        IsIsNotCanvas(problem_statement="")
+    with pytest.raises(ValueError, match="problem_statement must be a non-empty string"):
+        IsIsNotCanvas(problem_statement=False)  # type: ignore[arg-type]
+
+
+def test_is_is_not_canvas_crud_and_sorting() -> None:
+    """IsIsNotCanvas supports row CRUD operations and canonical KT sequence sorting."""
+    canvas = IsIsNotCanvas()
+
+    # 1. add_row via dict (added in reverse order: EXTENT, WHEN, WHERE, WHAT)
+    canvas.add_row({
+        "dimension": "EXTENT",
+        "is_data": "52 units",
+        "is_not_data": "All units",
+    })
+    canvas.add_row({
+        "dimension": "WHEN",
+        "is_data": "Post-assembly test",
+        "is_not_data": "Receiving",
+    })
+    canvas.add_row(
+        IsIsNotCanvasRow(
+            dimension="WHERE",
+            is_data="Milling station",
+            is_not_data="Lathe station",
+        )
+    )
+    canvas.add_row(
+        IsIsNotCanvasRow(
+            dimension="WHAT",
+            is_data="Binding defect",
+            is_not_data="Surface defect",
+        )
+    )
+
+    # 2. rows property sorts according to canonical KT_DIMENSIONS sequence (WHAT, WHERE, WHEN, EXTENT)
+    row_dims = [r.dimension for r in canvas.rows]
+    assert row_dims == ["WHAT", "WHERE", "WHEN", "EXTENT"]
+
+    # 3. get_row_by_dimension
+    what_row = canvas.get_row_by_dimension("WHAT")
+    assert what_row is not None
+    assert what_row.is_data == "Binding defect"
+
+    # Case-insensitive lookup
+    assert canvas.get_row_by_dimension("what") is what_row
+    assert canvas.get_row_by_dimension("  where  ") is not None
+    assert canvas.get_row_by_dimension("NON_EXISTENT") is None
+
+    # Invalid dimension argument type
+    with pytest.raises(TypeError, match="dimension must be a string"):
+        canvas.get_row_by_dimension(123)  # type: ignore[arg-type]
+
+    # 4. get_rows_by_dimension
+    assert len(canvas.get_rows_by_dimension("WHEN")) == 1
+    assert len(canvas.get_rows_by_dimension("NON_EXISTENT")) == 0
+
+    # 5. add_row invalid type
+    with pytest.raises(TypeError, match="row must be an IsIsNotCanvasRow or dict"):
+        canvas.add_row(["invalid"])  # type: ignore[arg-type]
+
+    # 6. remove_row by dimension string
+    assert canvas.remove_row("what") is True
+    assert canvas.remove_row("what") is False  # Already removed
+    assert [r.dimension for r in canvas.rows] == ["WHERE", "WHEN", "EXTENT"]
+
+    # 7. remove_row by IsIsNotCanvasRow object
+    where_row = canvas.get_row_by_dimension("WHERE")
+    assert where_row is not None
+    assert canvas.remove_row(where_row) is True
+    assert canvas.remove_row(where_row) is False
+    assert [r.dimension for r in canvas.rows] == ["WHEN", "EXTENT"]
+
+    # 8. remove_row by integer index
+    assert canvas.remove_row(0) is True  # Removes WHEN
+    assert canvas.remove_row(99) is False  # Index out of bounds
+    assert [r.dimension for r in canvas.rows] == ["EXTENT"]
+
+    # remove_row invalid type (bool, float)
+    with pytest.raises(TypeError, match="dimension_or_index must be str, int, or IsIsNotCanvasRow"):
+        canvas.remove_row(True)  # type: ignore[arg-type]
+
+    # 9. set_problem_statement
+    canvas.set_problem_statement("Updated problem statement")
+    assert canvas.problem_statement == "Updated problem statement"
+
+    with pytest.raises(ValueError, match="problem_statement must be a non-empty string"):
+        canvas.set_problem_statement("")
+    with pytest.raises(ValueError, match="problem_statement must be a non-empty string"):
+        canvas.set_problem_statement(False)  # type: ignore[arg-type]
+
+    # 10. clear_rows
+    canvas.clear_rows()
+    assert len(canvas.rows) == 0
+
+
+def test_is_is_not_canvas_scope_and_summary() -> None:
+    """IsIsNotCanvas.scope() and get_summary() return structured metrics across states."""
+    canvas = IsIsNotCanvas(problem_statement="Filter leak")
+
+    # 1. Empty canvas summary
+    s_empty = canvas.get_summary()
+    assert s_empty["total_rows"] == 0
+    assert s_empty["valid"] is False
+    assert s_empty["verdict"] == "EMPTY"
+    assert s_empty["complete_dimensions_count"] == 0
+    assert s_empty["missing_dimensions_count"] == 4
+    assert s_empty["candidate_causes_count"] == 0
+    assert "Canvas contains no Is/Is-Not rows." in s_empty["findings"]
+
+    # Empty canvas scope() raises ValueError
+    with pytest.raises(ValueError, match="Canvas contains no rows to scope."):
+        canvas.scope()
+
+    # 2. Populate full sample
+    canvas = IsIsNotCanvas.load_sample()
+    assert len(canvas.rows) == 4
+
+    result = canvas.scope()
+    assert result.valid is True
+    assert result.verdict == "ACCEPT"
+    assert len(result.candidate_causes) == 4
+
+    # Verify candidate cause synthesis updated rows
+    for r in canvas.rows:
+        assert r.candidate_cause is not None
+
+    s_full = canvas.get_summary()
+    assert s_full["total_rows"] == 4
+    assert s_full["valid"] is True
+    assert s_full["verdict"] == "ACCEPT"
+    assert s_full["complete_dimensions_count"] == 4
+    assert s_full["missing_dimensions_count"] == 0
+    assert s_full["candidate_causes_count"] == 4
+    assert len(s_full["findings"]) == 0
+    assert len(s_full["recommendations"]) > 0
+
+    # 3. Error state summary (mocking scope failure)
+    with patch.object(canvas, "scope", side_effect=RuntimeError("Simulated engine fault")):
+        s_err = canvas.get_summary()
+        assert s_err["total_rows"] == 4
+        assert s_err["valid"] is False
+        assert s_err["verdict"] == "ERROR"
+        assert s_err["findings"] == ["Simulated engine fault"]
+
+
+def test_is_is_not_canvas_scope_populates_empty_candidate_causes() -> None:
+    """canvas.scope() populates candidate_cause on rows where it was initially None."""
+    canvas = IsIsNotCanvas()
+    canvas.add_row({
+        "dimension": "WHAT",
+        "is_data": "Stroke binding",
+        "is_not_data": "Rod damage",
+        "distinctions": "Face non-parallelism",
+        "changes": "Feed misalignment",
+    })
+    # Before scoping, candidate_cause is None
+    what_row = canvas.get_row_by_dimension("WHAT")
+    assert what_row is not None
+    assert what_row.candidate_cause is None
+
+    result = canvas.scope()
+    assert result.valid is True
+    assert what_row.candidate_cause is not None
+    assert "Face non-parallelism" in what_row.candidate_cause
+
+
+# ---------------------------------------------------------------------------
+# Themed HTML Rendering Tests
+# ---------------------------------------------------------------------------
+
+
+def test_is_is_not_canvas_to_html_themes_and_standalone() -> None:
+    """to_html renders dark/light themes, standalone documents, and embeddable containers."""
+    canvas = IsIsNotCanvas.load_sample()
+
+    # 1. Dark theme standalone (default)
+    h_dark = canvas.to_html(theme="dark", standalone=True)
+    assert "<!DOCTYPE html>" in h_dark
+    assert "<html lang=\"en\">" in h_dark
+    assert "qes-is-is-not-canvas" in h_dark
+    assert "Fully Scoped (ACCEPT)" in h_dark
+    assert "4/4" in h_dark
+
+    # 2. Light theme embeddable
+    h_light = canvas.to_html(theme="light", standalone=False)
+    assert "<!DOCTYPE html>" not in h_light
+    assert "qes-is-is-not-canvas" in h_light
+    assert "#ffffff" in h_light  # Light card background
+
+    # 3. Invalid theme
+    with pytest.raises(ValueError, match="theme must be 'dark' or 'light'"):
+        canvas.to_html(theme="neon")  # type: ignore[arg-type]
+
+
+def test_is_is_not_canvas_to_html_empty_and_verdict_branches() -> None:
+    """to_html handles empty canvas, WARNING, REJECT, and custom verdict states."""
+    # 1. Empty canvas
+    c_empty = IsIsNotCanvas(title="Empty Canvas")
+    h_empty = c_empty.to_html()
+    assert "No Kepner-Tregoe Is/Is-Not rows recorded in canvas" in h_empty
+    assert "0/4" in h_empty
+
+    # 2. Warning state (partial dimensions)
+    c_warn = IsIsNotCanvas()
+    c_warn.add_row({
+        "dimension": "WHAT",
+        "is_data": "Stroke binding",
+        "is_not_data": "Rod damage",
+    })
+    h_warn = c_warn.to_html()
+    assert "Warning (Incomplete)" in h_warn
+    assert "Identified Boundary &amp; Scoping Findings:" in h_warn
+
+    # 3. Reject verdict badge
+    c_rej = IsIsNotCanvas()
+    with patch.object(
+        c_rej,
+        "get_summary",
+        return_value={
+            "total_rows": 1,
+            "valid": False,
+            "verdict": "REJECT",
+            "complete_dimensions_count": 0,
+            "missing_dimensions_count": 4,
+            "candidate_causes_count": 0,
+            "findings": ["Rejection finding"],
+            "recommendations": ["Fix issues"],
+        },
+    ):
+        h_rej = c_rej.to_html()
+        assert "Rejected" in h_rej
+
+    # 4. Custom verdict badge
+    with patch.object(
+        c_rej,
+        "get_summary",
+        return_value={
+            "total_rows": 1,
+            "valid": False,
+            "verdict": "CUSTOM_STATUS",
+            "complete_dimensions_count": 0,
+            "missing_dimensions_count": 4,
+            "candidate_causes_count": 0,
+            "findings": [],
+            "recommendations": ["Custom rec"],
+        },
+    ):
+        h_custom = c_rej.to_html()
+        assert "CUSTOM_STATUS" in h_custom
+
+
+def test_is_is_not_canvas_to_html_alert_box_branches() -> None:
+    """to_html covers all combinations of findings and recommendations in alert box."""
+    canvas = IsIsNotCanvas()
+    canvas.add_row({
+        "dimension": "WHAT",
+        "is_data": "Leak",
+        "is_not_data": "No leak",
+    })
+
+    # 1. Both findings and recommendations empty -> recs_html is empty
+    with patch.object(
+        canvas,
+        "get_summary",
+        return_value={
+            "total_rows": 1,
+            "valid": True,
+            "verdict": "ACCEPT",
+            "complete_dimensions_count": 1,
+            "missing_dimensions_count": 3,
+            "candidate_causes_count": 0,
+            "findings": [],
+            "recommendations": [],
+        },
+    ):
+        h_none = canvas.to_html()
+        assert "Identified Boundary &amp; Scoping Findings:" not in h_none
+        assert "Engineering Recommendations &amp; Hypothesis Testing:" not in h_none
+
+    # 2. Findings only, no recommendations
+    with patch.object(
+        canvas,
+        "get_summary",
+        return_value={
+            "total_rows": 1,
+            "valid": True,
+            "verdict": "WARNING",
+            "complete_dimensions_count": 1,
+            "missing_dimensions_count": 3,
+            "candidate_causes_count": 0,
+            "findings": ["Only finding"],
+            "recommendations": [],
+        },
+    ):
+        h_findings_only = canvas.to_html()
+        assert "Identified Boundary &amp; Scoping Findings:" in h_findings_only
+        assert "Only finding" in h_findings_only
+        assert "Engineering Recommendations &amp; Hypothesis Testing:" not in h_findings_only
+
+    # 3. Recommendations only, no findings
+    with patch.object(
+        canvas,
+        "get_summary",
+        return_value={
+            "total_rows": 1,
+            "valid": True,
+            "verdict": "ACCEPT",
+            "complete_dimensions_count": 1,
+            "missing_dimensions_count": 3,
+            "candidate_causes_count": 0,
+            "findings": [],
+            "recommendations": ["Only recommendation"],
+        },
+    ):
+        h_recs_only = canvas.to_html()
+        assert "Identified Boundary &amp; Scoping Findings:" not in h_recs_only
+        assert "Engineering Recommendations &amp; Hypothesis Testing:" in h_recs_only
+        assert "Only recommendation" in h_recs_only
+
+
+def test_is_is_not_canvas_to_html_escaping() -> None:
+    """to_html escapes special HTML characters in title, problem statement, and row fields."""
+    canvas = IsIsNotCanvas(
+        title="<Escaped Title & Co>",
+        description="<Dangerous Script>",
+        problem_statement="<Deviation & Error>",
+    )
+    canvas.add_row({
+        "dimension": "WHAT",
+        "is_data": "<Leak observed in sector 1>",
+        "is_not_data": "<No leak in sector 2>",
+        "distinctions": "<Distinction & Fact>",
+        "changes": "<Change & Adjustment>",
+        "candidate_cause": "<Hypothesis & Cause>",
+    })
+    html_out = canvas.to_html()
+    assert "&lt;Escaped Title &amp; Co&gt;" in html_out
+    assert "&lt;Dangerous Script&gt;" in html_out
+    assert "&lt;Deviation &amp; Error&gt;" in html_out
+    assert "&lt;Leak observed in sector 1&gt;" in html_out
+    assert "&lt;No leak in sector 2&gt;" in html_out
+    assert "&lt;Distinction &amp; Fact&gt;" in html_out
+    assert "&lt;Change &amp; Adjustment&gt;" in html_out
+    assert "&lt;Hypothesis &amp; Cause&gt;" in html_out
+
+
+# ---------------------------------------------------------------------------
+# Helper Functions Unit Tests
+# ---------------------------------------------------------------------------
+
+
+def test_load_sample_is_is_not_canvas_helper() -> None:
+    """load_sample_is_is_not_canvas returns loaded IsIsNotCanvas with 4 rows."""
+    canvas = load_sample_is_is_not_canvas(title="Helper Sample Canvas")
+    assert isinstance(canvas, IsIsNotCanvas)
+    assert canvas.title == "Helper Sample Canvas"
+    assert len(canvas.rows) == 4
+
+
+def test_render_is_is_not_helper() -> None:
+    """render_is_is_not supports None, IsIsNotMatrix, list of dicts/rows/canvas_rows, and dict."""
+    # 1. None -> loads sample
+    h1 = render_is_is_not()
+    assert "qes-is-is-not-canvas" in h1
+    assert "Pneumatic cylinder" in h1
+
+    # 2. None with custom problem statement
+    h1_custom_ps = render_is_is_not(problem_statement="Custom problem statement")
+    assert "Custom problem statement" in h1_custom_ps
+
+    # 3. IsIsNotMatrix
+    matrix_obj = IsIsNotMatrix(
+        problem_statement="Matrix Problem",
+        rows=[
+            IsIsNotRow(
+                dimension="WHAT",
+                is_data="Defect A",
+                is_not_data="Defect B",
+            )
+        ],
+    )
+    h2 = render_is_is_not(matrix=matrix_obj, theme="light", standalone=False)
+    assert "Matrix Problem" in h2
+    assert "<!DOCTYPE html>" not in h2
+
+    # 4. list of dicts
+    dict_list = [
+        {"dimension": "WHAT", "is_data": "Defect A", "is_not_data": "Defect B"},
+        {"dimension": "WHERE", "is_data": "Station 1", "is_not_data": "Station 2"},
+    ]
+    h3 = render_is_is_not(matrix=dict_list, problem_statement="Dict List Problem")
+    assert "Dict List Problem" in h3
+    assert "Station 1" in h3
+
+    # 5. list of IsIsNotCanvasRow
+    canvas_row_list = [
+        IsIsNotCanvasRow(dimension="WHEN", is_data="Morning", is_not_data="Night"),
+    ]
+    h4 = render_is_is_not(matrix=canvas_row_list)
+    assert "Morning" in h4
+
+    # 6. list of IsIsNotRow
+    schema_row_list = [
+        IsIsNotRow(dimension="EXTENT", is_data="10%", is_not_data="0%"),
+    ]
+    h5 = render_is_is_not(matrix=schema_row_list)
+    assert "10%" in h5
+
+    # 7. dict with rows list
+    dict_with_rows = {
+        "problem_statement": "Dict with rows",
+        "rows": [
+            {"dimension": "WHAT", "is_data": "D1", "is_not_data": "D2"},
+            IsIsNotCanvasRow(dimension="WHERE", is_data="S1", is_not_data="S2"),
+            IsIsNotRow(dimension="WHEN", is_data="T1", is_not_data="T2"),
+        ],
+    }
+    h6 = render_is_is_not(matrix=dict_with_rows)
+    assert "Dict with rows" in h6
+    assert "D1" in h6
+    assert "S1" in h6
+    assert "T1" in h6
+
+    # 8. Invalid matrix types & list items
+    with pytest.raises(TypeError, match="Expected IsIsNotCanvasRow, IsIsNotRow, or dict in matrix list"):
+        render_is_is_not(matrix=["invalid-item"])  # type: ignore[list-item]
+
+    with pytest.raises(TypeError, match="Expected list for rows in dict"):
+        render_is_is_not(matrix={"rows": "not-a-list"})
+
+    with pytest.raises(TypeError, match="Expected dict, IsIsNotCanvasRow, or IsIsNotRow in rows"):
+        render_is_is_not(matrix={"rows": [123]})
+
+    with pytest.raises(TypeError, match="matrix must be IsIsNotMatrix, list of dicts/rows, dict, or None"):
+        render_is_is_not(matrix=123)  # type: ignore[arg-type]
+
 

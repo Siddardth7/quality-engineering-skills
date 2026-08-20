@@ -19,6 +19,11 @@ from quality_core.rca.five_why import (
     SystemicAssessment,
     validate_five_why_chain,
 )
+from quality_core.rca.is_is_not import (
+    CandidateCause,
+    IsIsNotScopingResult,
+    scope_is_is_not,
+)
 from quality_core.rca.schema import (
     FISHBONE_SCHEMA,
     FIVE_WHY_SCHEMA,
@@ -62,11 +67,14 @@ __all__ = [
     "load_fishbone_csv",
     "validate_fishbone",
     # Is/Is-Not
+    "CandidateCause",
     "IS_IS_NOT_SCHEMA",
     "IsIsNotMatrix",
     "IsIsNotRow",
+    "IsIsNotScopingResult",
     "KTDimension",
     "load_is_is_not_csv",
+    "scope_is_is_not",
     "validate_is_is_not",
     # Error
     "IngestError",

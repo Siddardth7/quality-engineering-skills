@@ -18,8 +18,11 @@ from quality_mcp.server import (
     render_controlplan_canvas,
     render_fishbone_canvas,
     render_fmea_canvas,
+    render_is_is_not_canvas,
+    render_isisnot_canvas,
     render_msa_canvas,
     render_spc_canvas,
+    scope_is_is_not,
     validate_5why,
     validate_control_plan,
 )
@@ -36,8 +39,11 @@ __all__ = [
     "render_controlplan_canvas",
     "render_fishbone_canvas",
     "render_fmea_canvas",
+    "render_is_is_not_canvas",
+    "render_isisnot_canvas",
     "render_msa_canvas",
     "render_spc_canvas",
+    "scope_is_is_not",
     "validate_5why",
     "validate_control_plan",
 ]

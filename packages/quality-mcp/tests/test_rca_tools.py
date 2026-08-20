@@ -37,6 +37,9 @@ from quality_mcp.tools.rca import (
     categorize_fishbone,
     render_5why_canvas,
     render_fishbone_canvas,
+    render_is_is_not_canvas,
+    render_isisnot_canvas,
+    scope_is_is_not,
     validate_5why,
 )
 
@@ -649,4 +652,332 @@ def test_mcp_client_session_render_fishbone_canvas_roundtrip() -> None:
             assert "Surface roughness defect" in data_custom["html"]
 
     asyncio.run(_run())
+
+
+# ==============================================================================
+# 7. Kepner-Tregoe Is/Is-Not MCP Tool Direct Function Execution Tests
+# ==============================================================================
+
+
+_KT_SAMPLE_4DIM = [
+    {
+        "dimension": "WHAT",
+        "is_data": "Filter #1 leaking oil",
+        "is_not_data": "Filters #2-#5 leaking",
+        "distinctions": "Square-cornered gasket",
+        "changes": "New supplier Acme Corp",
+    },
+    {
+        "dimension": "WHERE",
+        "is_data": "North room compressor",
+        "is_not_data": "South room compressor",
+        "distinctions": "High ambient temperature",
+        "changes": "Exhaust fan serviced",
+    },
+    {
+        "dimension": "WHEN",
+        "is_data": "Monday 08:00 startup",
+        "is_not_data": "Friday normal run",
+        "distinctions": "Cold-start after shutdown",
+        "changes": "Startup sequence modified",
+    },
+    {
+        "dimension": "EXTENT",
+        "is_data": "250 mL/hour, 1 of 5 units",
+        "is_not_data": "All 5 units or blowout",
+        "distinctions": "Lower seal sector",
+        "changes": "Torque updated to 45 Nm",
+    },
+]
+
+
+def test_scope_is_is_not_default_sample() -> None:
+    """scope_is_is_not() with None matrix evaluates reference Sentinel-8D benchmark dataset."""
+    result = scope_is_is_not()
+    assert result["basis"] == "Kepner & Tregoe (1997) / AIAG CQI-20 / Ford Global 8D"
+    assert result["valid"] is True
+    assert result["verdict"] == "ACCEPT"
+    assert result["total_rows"] == 4
+    assert result["complete_dimensions"] == ["WHAT", "WHERE", "WHEN", "EXTENT"]
+    assert result["missing_dimensions"] == []
+    assert len(result["candidate_causes"]) == 4
+    assert "Pneumatic cylinder" in result["problem_statement"]
+
+
+def test_scope_is_is_not_custom_matrix_and_statement() -> None:
+    """scope_is_is_not() with custom matrix and statement returns structured ACCEPT verdict."""
+    result = scope_is_is_not(
+        matrix=_KT_SAMPLE_4DIM,
+        problem_statement="Filter #1 oil leak during startup",
+    )
+    assert result["valid"] is True
+    assert result["verdict"] == "ACCEPT"
+    assert result["total_rows"] == 4
+    assert result["problem_statement"] == "Filter #1 oil leak during startup"
+    assert len(result["candidate_causes"]) == 4
+
+
+def test_scope_is_is_not_empty_matrix() -> None:
+    """scope_is_is_not(matrix=[]) returns valid=False and verdict=REJECT."""
+    result = scope_is_is_not(matrix=[], problem_statement="Empty matrix")
+    assert result["valid"] is False
+    assert result["verdict"] == "REJECT"
+    assert result["total_rows"] == 0
+    assert result["complete_dimensions"] == []
+    assert result["missing_dimensions"] == ["WHAT", "WHERE", "WHEN", "EXTENT"]
+    assert len(result["candidate_causes"]) == 0
+    assert "Is/Is-Not matrix contains no scoping rows." in result["warnings"]
+
+
+def test_scope_is_is_not_validation_error() -> None:
+    """scope_is_is_not() with invalid dimension catches ValidationError and returns clean REJECT."""
+    bad_matrix = [
+        {"dimension": "WHO", "is_data": "Operator A", "is_not_data": "Operator B"}
+    ]
+    result = scope_is_is_not(matrix=bad_matrix)
+    assert result["valid"] is False
+    assert result["verdict"] == "REJECT"
+    assert any("Schema validation error" in w for w in result["warnings"])
+    assert any("Correct row dimensions" in r for r in result["recommendations"])
+
+
+def test_scope_is_is_not_type_and_value_errors() -> None:
+    """scope_is_is_not raises TypeError / ValueError on invalid inputs."""
+    # 1. problem_statement invalid type & empty
+    with pytest.raises(TypeError, match="problem_statement must be a string"):
+        scope_is_is_not(problem_statement=True)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="problem_statement must be a string"):
+        scope_is_is_not(problem_statement=123)  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="problem_statement must not be empty"):
+        scope_is_is_not(problem_statement="")
+
+    with pytest.raises(ValueError, match="problem_statement must not be empty"):
+        scope_is_is_not(problem_statement="   ")
+
+    # 2. matrix invalid type
+    with pytest.raises(TypeError, match="matrix must be a list of dictionaries or None"):
+        scope_is_is_not(matrix="not-a-list")  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="matrix must be a list of dictionaries or None"):
+        scope_is_is_not(matrix={"rows": []})  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="matrix must be a list of dictionaries or None"):
+        scope_is_is_not(matrix=123)  # type: ignore[arg-type]
+
+    # 3. matrix item invalid type
+    with pytest.raises(TypeError, match="matrix item at index 0 must be a dict"):
+        scope_is_is_not(matrix=["not-a-dict"])  # type: ignore[list-item]
+
+
+# ---------------------------------------------------------------------------
+# 8. render_isisnot_canvas Direct Function Execution Tests
+# ---------------------------------------------------------------------------
+
+
+def test_render_isisnot_canvas_default_sample() -> None:
+    """render_isisnot_canvas() with default arguments renders full Sentinel-8D standalone HTML canvas."""
+    result = render_isisnot_canvas()
+    assert result["title"] == "Kepner-Tregoe Is/Is-Not Scoping Canvas"
+    assert result["rows_count"] == 4
+    assert result["dimensions_count"] == 4
+    assert result["verdict"] == "ACCEPT"
+    assert result["valid"] is True
+    assert "<!DOCTYPE html>" in result["html"]
+    assert "qes-is-is-not-canvas" in result["html"]
+    assert "summary" in result
+
+
+def test_render_isisnot_canvas_custom_sample_with_statement() -> None:
+    """render_isisnot_canvas() with custom problem statement and title."""
+    result = render_isisnot_canvas(
+        title="Custom KT Canvas Title",
+        problem_statement="Custom observed deviation",
+    )
+    assert result["title"] == "Custom KT Canvas Title"
+    assert "Custom observed deviation" in result["html"]
+
+
+def test_render_isisnot_canvas_custom_dataset() -> None:
+    """render_isisnot_canvas() with custom dataset, light theme, and embeddable markup."""
+    custom_rows = [
+        {
+            "dimension": "WHAT",
+            "is_data": "Leak observed",
+            "is_not_data": "No leak",
+            "distinctions": "Square gasket",
+            "changes": "New supplier",
+        },
+        {
+            "dimension": "WHERE",
+            "is_data": "Station 1",
+            "is_not_data": "Station 2",
+        },
+    ]
+    result = render_isisnot_canvas(
+        matrix=custom_rows,
+        problem_statement="Custom Leak Problem",
+        theme="light",
+        standalone=False,
+    )
+    assert result["rows_count"] == 2
+    assert result["dimensions_count"] == 2
+    assert result["verdict"] == "WARNING"
+    assert result["valid"] is True
+    assert "<!DOCTYPE html>" not in result["html"]
+    assert "Custom Leak Problem" in result["html"]
+
+
+def test_render_is_is_not_canvas_alias() -> None:
+    """render_is_is_not_canvas alias produces identical output to render_isisnot_canvas."""
+    res1 = render_isisnot_canvas()
+    res2 = render_is_is_not_canvas()
+    assert res1["title"] == res2["title"]
+    assert res1["rows_count"] == res2["rows_count"]
+    assert res1["verdict"] == res2["verdict"]
+
+
+def test_render_isisnot_canvas_type_and_value_errors() -> None:
+    """render_isisnot_canvas raises TypeError / ValueError on invalid parameters."""
+    # 1. standalone
+    with pytest.raises(TypeError, match="standalone must be a boolean"):
+        render_isisnot_canvas(standalone=1)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="standalone must be a boolean"):
+        render_isisnot_canvas(standalone="yes")  # type: ignore[arg-type]
+
+    # 2. title
+    with pytest.raises(TypeError, match="title must be a string"):
+        render_isisnot_canvas(title=True)  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="title must not be empty"):
+        render_isisnot_canvas(title="")
+
+    # 3. problem_statement
+    with pytest.raises(TypeError, match="problem_statement must be a string"):
+        render_isisnot_canvas(problem_statement=123)  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="problem_statement must not be empty"):
+        render_isisnot_canvas(problem_statement="   ")
+
+    # 4. theme
+    with pytest.raises(ValueError, match="theme must be 'dark' or 'light'"):
+        render_isisnot_canvas(theme="neon")
+
+    # 5. matrix type & item types
+    with pytest.raises(TypeError, match="matrix must be a list of dictionaries or None"):
+        render_isisnot_canvas(matrix=123)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="matrix item at index 0 must be a dict"):
+        render_isisnot_canvas(matrix=["bad-item"])  # type: ignore[list-item]
+
+
+# ==============================================================================
+# 9. FastMCP Client-Server Round-Trip Integration Tests (Kepner-Tregoe)
+# ==============================================================================
+
+
+def test_mcp_client_session_scope_is_is_not_roundtrip() -> None:
+    """Execute scope_is_is_not over in-process FastMCP client session with dual-payload verification."""
+
+    async def _run() -> None:
+        async with create_connected_server_and_client_session(mcp._mcp_server) as session:
+            await session.initialize()
+
+            # 1. Call with default arguments (None)
+            result = await session.call_tool("scope_is_is_not", {})
+            assert not result.isError
+            assert len(result.content) > 0
+            text_payload = result.content[0].text  # type: ignore[union-attr]
+            data = json.loads(text_payload)
+            assert data["basis"] == "Kepner & Tregoe (1997) / AIAG CQI-20 / Ford Global 8D"
+            assert data["valid"] is True
+            assert data["verdict"] == "ACCEPT"
+            assert data["total_rows"] == 4
+            assert data["complete_dimensions"] == ["WHAT", "WHERE", "WHEN", "EXTENT"]
+            assert data["missing_dimensions"] == []
+
+            # Dual-payload parity
+            if hasattr(result, "structuredContent") and result.structuredContent is not None:
+                assert result.structuredContent["verdict"] == data["verdict"]
+                assert result.structuredContent["total_rows"] == data["total_rows"]
+
+            # 2. Call with custom valid 4-dimension matrix
+            res_custom = await session.call_tool(
+                "scope_is_is_not",
+                {
+                    "matrix": _KT_SAMPLE_4DIM,
+                    "problem_statement": "Filter #1 leaking",
+                },
+            )
+            assert not res_custom.isError
+            data_custom = json.loads(res_custom.content[0].text)  # type: ignore[union-attr]
+            assert data_custom["valid"] is True
+            assert data_custom["verdict"] == "ACCEPT"
+            assert data_custom["total_rows"] == 4
+            assert len(data_custom["candidate_causes"]) == 4
+
+            # 3. Call with empty matrix -> rejected
+            res_empty = await session.call_tool(
+                "scope_is_is_not",
+                {"matrix": []},
+            )
+            assert not res_empty.isError
+            data_empty = json.loads(res_empty.content[0].text)  # type: ignore[union-attr]
+            assert data_empty["valid"] is False
+            assert data_empty["verdict"] == "REJECT"
+            assert data_empty["total_rows"] == 0
+
+    asyncio.run(_run())
+
+
+def test_mcp_client_session_render_isisnot_canvas_roundtrip() -> None:
+    """Execute render_isisnot_canvas over in-process FastMCP client session."""
+
+    async def _run() -> None:
+        async with create_connected_server_and_client_session(mcp._mcp_server) as session:
+            await session.initialize()
+
+            # 1. Default render
+            result = await session.call_tool("render_isisnot_canvas", {})
+            assert not result.isError
+            data = json.loads(result.content[0].text)  # type: ignore[union-attr]
+            assert data["title"] == "Kepner-Tregoe Is/Is-Not Scoping Canvas"
+            assert data["rows_count"] == 4
+            assert data["dimensions_count"] == 4
+            assert "<!DOCTYPE html>" in data["html"]
+
+            # 2. Custom render embedded
+            custom_matrix = [
+                {
+                    "dimension": "WHAT",
+                    "is_data": "Stroke binding",
+                    "is_not_data": "Rod damage",
+                    "distinctions": "Mounting face non-parallelism",
+                    "changes": "Feed misalignment",
+                },
+                {
+                    "dimension": "WHERE",
+                    "is_data": "Milling fixture",
+                    "is_not_data": "Lathe fixture",
+                },
+            ]
+            res_custom = await session.call_tool(
+                "render_isisnot_canvas",
+                {
+                    "matrix": custom_matrix,
+                    "problem_statement": "Pneumatic cylinder binding",
+                    "theme": "light",
+                    "standalone": False,
+                },
+            )
+            assert not res_custom.isError
+            data_custom = json.loads(res_custom.content[0].text)  # type: ignore[union-attr]
+            assert data_custom["rows_count"] == 2
+            assert "<!DOCTYPE html>" not in data_custom["html"]
+            assert "Pneumatic cylinder binding" in data_custom["html"]
+
+    asyncio.run(_run())
+
 

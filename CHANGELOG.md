@@ -8,6 +8,10 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 
 ## [Unreleased]
 
+### Added
+- Reference material procurement and citation scaffold for Milestone 6 Root Cause Analysis (RCA) suite (`packages/quality-core/src/quality_core/rca/ASSUMPTIONS_LOG.md` and `packages/quality-core/src/quality_core/rca/CITATIONS.tsv`) (#74).
+- Per-domain reference manual path mapping in `CLAUDE.md` covering MSA, FMEA, SPC, Control Plan, and RCA (#74).
+
 ## [0.5.0] - 2026-08-17
 
 ### Added

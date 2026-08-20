@@ -29,17 +29,19 @@ Where internal platform choices or heuristics are adopted, they are explicitly d
 
 ## RULE Entries
 
-## RULE 1: 6M Fishbone Taxonomy & Category Aliases
+## RULE 1: 6M Fishbone Taxonomy, Category Aliases, and Empty Branch Detection
 
-**Decision:** Establish canonical 6M taxonomy `Literal["Man", "Machine", "Method", "Material", "Measurement", "Environment"]` with deterministic alias normalization for industry variants (e.g. "Manpower" $\to$ "Man", "Equipment" $\to$ "Machine", "Mother Nature" $\to$ "Environment", "Inspection" $\to$ "Measurement").
+**Decision:** Establish canonical 6M taxonomy `Literal["Man", "Machine", "Method", "Material", "Measurement", "Environment"]` with deterministic alias normalization for industry variants (e.g. "Manpower" $\to$ "Man", "Equipment" $\to$ "Machine", "Mother Nature" $\to$ "Environment", "Inspection" $\to$ "Measurement"), and enforce detection of empty branches / bare legs per Ishikawa (1986) and AIAG CQI-20 Section G1.
 
 **Source:**
 - Kaoru Ishikawa, *Guide to Quality Control* (2nd Revised Edition, 1986), Chapter 3:
 > "of dispersion into such items as raw materials (materials, equipment (machines or tools), method of work (workers) and measuring method (inspection). Each individual group will form a branch."
+> "Step 5. Finally, one must check to make certain that all the items that may be causing dispersion are included in the diagram. If they are, and the relationships of causes to effects are properly illustrated, then the diagram is complete."
 - Nancy R. Tague, *The Quality Toolbox* (2nd Edition, ASQ, 2005), p. 248:
 > "methods, machines (equipment), people (manpower),"
 > "materials, measurement, environment. Write the categories of causes as branches from the main arrow."
-- AIAG CQI-20 *Effective Problem Solving Guide* (2nd Edition, 2018), Figure 34:
+> "5. When the group runs out of ideas, focus attention to places on the fishbone where ideas are few."
+- AIAG CQI-20 *Effective Problem Solving Guide* (2nd Edition, 2018), Figure 34 & Section G1:
 > "Material"
 > "Method"
 > "Man Power"
@@ -48,10 +50,11 @@ Where internal platform choices or heuristics are adopted, they are explicitly d
 > "Environment"
 > "Figure 34."
 > "Fishbone"
+> "5) Pay attention to legs that are bare or have significantly fewer causes listed."
 
-**Rationale:** While different standards and authors use slight wording variations (e.g. Ishikawa's "workers/tools/materials/inspection", ASQ's "people/machines/methods/materials/measurement/environment", AIAG's "Man Power/Machine/Method/Material/Measure/Environment"), they all describe the same 6 fundamental branches of cause-and-effect analysis. Normalizing to the 6M canonical strings provides a unified schema while accepting common industry aliases.
+**Rationale:** While different standards and authors use slight wording variations (e.g. Ishikawa's "workers/tools/materials/inspection", ASQ's "people/machines/methods/materials/measurement/environment", AIAG's "Man Power/Machine/Method/Material/Measure/Environment"), they all describe the same 6 fundamental branches of cause-and-effect analysis. Normalizing to the 6M canonical strings provides a unified schema while accepting common industry aliases. Furthermore, both Ishikawa (1986) and AIAG CQI-20 emphasize that an effective fishbone diagram must capture all dispersion factors without leaving unexplored "bare legs".
 
-**Applied In:** `packages/quality-core/src/quality_core/rca/schema.py` (`Category6M`, `CATEGORY_6M_ALIASES`, `FishboneCause`, `FishboneDataset`, `FISHBONE_SCHEMA`).
+**Applied In:** `packages/quality-core/src/quality_core/rca/schema.py` (`Category6M`, `CATEGORY_6M_ALIASES`, `FishboneCause`, `FishboneDataset`, `FISHBONE_SCHEMA`), `packages/quality-core/src/quality_core/rca/fishbone.py` (`categorize_fishbone`, `FishboneCategorizationResult`).
 
 ---
 
@@ -110,4 +113,20 @@ Where internal platform choices or heuristics are adopted, they are explicitly d
 **Rationale:** Quality engineering frameworks universally prohibit terminating root cause analysis at individual blame or human mistakes. Individual error is a symptom of inadequate error-proofing, deficient training programs, missing verification gates, or flawed management procedures. Effective 5-Why analysis must drill past the "who" to uncover the systemic root cause of the root cause that allowed the failure mode to occur or escape undetected.
 
 **Applied In:** `packages/quality-core/src/quality_core/rca/five_why.py` (`validate_five_why_chain`, `AntiPatternFinding`, `SystemicAssessment`, `FiveWhyLinkEval`, `FiveWhyValidationResult`).
+
+---
+
+## RULE 5: Multi-Category Cause Placement & Branch Concentration Balance Heuristic
+
+**Decision:** Permit multi-category cause placement across multiple 6M branches without forced deduplication, and implement an internal concentration balance heuristic (`balance_threshold = 0.75` / 75%) that warns when brainstorming excessively tilts toward a single branch (e.g. Man/Operator) for $N \ge 3$.
+
+**Source:**
+- Nancy R. Tague, *The Quality Toolbox* (2nd Edition, ASQ, 2005), Chapter 5, p. 248:
+> "Causes can be written in several places if they relate to several categories."
+- AIAG CQI-20 *Effective Problem Solving Guide* (2nd Edition, 2018), Section G1, p. 73:
+> "6) If a possible cause could fit in either leg just pick one and enter it. Don't get into an argument about which leg it belongs."
+
+**Rationale:** In complex manufacturing systems, failure causes can span multiple categories (e.g. an operator using incorrect tooling involves both Man and Machine/Method). Standards explicitly encourage capturing causes wherever relevant rather than debating taxonomy boundaries. Furthermore, because no published standard defines mathematical concentration limits, the platform's 75% concentration threshold is an internal engineering heuristic designed to prevent human-blame / single-cause tunnel vision in alignment with the qualitative principles of Ishikawa (1986) and AIAG CQI-20.
+
+**Applied In:** `packages/quality-core/src/quality_core/rca/fishbone.py` (`categorize_fishbone`), `packages/quality-core/src/quality_core/canvas/rca.py` (`FishboneCanvas`).
 

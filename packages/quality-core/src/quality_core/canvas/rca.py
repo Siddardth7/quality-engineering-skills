@@ -1,14 +1,15 @@
 """
 rca.py
-Single-writer visual 5-Why Canvas reference implementation for Quality Platform.
+Single-writer visual 5-Why and 6M Fishbone Canvas reference implementations for Quality Platform.
 
-Provides `FiveWhyCanvasStep` and `FiveWhyCanvas` controller for managing an in-memory
-5-Why causal chain with deterministic reverse "therefore" logic evaluation, anti-pattern
-detection badges, systemic classification cards, sample benchmark dataset loading, step CRUD,
+Provides `FiveWhyCanvasStep`, `FiveWhyCanvas`, `FishboneCanvasCause`, and `FishboneCanvas`
+controllers for managing in-memory 5-Why causal chains and 6M Fishbone (Ishikawa) cause-and-effect
+diagrams with deterministic validation, empty branch auditing, sample benchmark datasets,
 and theme-aligned HTML canvas rendering (dark and light palettes).
 
 Standards References:
-- AIAG CQI-20 Effective Problem Solving Guide (2nd Edition, 2018), Section 5.
+- Kaoru Ishikawa, Guide to Quality Control (2nd Revised Edition, 1986), Chapter 3.
+- AIAG CQI-20 Effective Problem Solving Guide (2nd Edition, 2018), Section 5 & Section G1.
 - Ford Motor Company, Global 8D (G8D) Problem Solving Manual, Section D4 & D7.
 - Nancy R. Tague, The Quality Toolbox (2nd Edition, ASQ Quality Press, 2005), Chapter 5.
 """
@@ -17,15 +18,27 @@ from __future__ import annotations
 
 import html
 from dataclasses import asdict, dataclass
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
+from quality_core.rca.fishbone import (
+    FishboneCategorizationResult,
+    categorize_fishbone,
+)
 from quality_core.rca.five_why import (
     FiveWhyValidationResult,
     validate_five_why_chain,
 )
-from quality_core.rca.schema import FiveWhyChain
+from quality_core.rca.schema import (
+    CATEGORY_6M_ALIASES,
+    CATEGORY_6M_VALUES,
+    Category6M,
+    FishboneCause,
+    FishboneDataset,
+    FiveWhyChain,
+)
 from quality_core.theme.palette import (
     AMBER,
+    AMBER_DARK,
     BG_CARD,
     BG_PRIMARY,
     BG_SECONDARY,
@@ -38,10 +51,16 @@ from quality_core.theme.palette import (
 )
 
 __all__ = [
+    "SAMPLE_FISHBONE_CAUSES",
+    "SAMPLE_FISHBONE_DATASET",
     "SAMPLE_FIVE_WHY_STEPS",
+    "FishboneCanvas",
+    "FishboneCanvasCause",
     "FiveWhyCanvas",
     "FiveWhyCanvasStep",
     "load_sample_5why_canvas",
+    "load_sample_fishbone_canvas",
+    "render_fishbone",
     "render_five_why",
 ]
 
@@ -661,3 +680,748 @@ def render_five_why(
 
 
     return canvas.to_html(theme=theme, standalone=standalone)
+
+
+# ==============================================================================
+# 2. 6M Fishbone (Cause-and-Effect / Ishikawa) Canvas
+# ==============================================================================
+
+_SAMPLE_FISHBONE_EFFECT = (
+    "Pneumatic cylinder functional defect requiring assembly rework (stroke binding & seal leakage)"
+)
+
+SAMPLE_FISHBONE_CAUSES: list[dict[str, Any]] = [
+    # Man (2 causes)
+    {
+        "category": "Man",
+        "cause": "Operator fatigue during end-of-shift assembly cycle",
+        "sub_category": "Fatigue",
+    },
+    {
+        "category": "Man",
+        "cause": "Inconsistent rod seal insertion technique across shifts",
+        "sub_category": "Training",
+    },
+    # Machine (2 causes)
+    {
+        "category": "Machine",
+        "cause": "CNC rod turning lathe spindle runout exceeding 0.015 mm",
+        "sub_category": "Tooling",
+    },
+    {
+        "category": "Machine",
+        "cause": "Pneumatic seal crimping fixture misalignment",
+        "sub_category": "Equipment",
+    },
+    # Method (2 causes)
+    {
+        "category": "Method",
+        "cause": "Work instruction missing torque sequence for cylinder tie-rods",
+        "sub_category": "Standard Work",
+    },
+    {
+        "category": "Method",
+        "cause": "Inadequate lubrication specification for rod wiper assembly",
+        "sub_category": "Process",
+    },
+    # Material (2 causes)
+    {
+        "category": "Material",
+        "cause": "NBR rod seal batch hardness variation (Durometer 65 vs 75 Shore A)",
+        "sub_category": "Incoming Material",
+    },
+    {
+        "category": "Material",
+        "cause": "Anodized aluminum barrel bore surface roughness out of spec",
+        "sub_category": "Raw Material",
+    },
+    # Measurement (2 causes)
+    {
+        "category": "Measurement",
+        "cause": "Air leakage test pressure decay gage uncalibrated (drift > 0.05 bar)",
+        "sub_category": "Calibration",
+    },
+    {
+        "category": "Measurement",
+        "cause": "Dial indicator rod concentricity fixture deflection",
+        "sub_category": "Gage R&R",
+    },
+    # Environment (2 causes)
+    {
+        "category": "Environment",
+        "cause": "Assembly cleanroom ambient temperature fluctuation (+/- 8 deg C)",
+        "sub_category": "Temperature",
+    },
+    {
+        "category": "Environment",
+        "cause": "Airborne particulate contamination in seal staging area",
+        "sub_category": "Cleanliness",
+    },
+]
+
+SAMPLE_FISHBONE_DATASET: dict[str, Any] = {
+    "effect": _SAMPLE_FISHBONE_EFFECT,
+    "causes": SAMPLE_FISHBONE_CAUSES,
+}
+
+
+@dataclass
+class FishboneCanvasCause:
+    """Individual cause item within the 6M Fishbone canvas.
+
+    Enforces field validation and captures category (Category6M), cause description,
+    optional sub-category, and duplicate flag.
+    """
+
+    category: Category6M
+    cause: str
+    sub_category: str | None = None
+    is_duplicate: bool = False
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.category, str) or not self.category.strip():
+            raise ValueError(f"category must be a non-empty string, got {self.category!r}")
+        clean_cat = self.category.strip()
+        lowered = clean_cat.lower()
+        if lowered in CATEGORY_6M_ALIASES:
+            self.category = CATEGORY_6M_ALIASES[lowered]
+        elif clean_cat in CATEGORY_6M_VALUES:
+            self.category = cast(Category6M, clean_cat)
+        else:
+            raise ValueError(
+                f"Invalid 6M category: {clean_cat!r}. Must be one of {list(CATEGORY_6M_VALUES)} or recognized alias."
+            )
+
+        if not isinstance(self.cause, str) or not self.cause.strip():
+            raise ValueError(f"cause must be a non-empty string, got {self.cause!r}")
+        self.cause = self.cause.strip()
+
+        if self.sub_category is not None:
+            if not isinstance(self.sub_category, str) or not self.sub_category.strip():
+                self.sub_category = None
+            else:
+                self.sub_category = self.sub_category.strip()
+
+        if not isinstance(self.is_duplicate, bool):
+            raise TypeError(
+                f"is_duplicate must be a boolean, got {type(self.is_duplicate).__name__}: {self.is_duplicate!r}"
+            )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return serializable dictionary representation of the canvas cause."""
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> FishboneCanvasCause:
+        """Construct a FishboneCanvasCause from a dictionary supporting snake_case or PascalCase keys."""
+        if not isinstance(data, dict):
+            raise TypeError(f"data must be a dictionary, got {type(data).__name__}: {data!r}")
+
+        def get_field(*names: str, default: Any = ...) -> Any:
+            for name in names:
+                if name in data:
+                    return data[name]
+            if default is not ...:
+                return default
+            raise KeyError(f"Missing required field: {' / '.join(repr(n) for n in names)}")
+
+        category = get_field("category", "Category", "branch", "Branch")
+        cause = get_field("cause", "Cause", "description", "Description", "text", "Text")
+        sub_category = get_field("sub_category", "SubCategory", "subcategory", "Subcategory", default=None)
+        is_duplicate = get_field("is_duplicate", "IsDuplicate", default=False)
+
+        return cls(
+            category=category,
+            cause=cause,
+            sub_category=sub_category,
+            is_duplicate=is_duplicate,
+        )
+
+
+class FishboneCanvas:
+    """Single-writer visual canvas controller for 6M Fishbone (Ishikawa) diagrams.
+
+    Maintains an in-memory collection of `FishboneCanvasCause`s and problem effect statement.
+    Provides cause CRUD operations, deterministic categorization via
+    `quality_core.rca.fishbone.categorize_fishbone`, summary metric computation,
+    and dark/light themed HTML/SVG canvas rendering.
+    """
+
+    def __init__(
+        self,
+        title: str = "6M Fishbone Cause-and-Effect Canvas",
+        description: str = "Deterministic 6M Ishikawa Cause-and-Effect Analysis per Ishikawa (1986) & AIAG CQI-20",
+        effect: str = "Problem Effect",
+        balance_threshold: float = 0.75,
+    ) -> None:
+        if isinstance(title, bool) or not isinstance(title, str) or not title.strip():
+            raise ValueError(f"title must be a non-empty string, got {title!r}")
+        if isinstance(description, bool) or not isinstance(description, str):
+            raise TypeError(f"description must be a string, got {description!r}")
+        if isinstance(effect, bool) or not isinstance(effect, str) or not effect.strip():
+            raise ValueError(f"effect must be a non-empty string, got {effect!r}")
+        if isinstance(balance_threshold, bool) or not isinstance(balance_threshold, (int, float)) or not (0.0 < balance_threshold <= 1.0):
+            raise ValueError(f"balance_threshold must be a float between 0 and 1, got {balance_threshold!r}")
+
+        self.title = title.strip()
+        self.description = description.strip()
+        self.effect = effect.strip()
+        self.balance_threshold = float(balance_threshold)
+        self._causes: list[FishboneCanvasCause] = []
+
+    @property
+    def causes(self) -> list[FishboneCanvasCause]:
+        """Return list of causes."""
+        return list(self._causes)
+
+    @property
+    def rows(self) -> list[FishboneCanvasCause]:
+        """Alias for causes to maintain unified canvas API."""
+        return self.causes
+
+    def add_cause(self, cause: FishboneCanvasCause | dict[str, Any]) -> FishboneCanvasCause:
+        """Add a cause to the canvas."""
+        if isinstance(cause, dict):
+            cause_obj = FishboneCanvasCause.from_dict(cause)
+        elif isinstance(cause, FishboneCanvasCause):
+            cause_obj = cause
+        else:
+            raise TypeError(f"cause must be a FishboneCanvasCause or dict, got {type(cause).__name__}: {cause!r}")
+
+        self._causes.append(cause_obj)
+        return cause_obj
+
+    def remove_cause(self, index_or_cause: int | str | FishboneCanvasCause) -> bool:
+        """Remove a cause by integer index, exact cause text, or object. Returns True if removed, False if not found."""
+        if isinstance(index_or_cause, int) and not isinstance(index_or_cause, bool):
+            if 0 <= index_or_cause < len(self._causes):
+                self._causes.pop(index_or_cause)
+                return True
+            return False
+        if isinstance(index_or_cause, str):
+            target = index_or_cause.strip().lower()
+            for idx, c in enumerate(self._causes):
+                if c.cause.strip().lower() == target:
+                    self._causes.pop(idx)
+                    return True
+            return False
+        if isinstance(index_or_cause, FishboneCanvasCause):
+            if index_or_cause in self._causes:
+                self._causes.remove(index_or_cause)
+                return True
+            return False
+        raise TypeError(f"index_or_cause must be an int, str, or FishboneCanvasCause, got {type(index_or_cause).__name__}")
+
+    def get_causes_by_category(self, category: str) -> list[FishboneCanvasCause]:
+        """Retrieve all causes belonging to a specific 6M category (normalized)."""
+        if not isinstance(category, str):
+            raise TypeError(f"category must be a string, got {type(category).__name__}")
+        clean = category.strip().lower()
+        norm_cat = CATEGORY_6M_ALIASES.get(clean, category.strip())
+        return [c for c in self._causes if c.category == norm_cat]
+
+    def clear_causes(self) -> None:
+        """Clear all causes from the canvas."""
+        self._causes.clear()
+
+    def set_effect(self, effect: str) -> None:
+        """Update the problem effect statement."""
+        if isinstance(effect, bool) or not isinstance(effect, str) or not effect.strip():
+            raise ValueError(f"effect must be a non-empty string, got {effect!r}")
+        self.effect = effect.strip()
+
+    def categorize(self) -> FishboneCategorizationResult:
+        """Execute deterministic 6M categorization and update cause metadata."""
+        if not self._causes:
+            raise ValueError("Canvas contains no causes to categorize.")
+
+        raw_causes = [c.to_dict() for c in self._causes]
+        result = categorize_fishbone(
+            data=raw_causes,
+            effect_statement=self.effect,
+            check_balance=True,
+            balance_threshold=self.balance_threshold,
+        )
+
+        # Update is_duplicate flags on causes
+        dupe_texts = {d["cause"].strip().lower() for d in result.duplicate_causes}
+        for c in self._causes:
+            if c.cause.strip().lower() in dupe_texts:
+                c.is_duplicate = True
+
+        return result
+
+    def get_summary(self) -> dict[str, Any]:
+        """Compute summary categorization and 6M branch metrics across all canvas causes."""
+        total_causes = len(self._causes)
+        if total_causes == 0:
+            return {
+                "total_causes": 0,
+                "active_branches_count": 0,
+                "empty_branches_count": 6,
+                "empty_branches": list(CATEGORY_6M_VALUES),
+                "branch_counts": {b: 0 for b in CATEGORY_6M_VALUES},
+                "valid": False,
+                "verdict": "EMPTY",
+                "top_branch": None,
+                "top_branch_count": 0,
+                "top_branch_percentage": 0.0,
+                "findings": ["Canvas contains no causes."],
+                "recommendations": ["Brainstorm and populate potential causes across the 6M categories."],
+            }
+
+        try:
+            result = self.categorize()
+            active_branches = [b for b, count in result.branch_counts.items() if count > 0]
+            top_branch_tuple = max(result.branch_counts.items(), key=lambda x: x[1]) if total_causes > 0 else (None, 0)
+            top_branch_name = top_branch_tuple[0] if top_branch_tuple[1] > 0 else None
+            top_branch_cnt = top_branch_tuple[1]
+            top_branch_pct = (top_branch_cnt / total_causes) if total_causes > 0 else 0.0
+
+            return {
+                "total_causes": total_causes,
+                "active_branches_count": len(active_branches),
+                "empty_branches_count": len(result.empty_branches),
+                "empty_branches": result.empty_branches,
+                "branch_counts": result.branch_counts,
+                "valid": result.valid,
+                "verdict": result.verdict,
+                "top_branch": top_branch_name,
+                "top_branch_count": top_branch_cnt,
+                "top_branch_percentage": top_branch_pct,
+                "findings": result.warnings,
+                "recommendations": result.recommendations,
+            }
+        except Exception as exc:
+            return {
+                "total_causes": total_causes,
+                "active_branches_count": 0,
+                "empty_branches_count": 6,
+                "empty_branches": list(CATEGORY_6M_VALUES),
+                "branch_counts": {b: 0 for b in CATEGORY_6M_VALUES},
+                "valid": False,
+                "verdict": "ERROR",
+                "top_branch": None,
+                "top_branch_count": 0,
+                "top_branch_percentage": 0.0,
+                "findings": [str(exc)],
+                "recommendations": ["Correct cause categories or field constraints to enable categorization."],
+            }
+
+    @classmethod
+    def load_sample(cls, title: str = "6M Fishbone Cause-and-Effect Canvas") -> FishboneCanvas:
+        """Load the standard reference Sentinel-8D Pneumatic Cylinder Manufacturing Case Study."""
+        canvas = cls(
+            title=title,
+            description="Reference Sentinel-8D Pneumatic Cylinder Manufacturing Case Study (Stroke Binding & Seal Leakage)",
+            effect=_SAMPLE_FISHBONE_EFFECT,
+            balance_threshold=0.75,
+        )
+        for c_data in SAMPLE_FISHBONE_CAUSES:
+            canvas.add_cause(c_data)
+        return canvas
+
+    def to_html(
+        self,
+        theme: Literal["dark", "light"] = "dark",
+        standalone: bool = True,
+    ) -> str:
+        """Render the 6M Fishbone canvas as themed interactive HTML/SVG.
+
+        Parameters
+        ----------
+        theme : Literal["dark", "light"], default "dark"
+            Color theme palette.
+        standalone : bool, default True
+            If True, generates a full standalone HTML5 document; if False, generates an embeddable container.
+
+        Returns
+        -------
+        str
+            Rendered HTML string.
+        """
+        if theme not in ("dark", "light"):
+            raise ValueError(f"theme must be 'dark' or 'light', got {theme!r}")
+
+        summary = self.get_summary()
+
+        if theme == "dark":
+            c_bg_page = BG_PRIMARY
+            c_bg_card = BG_CARD
+            c_bg_subcard = BG_SECONDARY
+            c_border = BORDER
+            c_text_main = TEXT_PRIMARY
+            c_text_muted = TEXT_SECONDARY
+            c_arrow = AMBER
+            c_rib_color = "#475569"
+        else:
+            c_bg_page = "#f8fafc"
+            c_bg_card = "#ffffff"
+            c_bg_subcard = "#f1f5f9"
+            c_border = "#e2e8f0"
+            c_text_main = "#0f172a"
+            c_text_muted = "#64748b"
+            c_arrow = AMBER_DARK
+            c_rib_color = "#94a3b8"
+
+        escaped_title = html.escape(self.title)
+        escaped_desc = html.escape(self.description)
+        escaped_effect = html.escape(self.effect)
+
+        # Verdict badge styling
+        verdict = summary.get("verdict", "EMPTY")
+        if verdict == "ACCEPT":
+            verdict_badge = f'<span style="display:inline-block;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:700;background-color:rgba(16,185,129,0.15);color:{SUCCESS};border:1px solid {SUCCESS};text-transform:uppercase;">Verified (ACCEPT)</span>'
+        elif verdict == "WARNING":
+            verdict_badge = f'<span style="display:inline-block;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:700;background-color:rgba(245,158,11,0.15);color:{AMBER};border:1px solid {AMBER};text-transform:uppercase;">Warning</span>'
+        elif verdict == "REJECT":
+            verdict_badge = f'<span style="display:inline-block;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:700;background-color:rgba(239,68,68,0.15);color:{DANGER};border:1px solid {DANGER};text-transform:uppercase;">Rejected</span>'
+        else:
+            verdict_badge = f'<span style="display:inline-block;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:700;background-color:rgba(148,163,184,0.15);color:{c_text_muted};border:1px solid {c_text_muted};text-transform:uppercase;">{html.escape(verdict)}</span>'
+
+        # Group causes by 6M
+        branch_counts = summary.get("branch_counts", {b: 0 for b in CATEGORY_6M_VALUES})
+        grouped: dict[str, list[FishboneCanvasCause]] = {b: [] for b in CATEGORY_6M_VALUES}
+        for c in self._causes:
+            if c.category in grouped:
+                grouped[c.category].append(c)
+
+        # Top rib coordinates (Man, Machine, Method)
+        # Rib 1 (Man): start (120, 60) -> spine (240, 250)
+        # Rib 2 (Machine): start (330, 60) -> spine (450, 250)
+        # Rib 3 (Method): start (540, 60) -> spine (660, 250)
+        # Bottom rib coordinates (Material, Measurement, Environment)
+        # Rib 4 (Material): start (120, 440) -> spine (240, 250)
+        # Rib 5 (Measurement): start (330, 440) -> spine (450, 250)
+        # Rib 6 (Environment): start (540, 440) -> spine (660, 250)
+
+        svg_ribs_html: list[str] = []
+        top_branches = [("Man", 120, 60, 240, 250), ("Machine", 330, 60, 450, 250), ("Method", 540, 60, 660, 250)]
+        bottom_branches = [("Material", 120, 440, 240, 250), ("Measurement", 330, 440, 450, 250), ("Environment", 540, 440, 660, 250)]
+
+        for branch_name, x_start, y_start, x_end, y_end in top_branches:
+            cnt = branch_counts.get(branch_name, 0)
+            branch_causes = grouped.get(branch_name, [])
+            # Rib line
+            svg_ribs_html.append(
+                f'<line x1="{x_start}" y1="{y_start}" x2="{x_end}" y2="{y_end}" stroke="{c_rib_color}" stroke-width="2.5"/>'
+            )
+            # Label
+            svg_ribs_html.append(
+                f'<rect x="{x_start - 45}" y="{y_start - 30}" width="90" height="24" rx="4" fill="{c_bg_card}" stroke="{c_border}" stroke-width="1"/>'
+            )
+            svg_ribs_html.append(
+                f'<text x="{x_start}" y="{y_start - 14}" text-anchor="middle" font-size="11" font-weight="700" fill="{c_text_main}">{branch_name.upper()} ({cnt})</text>'
+            )
+            # Causes horizontal branch lines
+            for c_idx, cause_obj in enumerate(branch_causes[:3]):
+                t = (c_idx + 1) / (min(len(branch_causes), 3) + 1)
+                bx = x_start + t * (x_end - x_start)
+                by = y_start + t * (y_end - y_start)
+                branch_len = 65
+                svg_ribs_html.append(
+                    f'<line x1="{bx - branch_len}" y1="{by}" x2="{bx}" y2="{by}" stroke="{c_border}" stroke-width="1.5"/>'
+                )
+                escaped_c_text = html.escape(cause_obj.cause)
+                short_text = html.escape(cause_obj.cause[:18] + ("…" if len(cause_obj.cause) > 18 else ""))
+                svg_ribs_html.append(
+                    f'<text x="{bx - branch_len - 4}" y="{by - 3}" text-anchor="end" font-size="9" fill="{c_text_muted}"><title>{escaped_c_text}</title>{short_text}</text>'
+                )
+
+        for branch_name, x_start, y_start, x_end, y_end in bottom_branches:
+            cnt = branch_counts.get(branch_name, 0)
+            branch_causes = grouped.get(branch_name, [])
+            # Rib line
+            svg_ribs_html.append(
+                f'<line x1="{x_start}" y1="{y_start}" x2="{x_end}" y2="{y_end}" stroke="{c_rib_color}" stroke-width="2.5"/>'
+            )
+            # Label
+            svg_ribs_html.append(
+                f'<rect x="{x_start - 55}" y="{y_start + 8}" width="110" height="24" rx="4" fill="{c_bg_card}" stroke="{c_border}" stroke-width="1"/>'
+            )
+            svg_ribs_html.append(
+                f'<text x="{x_start}" y="{y_start + 24}" text-anchor="middle" font-size="11" font-weight="700" fill="{c_text_main}">{branch_name.upper()} ({cnt})</text>'
+            )
+            # Causes horizontal branch lines
+            for c_idx, cause_obj in enumerate(branch_causes[:3]):
+                t = (c_idx + 1) / (min(len(branch_causes), 3) + 1)
+                bx = x_start + t * (x_end - x_start)
+                by = y_start + t * (y_end - y_start)
+                branch_len = 65
+                svg_ribs_html.append(
+                    f'<line x1="{bx - branch_len}" y1="{by}" x2="{bx}" y2="{by}" stroke="{c_border}" stroke-width="1.5"/>'
+                )
+                escaped_c_text = html.escape(cause_obj.cause)
+                short_text = html.escape(cause_obj.cause[:18] + ("…" if len(cause_obj.cause) > 18 else ""))
+                svg_ribs_html.append(
+                    f'<text x="{bx - branch_len - 4}" y="{by + 10}" text-anchor="end" font-size="9" fill="{c_text_muted}"><title>{escaped_c_text}</title>{short_text}</text>'
+                )
+
+        svg_content = f"""
+        <svg viewBox="0 0 1000 500" width="100%" height="340" style="background-color:{c_bg_subcard};border-radius:10px;border:1px solid {c_border};">
+            <defs>
+                <marker id="fishbone-arrow-{theme}" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+                    <path d="M 0 1 L 10 5 L 0 9 z" fill="{c_arrow}"/>
+                </marker>
+            </defs>
+            <!-- Central Spine -->
+            <line x1="40" y1="250" x2="720" y2="250" stroke="{c_arrow}" stroke-width="4" marker-end="url(#fishbone-arrow-{theme})"/>
+
+            <!-- 6M Ribs and Branches -->
+            {''.join(svg_ribs_html)}
+
+            <!-- Problem Effect Box -->
+            <rect x="740" y="190" width="240" height="120" rx="10" fill="{c_bg_card}" stroke="{c_arrow}" stroke-width="2"/>
+            <text x="860" y="215" text-anchor="middle" font-size="10" font-weight="700" fill="{c_arrow}" letter-spacing="0.5">PROBLEM EFFECT</text>
+            <foreignObject x="748" y="222" width="224" height="80">
+                <div xmlns="http://www.w3.org/1999/xhtml" style="font-family:Inter,sans-serif;font-size:11px;font-weight:600;color:{c_text_main};text-align:center;line-height:1.3;padding:4px;overflow:hidden;text-overflow:ellipsis;">
+                    {escaped_effect}
+                </div>
+            </foreignObject>
+        </svg>
+        """
+
+        # 6M Category Breakdown Grid
+        category_cards_html: list[str] = []
+        for cat in CATEGORY_6M_VALUES:
+            cat_causes = grouped.get(cat, [])
+            cnt = len(cat_causes)
+            if cnt == 0:
+                body_items = f'<div style="font-size:12px;color:{c_text_muted};font-style:italic;padding:8px 0;">Empty branch (no causes listed)</div>'
+                badge_bg = "rgba(239,68,68,0.1)"
+                badge_color = DANGER
+            else:
+                items_list = []
+                for c in cat_causes:
+                    sub_tag = f'<span style="background-color:rgba(139,92,246,0.12);color:{VIOLET};padding:1px 5px;border-radius:3px;font-size:10px;margin-left:4px;">{html.escape(c.sub_category)}</span>' if c.sub_category else ""
+                    dupe_tag = f'<span style="background-color:rgba(239,68,68,0.15);color:{DANGER};padding:1px 5px;border-radius:3px;font-size:10px;margin-left:4px;font-weight:700;">DUPLICATE</span>' if c.is_duplicate else ""
+                    items_list.append(
+                        f'<li style="margin-bottom:6px;font-size:12px;color:{c_text_main};line-height:1.4;">'
+                        f'{html.escape(c.cause)}{sub_tag}{dupe_tag}'
+                        f'</li>'
+                    )
+                body_items = f'<ul style="margin:6px 0 0 0;padding-left:18px;">{"".join(items_list)}</ul>'
+                badge_bg = "rgba(16,185,129,0.1)"
+                badge_color = SUCCESS
+
+            card = f"""
+            <div style="background-color:{c_bg_card};border:1px solid {c_border};border-radius:8px;padding:14px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                    <span style="font-weight:700;font-size:13px;color:{c_text_main};">{cat}</span>
+                    <span style="font-size:11px;font-weight:700;color:{badge_color};background-color:{badge_bg};padding:2px 8px;border-radius:4px;">{cnt}</span>
+                </div>
+                {body_items}
+            </div>
+            """
+            category_cards_html.append(card)
+
+        cards_grid_html = f"""
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;margin-top:20px;">
+            {''.join(category_cards_html)}
+        </div>
+        """
+
+        # Findings / Recommendations alert box
+        findings = summary.get("findings", [])
+        recommendations = summary.get("recommendations", [])
+
+        findings_list_items = "".join(f"<li>{html.escape(f)}</li>" for f in findings)
+        recs_list_items = "".join(f"<li>{html.escape(r)}</li>" for r in recommendations)
+
+        if findings_list_items or recs_list_items:
+            findings_section = f"""
+                <div style="font-weight:700;color:{DANGER};margin-bottom:6px;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">Identified 6M Branch Findings:</div>
+                <ul style="margin:0 0 12px 0;padding-left:20px;font-size:12px;color:{c_text_muted};line-height:1.6;">
+                    {findings_list_items}
+                </ul>
+            """ if findings_list_items else ""
+            recs_section = f"""
+                <div style="font-weight:700;color:{VIOLET};margin-bottom:6px;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">Engineering Recommendations:</div>
+                <ul style="margin:0;padding-left:20px;font-size:12px;color:{c_text_muted};line-height:1.6;">
+                    {recs_list_items}
+                </ul>
+            """ if recs_list_items else ""
+            recs_html = f"""
+            <div style="background-color:rgba(139,92,246,0.08);border:1px solid {VIOLET};border-radius:8px;padding:14px 18px;margin-top:20px;color:{c_text_main};">
+                {findings_section}
+                {recs_section}
+            </div>
+            """
+        else:
+            recs_html = ""
+
+        top_branch_label = html.escape(f"{summary['top_branch']} ({summary['top_branch_count']})" if summary.get("top_branch") else "None")
+
+        body_content = f"""
+<div class="qes-fishbone-canvas" style="font-family:Inter,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;background-color:{c_bg_page};color:{c_text_main};padding:24px;border-radius:12px;box-sizing:border-box;border:1px solid {c_border};">
+    <!-- Header -->
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid {c_border};">
+        <div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <h2 style="margin:0;font-size:20px;font-weight:700;color:{c_text_main};">{escaped_title}</h2>
+                <span style="background-color:rgba(245,158,11,0.15);color:{AMBER};border:1px solid {AMBER};padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;text-transform:uppercase;">Ishikawa 6M &amp; AIAG CQI-20</span>
+            </div>
+            <p style="margin:6px 0 0 0;font-size:13px;color:{c_text_muted};">{escaped_desc}</p>
+        </div>
+        <div style="font-size:12px;color:{c_text_muted};text-align:right;">
+            <span>Single-Writer Reference Canvas</span>
+        </div>
+    </div>
+
+    <!-- Problem Effect Box -->
+    <div style="background-color:{c_bg_card};border:1px solid {c_border};border-left:4px solid {AMBER};border-radius:8px;padding:12px 16px;margin-bottom:20px;">
+        <div style="font-size:11px;font-weight:700;color:{AMBER};text-transform:uppercase;margin-bottom:4px;letter-spacing:0.5px;">Problem Statement / Failure Effect:</div>
+        <div style="font-size:14px;font-weight:600;color:{c_text_main};">{escaped_effect}</div>
+    </div>
+
+    <!-- Summary KPI Cards -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:12px;margin-bottom:24px;">
+        <div style="background-color:{c_bg_card};border:1px solid {c_border};border-radius:8px;padding:12px;text-align:center;">
+            <div style="font-size:11px;font-weight:600;color:{c_text_muted};text-transform:uppercase;">Total Causes</div>
+            <div style="font-size:22px;font-weight:700;color:{c_text_main};margin-top:4px;">{summary["total_causes"]}</div>
+        </div>
+        <div style="background-color:{c_bg_card};border:1px solid {c_border};border-radius:8px;padding:12px;text-align:center;">
+            <div style="font-size:11px;font-weight:600;color:{c_text_muted};text-transform:uppercase;">Active Branches</div>
+            <div style="font-size:22px;font-weight:700;color:{c_text_main};margin-top:4px;">{summary["active_branches_count"]}/6</div>
+        </div>
+        <div style="background-color:{c_bg_card};border:1px solid {c_border};border-radius:8px;padding:12px;text-align:center;">
+            <div style="font-size:11px;font-weight:600;color:{c_text_muted};text-transform:uppercase;">Empty Branches</div>
+            <div style="font-size:22px;font-weight:700;color:{c_text_main};margin-top:4px;">{summary["empty_branches_count"]}/6</div>
+        </div>
+        <div style="background-color:{c_bg_card};border:1px solid {c_border};border-radius:8px;padding:12px;text-align:center;">
+            <div style="font-size:11px;font-weight:600;color:{c_text_muted};text-transform:uppercase;">Top Branch</div>
+            <div style="font-size:14px;font-weight:700;color:{c_text_main};margin-top:8px;">{top_branch_label}</div>
+        </div>
+        <div style="background-color:{c_bg_card};border:1px solid {c_border};border-radius:8px;padding:12px;text-align:center;">
+            <div style="font-size:11px;font-weight:600;color:{c_text_muted};text-transform:uppercase;">Verdict</div>
+            <div style="margin-top:6px;">{verdict_badge}</div>
+        </div>
+    </div>
+
+    <!-- Fishbone Diagram SVG -->
+    <div style="margin-bottom:20px;">
+        <div style="font-size:13px;font-weight:700;color:{c_text_muted};text-transform:uppercase;margin-bottom:12px;letter-spacing:0.5px;">6M Ishikawa Cause-and-Effect Diagram:</div>
+        {svg_content}
+    </div>
+
+    <!-- 6M Categories Detailed Breakdown -->
+    <div style="margin-bottom:20px;">
+        <div style="font-size:13px;font-weight:700;color:{c_text_muted};text-transform:uppercase;margin-bottom:12px;letter-spacing:0.5px;">6M Branch Breakdown:</div>
+        {cards_grid_html}
+    </div>
+
+    {recs_html}
+</div>
+        """
+
+        if not standalone:
+            return body_content
+
+        return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{escaped_title}</title>
+    <style>
+        body {{
+            margin: 0;
+            padding: 24px;
+            background-color: {c_bg_page};
+            color: {c_text_main};
+            font-family: Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif;
+        }}
+    </style>
+</head>
+<body>
+{body_content}
+</body>
+</html>"""
+
+
+def load_sample_fishbone_canvas(
+    title: str = "6M Fishbone Cause-and-Effect Canvas",
+) -> FishboneCanvas:
+    """Load reference benchmark 6M Fishbone canvas."""
+    return FishboneCanvas.load_sample(title=title)
+
+
+def render_fishbone(
+    causes: FishboneDataset | list[dict[str, Any]] | list[FishboneCause] | None = None,
+    effect: str = "Problem Effect",
+    effect_statement: str | None = None,
+    title: str = "6M Fishbone Cause-and-Effect Canvas",
+    theme: Literal["dark", "light"] = "dark",
+    standalone: bool = True,
+    balance_threshold: float = 0.75,
+) -> str:
+    """Helper function to render a 6M Fishbone dataset as themed HTML.
+
+    Parameters
+    ----------
+    causes : FishboneDataset | list[dict[str, Any]] | list[FishboneCause] | None, optional
+        Causes dataset. If None, loads the standard reference Sentinel-8D benchmark dataset.
+    effect : str, default "Problem Effect"
+        Problem effect statement.
+    effect_statement : str | None, optional
+        Optional alias for problem effect statement.
+    title : str, default "6M Fishbone Cause-and-Effect Canvas"
+        Canvas header title.
+    theme : Literal["dark", "light"], default "dark"
+        Color theme palette.
+    standalone : bool, default True
+        Whether to return a complete HTML document or embeddable markup.
+    balance_threshold : float, default 0.75
+        Threshold fraction for branch concentration balance check.
+
+    Returns
+    -------
+    str
+        Rendered HTML string.
+    """
+    eff = effect_statement if effect_statement is not None else effect
+
+    if causes is None:
+        canvas = FishboneCanvas.load_sample(title=title)
+        if eff != "Problem Effect" and eff != _SAMPLE_FISHBONE_EFFECT:
+            canvas.set_effect(eff)
+    elif isinstance(causes, FishboneDataset):
+        canvas = FishboneCanvas(
+            title=title,
+            effect=effect_statement or causes.effect,
+            balance_threshold=balance_threshold,
+        )
+        for c in causes.causes:
+            canvas.add_cause(
+                FishboneCanvasCause(
+                    category=c.category,
+                    cause=c.cause,
+                    sub_category=c.sub_category,
+                )
+            )
+    elif isinstance(causes, list):
+        canvas = FishboneCanvas(
+            title=title,
+            effect=eff,
+            balance_threshold=balance_threshold,
+        )
+        for item in causes:
+            if isinstance(item, FishboneCanvasCause):
+                canvas.add_cause(item)
+            elif isinstance(item, FishboneCause):
+                canvas.add_cause(
+                    FishboneCanvasCause(
+                        category=item.category,
+                        cause=item.cause,
+                        sub_category=item.sub_category,
+                    )
+                )
+            elif isinstance(item, dict):
+                canvas.add_cause(item)
+            else:
+                raise TypeError(f"Expected FishboneCanvasCause, FishboneCause, or dict in causes list, got {type(item).__name__}")
+    else:
+        raise TypeError(f"causes must be FishboneDataset, list of dicts/causes, or None, got {type(causes).__name__}")
+
+    return canvas.to_html(theme=theme, standalone=standalone)
+

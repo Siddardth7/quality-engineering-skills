@@ -16,10 +16,12 @@ from quality_mcp.server import (
     main,
     mcp,
     ping,
+    render_5why_canvas,
     render_controlplan_canvas,
     render_fmea_canvas,
     render_msa_canvas,
     render_spc_canvas,
+    validate_5why,
     validate_control_plan,
 )
 
@@ -135,12 +137,14 @@ def test_package_exports() -> None:
     assert quality_mcp.mcp is mcp
     assert quality_mcp.ping is ping
     assert quality_mcp.lookup_fmea_ap is lookup_fmea_ap
+    assert quality_mcp.render_5why_canvas is render_5why_canvas
     assert quality_mcp.render_controlplan_canvas is render_controlplan_canvas
     assert quality_mcp.render_fmea_canvas is render_fmea_canvas
     assert quality_mcp.render_msa_canvas is render_msa_canvas
     assert quality_mcp.render_spc_canvas is render_spc_canvas
     assert quality_mcp.calculate_spc_chart is calculate_spc_chart
     assert quality_mcp.calculate_gage_rr is calculate_gage_rr
+    assert quality_mcp.validate_5why is validate_5why
     assert quality_mcp.validate_control_plan is validate_control_plan
     assert quality_mcp.__version__ == "0.5.0"
     assert set(quality_mcp.__all__) == {
@@ -150,10 +154,12 @@ def test_package_exports() -> None:
         "lookup_fmea_ap",
         "mcp",
         "ping",
+        "render_5why_canvas",
         "render_controlplan_canvas",
         "render_fmea_canvas",
         "render_msa_canvas",
         "render_spc_canvas",
+        "validate_5why",
         "validate_control_plan",
     }
     assert sorted(quality_mcp.__all__) == [
@@ -163,9 +169,12 @@ def test_package_exports() -> None:
         "lookup_fmea_ap",
         "mcp",
         "ping",
+        "render_5why_canvas",
         "render_controlplan_canvas",
         "render_fmea_canvas",
         "render_msa_canvas",
         "render_spc_canvas",
+        "validate_5why",
         "validate_control_plan",
     ]
+

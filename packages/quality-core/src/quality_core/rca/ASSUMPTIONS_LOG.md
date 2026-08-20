@@ -90,3 +90,24 @@ Where internal platform choices or heuristics are adopted, they are explicitly d
 **Rationale:** Standard problem-solving bodies emphasize that 5-Why is not constrained to exactly 5 steps, but must form a rigorous causal chain where drilling down follows "Why $\to$ Because" and reverse verification follows "Because $\to$ Therefore". Sequential step numbers (1, 2, 3...) prevent gaps or disconnected branches in a single linear chain.
 
 **Applied In:** `packages/quality-core/src/quality_core/rca/schema.py` (`FiveWhyStep`, `FiveWhyChain`, `FIVE_WHY_SCHEMA`).
+
+---
+
+## RULE 4: Superficial / Blame-Terminal Root Cause Rejection and Anti-Pattern Detection
+
+**Decision:** Enforce rejection of superficial and blame-terminal root causes (e.g. stopping at "operator error", "technician forgot", or individual human mistake without systemic training, poka-yoke, or management resolution), detect circular reasoning loops, and require reverse bottom-up necessity evaluation. Intermediate operator error is permitted only if the causal chain continues drilling down to systemic prevention.
+
+**Source:**
+- Nancy R. Tague, *The Quality Toolbox* (2nd Edition, ASQ, 2005), Chapter 5, p. 514:
+> "Don’t stop when you reach a “who.” Keep asking why. “Whos” are convenient ways to point fingers, but they are not root causes."
+> "The longer the chain of causes to the end point, the more likely it is that the end point deals with system issues such as management policies. These deeper causes usually lead to a more complete, fundamental solution to a problem. Addressing causes that arise early in the chain often amounts to applying a Band-Aid; addressing deeper causes provides long-term solutions to the problem."
+- Ford Motor Company, *Global 8D Manual*, Section D4 & D7:
+> "there is normally a procedure, a policy, or a (systemic) practice that has allowed you pass. We call this the 'root cause of the root cause.' This must be established and resolved."
+> "These systemic problems need to be fixed. The goal is to change the system that allowed the problem to occur in the first place and prevent problems from arising similar."
+- AIAG CQI-20 *Effective Problem Solving Guide* (2nd Edition, 2018), Section 5:
+> "The systemic root cause(s) addresses, "Why did the system or planning process fail to identify the cause of the problem and the non-discovery?" The systemic root cause typically is understood last and diligence is required to address thoroughly."
+
+**Rationale:** Quality engineering frameworks universally prohibit terminating root cause analysis at individual blame or human mistakes. Individual error is a symptom of inadequate error-proofing, deficient training programs, missing verification gates, or flawed management procedures. Effective 5-Why analysis must drill past the "who" to uncover the systemic root cause of the root cause that allowed the failure mode to occur or escape undetected.
+
+**Applied In:** `packages/quality-core/src/quality_core/rca/five_why.py` (`validate_five_why_chain`, `AntiPatternFinding`, `SystemicAssessment`, `FiveWhyLinkEval`, `FiveWhyValidationResult`).
+

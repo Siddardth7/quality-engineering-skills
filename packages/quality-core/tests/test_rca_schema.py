@@ -62,11 +62,16 @@ def _csv_buf(rows: list[dict[str, Any]], name: str = "upload.csv") -> io.BytesIO
 
 def test_rca_module_all_exports() -> None:
     expected_exports = {
+        "AntiPatternFinding",
         "FIVE_WHY_SCHEMA",
         "FiveWhyChain",
+        "FiveWhyLinkEval",
         "FiveWhyStep",
+        "FiveWhyValidationResult",
+        "SystemicAssessment",
         "load_five_why_csv",
         "validate_five_why",
+        "validate_five_why_chain",
         "Category6M",
         "FISHBONE_SCHEMA",
         "FishboneCause",
@@ -81,6 +86,7 @@ def test_rca_module_all_exports() -> None:
         "validate_is_is_not",
         "IngestError",
     }
+
     assert set(rca.__all__) == expected_exports
     for symbol in expected_exports:
         assert hasattr(rca, symbol)

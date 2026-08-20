@@ -621,7 +621,7 @@ def test_milestones_markdown_links_resolve() -> None:
 
 
 def test_changelog_entry_unreleased() -> None:
-    """Verify CHANGELOG.md contains the issue #7, #21, #34, #41, #48, and #80 entries under [0.1.0], [0.2.0], [0.3.0], [0.4.0], [0.5.0], or [Unreleased]."""
+    """Verify CHANGELOG.md contains the issue #7, #21, #34, #41, #48, and #80 entries under [0.1.0], [0.2.0], [0.3.0], [0.4.0], [0.5.0], [0.6.0], or [Unreleased]."""
     assert _CHANGELOG.is_file(), f"Missing CHANGELOG file: {_CHANGELOG}"
     content = _CHANGELOG.read_text(encoding="utf-8")
 

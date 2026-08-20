@@ -11,6 +11,7 @@ from mcp.shared.memory import create_connected_server_and_client_session
 from quality_mcp.server import mcp
 from quality_mcp.tools.canvas import (
     render_controlplan_canvas,
+    render_fishbone_canvas,
     render_fmea_canvas,
     render_msa_canvas,
     render_spc_canvas,
@@ -742,6 +743,66 @@ def test_mcp_client_roundtrip_render_controlplan_canvas_error() -> None:
             assert result.isError
 
     asyncio.run(_run())
+
+
+# ---------------------------------------------------------------------------
+# Fishbone Canvas Tool Tests
+# ---------------------------------------------------------------------------
+
+
+def test_render_fishbone_canvas_from_canvas_module() -> None:
+    """render_fishbone_canvas renders sample and custom dataset via quality_mcp.tools.canvas."""
+    # 1. Default sample
+    res_default = render_fishbone_canvas()
+    assert res_default["title"] == "6M Fishbone Cause-and-Effect Canvas"
+    assert res_default["rows_count"] == 12
+    assert res_default["valid"] is True
+    assert "<!DOCTYPE html>" in res_default["html"]
+
+    # 2. Custom dataset embedded
+    custom_causes = [
+        {"category": "Man", "cause": "Operator hurried"},
+        {"category": "Machine", "cause": "Fixture loose"},
+    ]
+    res_custom = render_fishbone_canvas(
+        causes=custom_causes,
+        title="Custom Fishbone",
+        theme="light",
+        standalone=False,
+    )
+    assert res_custom["title"] == "Custom Fishbone"
+    assert res_custom["rows_count"] == 2
+    assert "<!DOCTYPE html>" not in res_custom["html"]
+
+
+def test_render_fishbone_canvas_package_exports() -> None:
+    """render_fishbone_canvas is re-exported from quality_mcp and quality_mcp.tools."""
+    import quality_mcp
+    import quality_mcp.tools
+
+    assert hasattr(quality_mcp, "render_fishbone_canvas")
+    assert hasattr(quality_mcp.tools, "render_fishbone_canvas")
+    assert "render_fishbone_canvas" in quality_mcp.__all__
+    assert "render_fishbone_canvas" in quality_mcp.tools.__all__
+
+
+def test_mcp_client_roundtrip_render_fishbone_canvas_success() -> None:
+    """Call render_fishbone_canvas over in-process FastMCP client session successfully."""
+    async def _run() -> None:
+        async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+            tools_response = await client.list_tools()
+            tool_names = [tool.name for tool in tools_response.tools]
+            assert "render_fishbone_canvas" in tool_names
+
+            result = await client.call_tool("render_fishbone_canvas", {})
+            assert not result.isError
+            assert result.structuredContent is not None
+            assert result.structuredContent["rows_count"] == 12
+            assert result.structuredContent["valid"] is True
+            assert "<!DOCTYPE html>" in result.structuredContent["html"]
+
+    asyncio.run(_run())
+
 
 
 

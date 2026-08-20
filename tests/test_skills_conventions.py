@@ -165,7 +165,7 @@ def test_skills_readme_exists_and_documents_conventions() -> None:
 
 
 def test_discoverable_skill_directories_exist() -> None:
-    """At least _template, mcp-health, fmea-reviewer, spc-control-charts, msa-gauge-rr, control-plan, and 5why-root-cause skill directories must exist."""
+    """At least _template, mcp-health, fmea-reviewer, spc-control-charts, msa-gauge-rr, control-plan, 5why-root-cause, and fishbone-analysis skill directories must exist."""
     skill_dirs = _discover_skill_directories()
     dir_names = {d.name for d in skill_dirs}
     assert "_template" in dir_names, "skills/_template directory missing"
@@ -175,6 +175,7 @@ def test_discoverable_skill_directories_exist() -> None:
     assert "msa-gauge-rr" in dir_names, "skills/msa-gauge-rr directory missing"
     assert "control-plan" in dir_names, "skills/control-plan directory missing"
     assert "5why-root-cause" in dir_names, "skills/5why-root-cause directory missing"
+    assert "fishbone-analysis" in dir_names, "skills/fishbone-analysis directory missing"
 
 
 @pytest.mark.parametrize(
@@ -261,6 +262,18 @@ def test_5why_root_cause_skill_specifies_tools() -> None:
     assert "Ford" in content or "8D" in content, "5why-root-cause skill must cite Ford Global 8D"
 
 
+def test_fishbone_analysis_skill_specifies_tools() -> None:
+    """skills/fishbone-analysis/SKILL.md must document categorize_fishbone and render_fishbone_canvas tools, reference quality-mcp, and cite Ishikawa / CQI-20 / ASQ."""
+    fishbone_file = _SKILLS_DIR / "fishbone-analysis" / "SKILL.md"
+    assert fishbone_file.exists(), "skills/fishbone-analysis/SKILL.md does not exist"
+    content = fishbone_file.read_text(encoding="utf-8")
+    assert "categorize_fishbone" in content, "fishbone-analysis skill must document categorize_fishbone tool"
+    assert "render_fishbone_canvas" in content, "fishbone-analysis skill must document render_fishbone_canvas tool"
+    assert "quality-mcp" in content, "fishbone-analysis skill must reference quality-mcp"
+    assert "Ishikawa" in content or "6M" in content, "fishbone-analysis skill must cite Ishikawa or 6M"
+    assert "CQI-20" in content or "ASQ" in content or "AIAG" in content, "fishbone-analysis skill must cite CQI-20, ASQ, or AIAG"
+
+
 def test_claude_skills_isolation() -> None:
     """.claude/skills/ must remain segregated from domain skills/."""
     if not _CLAUDE_SKILLS_DIR.exists():
@@ -274,6 +287,7 @@ def test_claude_skills_isolation() -> None:
     assert "msa-gauge-rr" not in claude_dirs, "msa-gauge-rr domain skill leaked into .claude/skills/"
     assert "control-plan" not in claude_dirs, "control-plan domain skill leaked into .claude/skills/"
     assert "5why-root-cause" not in claude_dirs, "5why-root-cause domain skill leaked into .claude/skills/"
+    assert "fishbone-analysis" not in claude_dirs, "fishbone-analysis domain skill leaked into .claude/skills/"
 
 
 

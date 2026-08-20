@@ -28,11 +28,17 @@ from __future__ import annotations
 
 import asyncio
 import json
+from typing import Any
 
 import pytest
 from mcp.shared.memory import create_connected_server_and_client_session
 from quality_mcp.server import mcp
-from quality_mcp.tools.rca import render_5why_canvas, validate_5why
+from quality_mcp.tools.rca import (
+    categorize_fishbone,
+    render_5why_canvas,
+    render_fishbone_canvas,
+    validate_5why,
+)
 
 # ---------------------------------------------------------------------------
 # 1. validate_5why Direct Function Execution Tests
@@ -344,3 +350,303 @@ def test_mcp_client_session_render_5why_canvas_roundtrip() -> None:
             assert "Tool broke during roughing" in data_custom["html"]
 
     asyncio.run(_run())
+
+
+# ---------------------------------------------------------------------------
+# 4. categorize_fishbone Direct Function Execution Tests
+# ---------------------------------------------------------------------------
+
+
+def test_categorize_fishbone_default_sample() -> None:
+    """categorize_fishbone() with no arguments evaluates reference Sentinel-8D cylinder case."""
+    result = categorize_fishbone()
+    assert result["basis"] == "Ishikawa (1986) / AIAG CQI-20 / ASQ Quality Toolbox"
+    assert result["valid"] is True
+    assert result["verdict"] == "ACCEPT"
+    assert result["total_causes"] == 12
+    assert result["empty_branches"] == []
+    assert len(result["duplicate_causes"]) == 0
+    assert len(result["warnings"]) == 0
+
+
+def test_categorize_fishbone_custom_causes_and_effects() -> None:
+    """categorize_fishbone() with custom causes, effect, and effect_statement alias."""
+    custom_causes = [
+        {"category": "Man", "cause": "Operator error", "sub_category": "Training"},
+        {"category": "Machine", "cause": "Spindle runout", "sub_category": "Tooling"},
+        {"category": "Method", "cause": "Missing torque spec", "sub_category": "Process"},
+        {"category": "Material", "cause": "Seal batch hardness", "sub_category": "Material"},
+        {"category": "Measurement", "cause": "Gage drift", "sub_category": "Calibration"},
+        {"category": "Environment", "cause": "Ambient temp fluctuation", "sub_category": "HVAC"},
+    ]
+
+    # With effect
+    res1 = categorize_fishbone(causes=custom_causes, effect="Custom Problem")
+    assert res1["valid"] is True
+    assert res1["verdict"] == "ACCEPT"
+    assert res1["effect_statement"] == "Custom Problem"
+    assert res1["total_causes"] == 6
+
+    # With effect_statement overriding effect
+    res2 = categorize_fishbone(causes=custom_causes, effect="Ignored", effect_statement="Overridden Problem")
+    assert res2["effect_statement"] == "Overridden Problem"
+
+
+def test_categorize_fishbone_empty_causes() -> None:
+    """categorize_fishbone(causes=[]) returns valid=False, verdict=REJECT, and empty dataset warning."""
+    result = categorize_fishbone(causes=[], effect="No causes")
+    assert result["valid"] is False
+    assert result["verdict"] == "REJECT"
+    assert result["total_causes"] == 0
+    assert len(result["empty_branches"]) == 6
+    assert "Fishbone dataset contains no causes." in result["warnings"][0]
+
+
+def test_categorize_fishbone_type_and_value_errors() -> None:
+    """categorize_fishbone() raises TypeError and ValueError on invalid argument types."""
+    # check_balance
+    with pytest.raises(TypeError, match="check_balance must be a boolean"):
+        categorize_fishbone(check_balance=1)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="check_balance must be a boolean"):
+        categorize_fishbone(check_balance="true")  # type: ignore[arg-type]
+
+    # balance_threshold
+    with pytest.raises(TypeError, match="balance_threshold must be a float"):
+        categorize_fishbone(balance_threshold=True)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="balance_threshold must be a float"):
+        categorize_fishbone(balance_threshold="0.75")  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="balance_threshold must be a float between 0 and 1"):
+        categorize_fishbone(balance_threshold=0.0)
+
+    with pytest.raises(ValueError, match="balance_threshold must be a float between 0 and 1"):
+        categorize_fishbone(balance_threshold=1.5)
+
+    # effect / effect_statement
+    with pytest.raises(TypeError, match="effect must be a string"):
+        categorize_fishbone(effect=123)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="effect must be a string"):
+        categorize_fishbone(effect=True)  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="effect must not be empty"):
+        categorize_fishbone(effect="   ")
+
+    # causes
+    with pytest.raises(TypeError, match="causes must be a list of dictionaries or None"):
+        categorize_fishbone(causes="invalid")  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="causes item at index 0 must be a dict"):
+        categorize_fishbone(causes=["not-a-dict"])  # type: ignore[list-item]
+
+
+def test_categorize_fishbone_schema_validation_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """categorize_fishbone() catches pydantic.ValidationError and returns structured REJECT result."""
+    import pydantic
+    import quality_mcp.tools.rca as rca_tool_mod
+
+    class DummyModel(pydantic.BaseModel):
+        x: int
+
+    def _mock_raise(*args: Any, **kwargs: Any) -> Any:
+        DummyModel(x="not-an-int")  # type: ignore[arg-type]
+
+    monkeypatch.setattr(rca_tool_mod, "_categorize_fishbone", _mock_raise)
+    result = categorize_fishbone(causes=[{"category": "Man", "cause": "Operator error"}])
+    assert result["valid"] is False
+    assert result["verdict"] == "REJECT"
+    assert any("Schema validation error" in w for w in result["warnings"])
+
+
+# ---------------------------------------------------------------------------
+# 5. render_fishbone_canvas Direct Function Execution Tests
+# ---------------------------------------------------------------------------
+
+
+def test_render_fishbone_canvas_default_sample() -> None:
+    """render_fishbone_canvas() with default arguments renders sample benchmark canvas."""
+    result = render_fishbone_canvas()
+    assert result["title"] == "6M Fishbone Cause-and-Effect Canvas"
+    assert result["rows_count"] == 12
+    assert result["causes_count"] == 12
+    assert result["valid"] is True
+    assert result["verdict"] == "ACCEPT"
+    assert "<!DOCTYPE html>" in result["html"]
+    assert "qes-fishbone-canvas" in result["html"]
+    assert "Pneumatic cylinder" in result["html"]
+
+
+def test_render_fishbone_canvas_sample_with_custom_effect() -> None:
+    """render_fishbone_canvas() with causes=None and custom effect overrides sample effect."""
+    result = render_fishbone_canvas(causes=None, effect="Custom Hydraulic Cylinder Failure")
+    assert result["rows_count"] == 12
+    assert "Custom Hydraulic Cylinder Failure" in result["html"]
+
+
+def test_render_fishbone_canvas_custom_dataset() -> None:
+    """render_fishbone_canvas() with custom causes, theme, and embeddable mode."""
+    custom_causes = [
+        {"category": "Machine", "cause": "CNC spindle vibration", "sub_category": "Tooling"},
+        {"category": "Material", "cause": "Aluminum rod hardness low", "sub_category": "Raw Material"},
+    ]
+    result = render_fishbone_canvas(
+        causes=custom_causes,
+        effect="Machining chatter",
+        effect_statement="Machining chatter defect",
+        title="Custom Machining Fishbone",
+        theme="light",
+        standalone=False,
+        balance_threshold=0.80,
+    )
+    assert result["title"] == "Custom Machining Fishbone"
+    assert result["rows_count"] == 2
+    assert result["causes_count"] == 2
+    assert "<!DOCTYPE html>" not in result["html"]
+    assert "Machining chatter defect" in result["html"]
+
+
+def test_render_fishbone_canvas_type_and_value_errors() -> None:
+    """render_fishbone_canvas() raises TypeError and ValueError on invalid inputs."""
+    # standalone
+    with pytest.raises(TypeError, match="standalone must be a boolean"):
+        render_fishbone_canvas(standalone=1)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="standalone must be a boolean"):
+        render_fishbone_canvas(standalone="true")  # type: ignore[arg-type]
+
+    # title
+    with pytest.raises(TypeError, match="title must be a string"):
+        render_fishbone_canvas(title=123)  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="title must not be empty"):
+        render_fishbone_canvas(title="   ")
+
+    # effect
+    with pytest.raises(TypeError, match="effect must be a string"):
+        render_fishbone_canvas(effect=123)  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="effect must not be empty"):
+        render_fishbone_canvas(effect="   ")
+
+    # theme
+    with pytest.raises(ValueError, match="theme must be 'dark' or 'light'"):
+        render_fishbone_canvas(theme="neon")
+
+    # balance_threshold
+    with pytest.raises(TypeError, match="balance_threshold must be a float"):
+        render_fishbone_canvas(balance_threshold=True)  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="balance_threshold must be a float between 0 and 1"):
+        render_fishbone_canvas(balance_threshold=-0.5)
+
+    # causes
+    with pytest.raises(TypeError, match="causes must be a list of dictionaries or None"):
+        render_fishbone_canvas(causes="invalid")  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="causes item at index 0 must be a dict"):
+        render_fishbone_canvas(causes=["not-a-dict"])  # type: ignore[list-item]
+
+
+# ---------------------------------------------------------------------------
+# 6. FastMCP Client-Server Round-Trip Integration Tests (Fishbone)
+# ---------------------------------------------------------------------------
+
+
+def test_mcp_client_session_categorize_fishbone_roundtrip() -> None:
+    """Execute categorize_fishbone over in-process FastMCP client session with dual-payload verification."""
+
+    async def _run() -> None:
+        async with create_connected_server_and_client_session(mcp._mcp_server) as session:
+            await session.initialize()
+
+            # 1. Call with default arguments (None)
+            result = await session.call_tool("categorize_fishbone", {})
+            assert not result.isError
+            assert len(result.content) > 0
+            text_payload = result.content[0].text  # type: ignore[union-attr]
+            data = json.loads(text_payload)
+            assert data["basis"] == "Ishikawa (1986) / AIAG CQI-20 / ASQ Quality Toolbox"
+            assert data["valid"] is True
+            assert data["verdict"] == "ACCEPT"
+            assert data["total_causes"] == 12
+            assert data["empty_branches"] == []
+
+            # Dual-payload parity
+            if hasattr(result, "structuredContent") and result.structuredContent is not None:
+                assert result.structuredContent["verdict"] == data["verdict"]
+                assert result.structuredContent["total_causes"] == data["total_causes"]
+
+            # 2. Call with custom valid causes across 6M
+            custom_causes = [
+                {"category": "Man", "cause": "Operator fatigue"},
+                {"category": "Machine", "cause": "Spindle runout"},
+                {"category": "Method", "cause": "Work instruction vague"},
+                {"category": "Material", "cause": "Seal hardness high"},
+                {"category": "Measurement", "cause": "Gage drift"},
+                {"category": "Environment", "cause": "Ambient temp swing"},
+            ]
+            res_custom = await session.call_tool(
+                "categorize_fishbone",
+                {
+                    "causes": custom_causes,
+                    "effect": "Cylinder leak",
+                },
+            )
+            assert not res_custom.isError
+            data_custom = json.loads(res_custom.content[0].text)  # type: ignore[union-attr]
+            assert data_custom["valid"] is True
+            assert data_custom["verdict"] == "ACCEPT"
+            assert data_custom["total_causes"] == 6
+
+            # 3. Call with empty causes -> rejected
+            res_empty = await session.call_tool(
+                "categorize_fishbone",
+                {"causes": []},
+            )
+            assert not res_empty.isError
+            data_empty = json.loads(res_empty.content[0].text)  # type: ignore[union-attr]
+            assert data_empty["valid"] is False
+            assert data_empty["verdict"] == "REJECT"
+
+    asyncio.run(_run())
+
+
+def test_mcp_client_session_render_fishbone_canvas_roundtrip() -> None:
+    """Execute render_fishbone_canvas over in-process FastMCP client session."""
+
+    async def _run() -> None:
+        async with create_connected_server_and_client_session(mcp._mcp_server) as session:
+            await session.initialize()
+
+            # 1. Default render
+            result = await session.call_tool("render_fishbone_canvas", {})
+            assert not result.isError
+            data = json.loads(result.content[0].text)  # type: ignore[union-attr]
+            assert data["title"] == "6M Fishbone Cause-and-Effect Canvas"
+            assert data["rows_count"] == 12
+            assert "<!DOCTYPE html>" in data["html"]
+
+            # 2. Custom render embedded
+            custom_causes = [
+                {"category": "Machine", "cause": "Tool chatter", "sub_category": "Vibration"},
+                {"category": "Method", "cause": "Feed rate unoptimized", "sub_category": "Parameters"},
+            ]
+            res_custom = await session.call_tool(
+                "render_fishbone_canvas",
+                {
+                    "causes": custom_causes,
+                    "effect": "Surface roughness defect",
+                    "theme": "light",
+                    "standalone": False,
+                },
+            )
+            assert not res_custom.isError
+            data_custom = json.loads(res_custom.content[0].text)  # type: ignore[union-attr]
+            assert data_custom["rows_count"] == 2
+            assert "<!DOCTYPE html>" not in data_custom["html"]
+            assert "Surface roughness defect" in data_custom["html"]
+
+    asyncio.run(_run())
+

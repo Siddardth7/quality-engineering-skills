@@ -283,9 +283,11 @@ def test_tools_package_exports() -> None:
     assert sorted(quality_mcp.tools.__all__) == [
         "calculate_gage_rr",
         "calculate_spc_chart",
+        "categorize_fishbone",
         "lookup_fmea_ap",
         "render_5why_canvas",
         "render_controlplan_canvas",
+        "render_fishbone_canvas",
         "render_fmea_canvas",
         "render_msa_canvas",
         "render_spc_canvas",

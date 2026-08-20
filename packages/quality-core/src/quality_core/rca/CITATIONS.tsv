@@ -10,6 +10,9 @@ RULE 1	4195	Machine
 RULE 1	4196	Environment
 RULE 1	4197	Figure 34.
 RULE 1	4198	Fishbone
+RULE 1	1405	Step 5. Finally, one must check to make certain that all the items that may be causing dispersion are included in the diagram. If they are, and the relationships of causes to effects are properly illustrated, then the diagram is complete.
+RULE 1	14642	5. When the group runs out of ideas, focus attention to places on the fishbone where ideas are few.
+RULE 1	4139	5) Pay attention to legs that are bare or have significantly fewer causes listed.
 RULE 2	1228	WHAT– the identity of the deviation we are trying to explain
 RULE 2	1229	WHERE– the location of the deviation
 RULE 2	1230	WHEN– the timing of the deviation
@@ -27,3 +30,5 @@ RULE 4	29533	The longer the chain of causes to the end point, the more likely it
 RULE 4	1991	there is normally a procedure, a policy, or a (systemic) practice that has allowed you pass. We call this the 'root cause of the root cause.' This must be established and resolved.
 RULE 4	2026	These systemic problems need to be fixed. The goal is to change the system that allowed the problem to occur in the first place and prevent problems from arising similar.
 RULE 4	1685	The systemic root cause(s) addresses, "Why did the system or planning process fail to identify the cause of the problem and the non-discovery?" The systemic root cause typically is understood last and diligence is required to address thoroughly.
+RULE 5	14637	Causes can be written in several places if they relate to several categories.
+RULE 5	4140	6) If a possible cause could fit in either leg just pick one and enter it. Don't get into an argument about which leg it belongs.

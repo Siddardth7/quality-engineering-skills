@@ -84,7 +84,7 @@ def test_assumptions_log_content_sections() -> None:
     assert "6M Fishbone Categorizer" in content
     assert "Kepner-Tregoe Is/Is-Not Scoping Matrix" in content
     assert "## RULE Entries" in content
-    assert "## RULE 1: 6M Fishbone Taxonomy & Category Aliases" in content
+    assert "## RULE 1: 6M Fishbone Taxonomy" in content
     assert "## RULE 2: Kepner-Tregoe 4 Dimensions & 4 Analytical Columns" in content
     assert "## RULE 3: 5-Why Sequential Chain & Reversible Logic Directionality" in content
 

@@ -146,16 +146,20 @@ def test_package_exports() -> None:
     assert quality_mcp.calculate_gage_rr is calculate_gage_rr
     assert quality_mcp.validate_5why is validate_5why
     assert quality_mcp.validate_control_plan is validate_control_plan
+    assert hasattr(quality_mcp, "categorize_fishbone")
+    assert hasattr(quality_mcp, "render_fishbone_canvas")
     assert quality_mcp.__version__ == "0.5.0"
     assert set(quality_mcp.__all__) == {
         "__version__",
         "calculate_gage_rr",
         "calculate_spc_chart",
+        "categorize_fishbone",
         "lookup_fmea_ap",
         "mcp",
         "ping",
         "render_5why_canvas",
         "render_controlplan_canvas",
+        "render_fishbone_canvas",
         "render_fmea_canvas",
         "render_msa_canvas",
         "render_spc_canvas",
@@ -166,11 +170,13 @@ def test_package_exports() -> None:
         "__version__",
         "calculate_gage_rr",
         "calculate_spc_chart",
+        "categorize_fishbone",
         "lookup_fmea_ap",
         "mcp",
         "ping",
         "render_5why_canvas",
         "render_controlplan_canvas",
+        "render_fishbone_canvas",
         "render_fmea_canvas",
         "render_msa_canvas",
         "render_spc_canvas",

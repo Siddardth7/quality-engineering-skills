@@ -9,8 +9,13 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- Root Cause Analysis (RCA) engine scaffold and shared schema in `quality_core.rca` (`FiveWhyStep`, `FiveWhyChain`, `FIVE_WHY_SCHEMA`, `Category6M`, `FishboneCause`, `FishboneDataset`, `FISHBONE_SCHEMA`, `KTDimension`, `IsIsNotRow`, `IsIsNotMatrix`, `IS_IS_NOT_SCHEMA`) with 5-Why sequential step validation, 6M Fishbone category alias normalization, Kepner-Tregoe 4-dimension scoping, and CSV upload validation (#75).
+- Standards-grounded assumptions and citation manifest in `packages/quality-core/src/quality_core/rca/` (`ASSUMPTIONS_LOG.md`, `CITATIONS.tsv`) covering Ishikawa 6M taxonomy, Kepner-Tregoe Problem Analysis, and AIAG CQI-20 / Ford G8D 5-Why logic (#75).
 - Reference material procurement and citation scaffold for Milestone 6 Root Cause Analysis (RCA) suite (`packages/quality-core/src/quality_core/rca/ASSUMPTIONS_LOG.md` and `packages/quality-core/src/quality_core/rca/CITATIONS.tsv`) (#74).
 - Per-domain reference manual path mapping in `CLAUDE.md` covering MSA, FMEA, SPC, Control Plan, and RCA (#74).
+
+### Changed
+- Extended CI core coverage gate in `.github/workflows/ci.yml` to include `--cov=quality_core.rca` across all 8 quality-core engine surfaces (#75).
 
 ## [0.5.0] - 2026-08-17
 

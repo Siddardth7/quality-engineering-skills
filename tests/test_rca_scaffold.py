@@ -75,7 +75,7 @@ def test_assumptions_log_exists_and_metadata() -> None:
 
 
 def test_assumptions_log_content_sections() -> None:
-    """Verify qualitative nature, absence of constants, and RULE placeholder in ASSUMPTIONS_LOG.md."""
+    """Verify qualitative nature, absence of constants, and RULE entries in ASSUMPTIONS_LOG.md."""
     content = _ASSUMPTIONS_LOG.read_text(encoding="utf-8")
 
     assert "## Note on Qualitative RCA Methods and Absence of Published Constants" in content
@@ -84,7 +84,9 @@ def test_assumptions_log_content_sections() -> None:
     assert "6M Fishbone Categorizer" in content
     assert "Kepner-Tregoe Is/Is-Not Scoping Matrix" in content
     assert "## RULE Entries" in content
-    assert "No `## RULE N` entries are defined in this scaffold" in content
+    assert "## RULE 1: 6M Fishbone Taxonomy & Category Aliases" in content
+    assert "## RULE 2: Kepner-Tregoe 4 Dimensions & 4 Analytical Columns" in content
+    assert "## RULE 3: 5-Why Sequential Chain & Reversible Logic Directionality" in content
 
 
 def test_citations_tsv_exists_and_header() -> None:

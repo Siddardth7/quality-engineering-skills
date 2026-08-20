@@ -29,4 +29,64 @@ Where internal platform choices or heuristics are adopted, they are explicitly d
 
 ## RULE Entries
 
-*(No `## RULE N` entries are defined in this scaffold. Rules will be added sequentially during engine implementation in Issues #75, #76, #77, and #78.)*
+## RULE 1: 6M Fishbone Taxonomy & Category Aliases
+
+**Decision:** Establish canonical 6M taxonomy `Literal["Man", "Machine", "Method", "Material", "Measurement", "Environment"]` with deterministic alias normalization for industry variants (e.g. "Manpower" $\to$ "Man", "Equipment" $\to$ "Machine", "Mother Nature" $\to$ "Environment", "Inspection" $\to$ "Measurement").
+
+**Source:**
+- Kaoru Ishikawa, *Guide to Quality Control* (2nd Revised Edition, 1986), Chapter 3:
+> "of dispersion into such items as raw materials (materials, equipment (machines or tools), method of work (workers) and measuring method (inspection). Each individual group will form a branch."
+- Nancy R. Tague, *The Quality Toolbox* (2nd Edition, ASQ, 2005), p. 248:
+> "methods, machines (equipment), people (manpower),"
+> "materials, measurement, environment. Write the categories of causes as branches from the main arrow."
+- AIAG CQI-20 *Effective Problem Solving Guide* (2nd Edition, 2018), Figure 34:
+> "Material"
+> "Method"
+> "Man Power"
+> "Measure"
+> "Machine"
+> "Environment"
+> "Figure 34."
+> "Fishbone"
+
+**Rationale:** While different standards and authors use slight wording variations (e.g. Ishikawa's "workers/tools/materials/inspection", ASQ's "people/machines/methods/materials/measurement/environment", AIAG's "Man Power/Machine/Method/Material/Measure/Environment"), they all describe the same 6 fundamental branches of cause-and-effect analysis. Normalizing to the 6M canonical strings provides a unified schema while accepting common industry aliases.
+
+**Applied In:** `packages/quality-core/src/quality_core/rca/schema.py` (`Category6M`, `CATEGORY_6M_ALIASES`, `FishboneCause`, `FishboneDataset`, `FISHBONE_SCHEMA`).
+
+---
+
+## RULE 2: Kepner-Tregoe 4 Dimensions & 4 Analytical Columns
+
+**Decision:** Model the Kepner-Tregoe Problem Analysis specification matrix across 4 fundamental dimensions (`"WHAT"`, `"WHERE"`, `"WHEN"`, `"EXTENT"`) and 4 analytical columns (`is_data`, `is_not_data`, `distinctions`, `changes`).
+
+**Source:** Charles H. Kepner & Benjamin B. Tregoe, *The New Rational Manager* (Updated Edition, 1997), Chapter 2:
+> "WHAT– the identity of the deviation we are trying to explain"
+> "WHERE– the location of the deviation"
+> "WHEN– the timing of the deviation"
+> "EXTENT– the magnitude of the deviation"
+> "Once we have identified COULD BE but IS NOT data, we will also be able to identify the peculiar factors that isolate our problem"
+> "“What is distinctive about (the IS data) when compared with (the IS NOT data)?”"
+> "“What changed in, on, around, or about this distinction?”"
+
+**Rationale:** The Kepner-Tregoe Problem Analysis framework isolates cause by contrasting observed facts ("IS") with closely related plausible facts that were not observed ("IS NOT"). Distinctions between IS and IS NOT, followed by changes associated with those distinctions, identify potential root causes. Enforcing dimensional uniqueness and structured columns ensures methodical problem boundary specification.
+
+**Applied In:** `packages/quality-core/src/quality_core/rca/schema.py` (`KTDimension`, `IsIsNotRow`, `IsIsNotMatrix`, `IS_IS_NOT_SCHEMA`).
+
+---
+
+## RULE 3: 5-Why Sequential Chain & Reversible Logic Directionality
+
+**Decision:** Model 5-Why problem solving as an ordered sequential chain of `FiveWhyStep`s (`step_number`, `why`, `because`), anchored by a `problem_statement` and terminating in a `root_cause`. Enforce consecutive 1..N step sequencing, non-empty text, and logical directionality.
+
+**Source:**
+- AIAG CQI-20 *Effective Problem Solving Guide* (2nd Edition, 2018), Section 5:
+> "The traditional "Why-Why" tool should not be limited to five or any specific number of iterations of Why."
+> "Also called the "5-Why", "Repeated Why" & "3-Legged 5-Why" tool. The purpose of the Why-Why tool is to drill down to the root cause level."
+> "Going back up the Why-Why replacing "Why" with "therefore" is a good technique to evaluate the Why-Why."
+- Ford Motor Company, *Global 8D Manual*:
+> "Essentially, this involves asking "why" of the root cause until the cause is established."
+> "root of the root cause. The question can be asked more or less 5 times, it doesn't have to be 5!"
+
+**Rationale:** Standard problem-solving bodies emphasize that 5-Why is not constrained to exactly 5 steps, but must form a rigorous causal chain where drilling down follows "Why $\to$ Because" and reverse verification follows "Because $\to$ Therefore". Sequential step numbers (1, 2, 3...) prevent gaps or disconnected branches in a single linear chain.
+
+**Applied In:** `packages/quality-core/src/quality_core/rca/schema.py` (`FiveWhyStep`, `FiveWhyChain`, `FIVE_WHY_SCHEMA`).

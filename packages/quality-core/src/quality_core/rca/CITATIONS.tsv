@@ -1,1 +1,24 @@
 site	src_line	quote
+RULE 1	1300	of dispersion into such items as raw materials (materials, equipment (machines or tools), method of work (workers) and measuring method (inspection). Each individual group will form a branch.
+RULE 1	14620	methods, machines (equipment), people (manpower),
+RULE 1	14633	materials, measurement, environment. Write the categories of causes as branches from the main arrow.
+RULE 1	4144	Material
+RULE 1	4146	Method
+RULE 1	4147	Man Power
+RULE 1	4194	Measure
+RULE 1	4195	Machine
+RULE 1	4196	Environment
+RULE 1	4197	Figure 34.
+RULE 1	4198	Fishbone
+RULE 2	1228	WHAT– the identity of the deviation we are trying to explain
+RULE 2	1229	WHERE– the location of the deviation
+RULE 2	1230	WHEN– the timing of the deviation
+RULE 2	1231	EXTENT– the magnitude of the deviation
+RULE 2	1273	Once we have identified COULD BE but IS NOT data, we will also be able to identify the peculiar factors that isolate our problem
+RULE 2	1361	“What is distinctive about (the IS data) when compared with (the IS NOT data)?”
+RULE 2	1398	“What changed in, on, around, or about this distinction?”
+RULE 3	1768	The traditional "Why-Why" tool should not be limited to five or any specific number of iterations of Why.
+RULE 3	1771	Also called the "5-Why", "Repeated Why" & "3-Legged 5-Why" tool. The purpose of the Why-Why tool is to drill down to the root cause level.
+RULE 3	1774	Going back up the Why-Why replacing "Why" with "therefore" is a good technique to evaluate the Why-Why.
+RULE 3	2003	Essentially, this involves asking "why" of the root cause until the cause is established.
+RULE 3	2004	root of the root cause. The question can be asked more or less 5 times, it doesn't have to be 5!

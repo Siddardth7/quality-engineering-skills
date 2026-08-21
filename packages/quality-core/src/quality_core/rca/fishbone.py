@@ -273,7 +273,7 @@ def categorize_fishbone(
     if duplicate_causes:
         warnings.append(f"Detected {len(duplicate_causes)} duplicate cause entries across fishbone branches.")
         recommendations.append(
-            "Consolidate duplicate cause entries or clarify distinct sub-mechanisms across categories per ASQ Quality Toolbox (p. 248)."
+            "Consolidate duplicate cause entries or clarify distinct sub-mechanisms across categories per ASQ Quality Toolbox."
         )
 
     if uncategorized_causes:

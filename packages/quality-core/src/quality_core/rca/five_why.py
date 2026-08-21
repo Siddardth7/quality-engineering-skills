@@ -57,13 +57,21 @@ _STOP_WORDS = {
 
 _SYSTEMIC_TERMS = {
     "procedure", "policy", "system", "training", "induction", "engineering",
-    "standard", "standardized", "poka", "yoke", "pokayoke", "error-proof",
-    "errorproofing", "mistake-proof", "checklist", "sign-off", "signed",
-    "specification", "instruction", "management", "maintenance plan",
-    "autonomous maintenance", "audit", "work instruction", "preventative",
-    "preventive", "schedule", "verification", "process control", "design",
-    "guideline", "documentation", "governance", "inspection plan",
+    "standard", "standardized", "poka", "yoke", "pokayoke", "checklist",
+    "signoff", "signed", "specification", "instruction", "management",
+    "maintenance", "audit", "preventative", "preventive", "schedule",
+    "verification", "design", "guideline", "documentation", "governance",
+    "inspection", "control",
 }
+
+_SYSTEMIC_PHRASES = (
+    "poka yoke", "poka-yoke", "error proof", "error-proof", "errorproofing",
+    "error-proofing", "mistake proof", "mistake-proof", "sign off",
+    "sign-off", "work instruction", "maintenance plan", "maintenance routine",
+    "autonomous maintenance", "training program", "induction program",
+    "induction plan", "standard work", "process control", "inspection plan",
+    "engineering sign-off",
+)
 
 _HUMAN_NOUNS = {
     "operator", "worker", "technician", "employee", "person", "personnel",
@@ -134,12 +142,8 @@ def _has_systemic_resolution(text: str) -> bool:
     tokens = set(_tokenize(text.lower()))
     if tokens & _SYSTEMIC_TERMS:
         return True
-    phrases = (
-        "poka yoke", "poka-yoke", "error proof", "error-proof", "sign off",
-        "sign-off", "work instruction", "maintenance plan", "maintenance routine",
-        "training program", "induction program", "standard work",
-    )
-    return any(p in text.lower() for p in phrases)
+    text_lower = text.lower()
+    return any(p in text_lower for p in _SYSTEMIC_PHRASES)
 
 
 @dataclass
@@ -450,9 +454,13 @@ def validate_five_why_chain(
         tokens = _tokenize(step.because)
         found_terms = [t for t in tokens if t in _SYSTEMIC_TERMS]
         systemic_factors.extend(found_terms)
+        step_lower = step.because.lower()
+        for phrase in _SYSTEMIC_PHRASES:
+            if phrase in step_lower:
+                systemic_factors.append(phrase)
 
     term_lower = terminal_explanation.lower()
-    for phrase in ("induction plan", "training program", "error-proofing", "poka-yoke", "standard work", "engineering sign-off"):
+    for phrase in _SYSTEMIC_PHRASES:
         if phrase in term_lower:
             systemic_factors.append(phrase)
 

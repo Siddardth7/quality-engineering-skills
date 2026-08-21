@@ -383,7 +383,7 @@ def test_hypothesis_synthesis_distinction_without_change() -> None:
     assert what_cause["change"] is None
     assert "investigate what changed in, on, around, or about this distinction" in what_cause["hypothesis"]
     assert any("Dimension 'WHAT' has distinctions recorded ('Square-cornered gasket') but is missing associated changes" in w for w in result.warnings)
-    assert any("KT Chapter 2 (p. 1398)" in r for r in result.recommendations)
+    assert any("KT Chapter 2" in r for r in result.recommendations)
 
 
 def test_hypothesis_synthesis_change_without_distinction() -> None:

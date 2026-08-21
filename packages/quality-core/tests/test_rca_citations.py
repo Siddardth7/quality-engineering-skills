@@ -249,3 +249,27 @@ def test_every_live_quotation_in_log_has_manifest_row() -> None:
         "quotation(s) in ASSUMPTIONS_LOG.md with no row in CITATIONS.tsv:\n"
         + "\n".join(f"  ASSUMPTIONS_LOG.md:{line}: {text[:100]!r}" for line, text in unbacked)
     )
+
+
+def test_no_unverified_page_numbers_in_rca_engine_strings() -> None:
+    """Verify that no unverified inline '(p. <number>)' page references appear in rca engine source files."""
+    rca_py_files = list(_RCA_DIR.glob("*.py"))
+    assert rca_py_files, f"No Python files found in {_RCA_DIR}"
+
+    page_pattern = re.compile(r"\(pp?\.?\s*\d+", re.IGNORECASE)
+    violations: list[str] = []
+
+    for py_file in rca_py_files:
+        content = py_file.read_text(encoding="utf-8")
+        for line_no, line in enumerate(content.splitlines(), start=1):
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                continue
+            if page_pattern.search(line):
+                violations.append(f"{py_file.name}:{line_no}: {stripped}")
+
+    assert not violations, (
+        "Found unverified inline page references in RCA engine source files:\n"
+        + "\n".join(f"  {v}" for v in violations)
+    )
+

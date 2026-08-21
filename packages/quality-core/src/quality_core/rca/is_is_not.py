@@ -231,7 +231,7 @@ def scope_is_is_not(
                 f"Dimension '{dim}' has distinctions recorded ('{dist}') but is missing associated changes."
             )
             recommendations.append(
-                f"Investigate what changed in, on, around, or about the distinction '{dist}' in '{dim}' per KT Chapter 2 (p. 1398)."
+                f"Investigate what changed in, on, around, or about the distinction '{dist}' in '{dim}' per KT Chapter 2."
             )
         elif dist is None and chg is not None:
             hypothesis = (

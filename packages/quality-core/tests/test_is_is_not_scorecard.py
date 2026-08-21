@@ -60,7 +60,7 @@ def test_scorecard_sentinel_8d_pneumatic_cylinder_benchmark() -> None:
 
 
 def test_scorecard_kepner_tregoe_1997_filter_leaking_case() -> None:
-    """Benchmark 2: Kepner & Tregoe (1997) Chapter 3 Filter Leaking Case (p. 1438-1446).
+    """Benchmark 2: Kepner & Tregoe (1997) Chapter 3 Filter Leaking Case.
 
     Isolates oil leakage deviation on Number One Filter compared to Numbers Two-Five,
     identifying the square-cornered gasket from the new supplier as the root cause.

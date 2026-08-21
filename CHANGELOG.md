@@ -8,6 +8,11 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 
 ## [Unreleased]
 
+### Added
+- Reference material procurement and citation scaffold for Milestone 7 NCR and COPQ suites (`packages/quality-core/src/quality_core/ncr/ASSUMPTIONS_LOG.md`, `ncr/CITATIONS.tsv`, `packages/quality-core/src/quality_core/copq/ASSUMPTIONS_LOG.md`, and `copq/CITATIONS.tsv`) (#91).
+- Per-domain reference manual path mapping in `CLAUDE.md` under `## Standards fidelity` covering Nonconformance Reporting (ISO 9001:2015 §8.7, IATF 16949:2016 §8.7) and Cost of Poor Quality (ASQ CSSGB BoK PAF model, CSSC Green Belt Manual, Lumafield Report) (#91).
+- Scaffold verification and negative control test suite `tests/test_ncr_copq_scaffold.py` verifying file headers, TSV delimiter integrity, on-machine reference manual markers, CLAUDE.md mapping, and changelog traceability (#91).
+
 ## [0.6.0] - 2026-08-20
 
 ### Added

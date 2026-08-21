@@ -1,0 +1,34 @@
+site	src_line	quote
+RULE 1	1300	of dispersion into such items as raw materials (materials, equipment (machines or tools), method of work (workers) and measuring method (inspection). Each individual group will form a branch.
+RULE 1	14620	methods, machines (equipment), people (manpower),
+RULE 1	14633	materials, measurement, environment. Write the categories of causes as branches from the main arrow.
+RULE 1	4144	Material
+RULE 1	4146	Method
+RULE 1	4147	Man Power
+RULE 1	4194	Measure
+RULE 1	4195	Machine
+RULE 1	4196	Environment
+RULE 1	4197	Figure 34.
+RULE 1	4198	Fishbone
+RULE 1	1405	Step 5. Finally, one must check to make certain that all the items that may be causing dispersion are included in the diagram. If they are, and the relationships of causes to effects are properly illustrated, then the diagram is complete.
+RULE 1	14642	5. When the group runs out of ideas, focus attention to places on the fishbone where ideas are few.
+RULE 1	4139	5) Pay attention to legs that are bare or have significantly fewer causes listed.
+RULE 2	1228	WHAT– the identity of the deviation we are trying to explain
+RULE 2	1229	WHERE– the location of the deviation
+RULE 2	1230	WHEN– the timing of the deviation
+RULE 2	1231	EXTENT– the magnitude of the deviation
+RULE 2	1273	Once we have identified COULD BE but IS NOT data, we will also be able to identify the peculiar factors that isolate our problem
+RULE 2	1361	“What is distinctive about (the IS data) when compared with (the IS NOT data)?”
+RULE 2	1398	“What changed in, on, around, or about this distinction?”
+RULE 3	1768	The traditional "Why-Why" tool should not be limited to five or any specific number of iterations of Why.
+RULE 3	1771	Also called the "5-Why", "Repeated Why" & "3-Legged 5-Why" tool. The purpose of the Why-Why tool is to drill down to the root cause level.
+RULE 3	1774	Going back up the Why-Why replacing "Why" with "therefore" is a good technique to evaluate the Why-Why.
+RULE 3	2003	Essentially, this involves asking "why" of the root cause until the cause is established.
+RULE 3	2004	root of the root cause. The question can be asked more or less 5 times, it doesn't have to be 5!
+RULE 4	29531	Don’t stop when you reach a “who.” Keep asking why. “Whos” are convenient ways to point fingers, but they are not root causes.
+RULE 4	29533	The longer the chain of causes to the end point, the more likely it is that the end point deals with system issues such as management policies. These deeper causes usually lead to a more complete, fundamental solution to a problem. Addressing causes that arise early in the chain often amounts to applying a Band-Aid; addressing deeper causes provides long-term solutions to the problem.
+RULE 4	1991	there is normally a procedure, a policy, or a (systemic) practice that has allowed you pass. We call this the 'root cause of the root cause.' This must be established and resolved.
+RULE 4	2026	These systemic problems need to be fixed. The goal is to change the system that allowed the problem to occur in the first place and prevent problems from arising similar.
+RULE 4	1685	The systemic root cause(s) addresses, "Why did the system or planning process fail to identify the cause of the problem and the non-discovery?" The systemic root cause typically is understood last and diligence is required to address thoroughly.
+RULE 5	14637	Causes can be written in several places if they relate to several categories.
+RULE 5	4140	6) If a possible cause could fit in either leg just pick one and enter it. Don't get into an argument about which leg it belongs.

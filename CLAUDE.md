@@ -140,8 +140,12 @@ Violating these has cost real rework.
 - Every AIAG/ISO constant, threshold, and quotation must be cited in an `ASSUMPTIONS_LOG.md`
   that travels with the engine (each engine carries its own when extracted from the source
   platform repo). **Do not change a value without updating its log.**
-- **For AIAG/ISO claims the on-machine manual is the ONLY valid source:**
-  `/Users/sid/Documents/Upskill/SixSigma/MSA_Reference_Manual_4th_Edition.md`.
+- **For AIAG/ISO claims the on-machine manuals are the ONLY valid sources:**
+  - **MSA:** AIAG MSA (4th Edition) at `/Users/sid/Documents/Upskill/SixSigma/MSA_Reference_Manual_4th_Edition.md`
+  - **FMEA:** AIAG-VDA FMEA Handbook (1st Edition, 2019) at `/Users/sid/Documents/Upskill/SixSigma/pdfcoffee.com_aiag-vda-fmea-handbook-1-version-juni-2019-englisch-pdf-free.md`
+  - **SPC:** AIAG SPC Reference Manual (2nd/4th Edition) / Western Electric SQC Handbook at `/Users/sid/Documents/Upskill/SixSigma/pdfcoffee.com_aiag-spc-2nd-edition-pdf-free.pdf`, `Western_Electric_SQC_Handbook.pdf`, `The-Shewhart-Control-Chart-Tests-for-Special-Causes-Lloyd-Nelson-Journal-of-Quality-Technology.pdf`
+  - **Control Plan:** AIAG APQP and Control Plan Reference Manual (2nd Edition) / AIAG-VDA FMEA (2019) at `/Users/sid/Documents/Upskill/SixSigma/pdfcoffee.com_aiag-advanced-product-quality-planning-apqp-2nd-edition-pdf-free.pdf`, `/Users/sid/Documents/Upskill/SixSigma/pdfcoffee.com_aiag-vda-fmea-handbook-1-version-juni-2019-englisch-pdf-free.md`
+  - **RCA:** AIAG CQI-20 (2nd Ed, 2018), Kaoru Ishikawa *Guide to Quality Control* (2nd Rev Ed, 1986), Kepner & Tregoe *The New Rational Manager* (Updated Ed, 1997), Ford Global 8D Manual, and Nancy R. Tague *The Quality Toolbox* (2nd Ed, ASQ 2005) under `/Users/sid/Documents/Upskill/SixSigma/RCA/`.
   Never verify a standards quotation via web search.
 - Use **formatting-tolerant matching** when checking quotations. Markdown emphasis and
   inline `<sup>` footnote markup produce false "fabricated" verdicts — and a false

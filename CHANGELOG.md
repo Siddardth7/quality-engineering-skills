@@ -8,6 +8,42 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-20
+
+### Added
+- Finalized Milestone 6 documentation in `docs/milestones/v0.6.0.md` with complete verification artifacts, retrospective, and test evidence for Epics E0–E6 (#80).
+- Updated `docs/milestones/README.md` canonical mapping table marking `v0.6.0` as Complete and updated `ROADMAP.md` Summary Release Matrix linking `docs/milestones/v0.6.0.md` (#80).
+- Updated `README.md` milestone status table marking `v0.6.0` as Completed with `docs/milestones/v0.6.0.md` link and advancing `v0.7.0` to Up Next (#80).
+- Extended milestone governance test suite `tests/test_milestones_convention.py` with `v0.6.0` traceability assertions across all 7 task issues (#74–#80), release gate criteria, verification artifacts, and negative mutation controls (#80).
+- In-process JSON-RPC FastMCP client-server round-trip integration test suite `packages/quality-mcp/tests/test_rca_client_roundtrip.py` validating dual-payload parity, real-world benchmark datasets (Sentinel-8D Pneumatic Cylinder & Ford Global 8D bearing induction), multi-method chained workflow execution across a single session without state pollution, session error isolation, and protocol negative controls (#79).
+- Extended FastMCP server configuration tests in `packages/quality-mcp/tests/test_server.py` asserting discovery and direct execution of all six RCA tools (`validate_5why`, `categorize_fishbone`, `scope_is_is_not`, `render_5why_canvas`, `render_fishbone_canvas`, `render_isisnot_canvas`) (#79).
+- Updated CI headless dependency guard and coverage gate documentation in `.github/workflows/ci.yml` explicitly documenting `quality_mcp.tools.rca` alongside existing domain tools (#79).
+- Updated MCP client configuration guide `docs/mcp-client-setup.md` with RCA client-server round-trip test instructions, verified JSON-RPC transcripts (4.15–4.18), and multi-tool RCA chained workflow sequence diagram (4.19) (#79).
+- Deterministic Kepner-Tregoe Is/Is-Not problem scoping and hypothesis synthesis engine in `quality_core.rca.is_is_not` (`scope_is_is_not`, `IsIsNotScopingResult`, `CandidateCause`) evaluating 4-dimension problem boundary completeness (WHAT, WHERE, WHEN, EXTENT), detecting missing distinctions and changes per Kepner & Tregoe (1997) Chapter 2, synthesizing candidate root-cause hypotheses per Chapter 3, and providing structured recommendations (#78).
+- Single-writer visual Kepner-Tregoe Is/Is-Not canvas controller `IsIsNotCanvas` and `IsIsNotCanvasRow` in `quality_core.canvas.rca` supporting row CRUD, reference Sentinel-8D Pneumatic Cylinder benchmark dataset (`SAMPLE_IS_IS_NOT_ROWS`, `SAMPLE_IS_IS_NOT_MATRIX`), 4-dimension comparative matrix cards, and responsive dark/light themed HTML canvas rendering (#78).
+- FastMCP tools `scope_is_is_not` and `render_isisnot_canvas` (with `render_is_is_not_canvas` alias) in `quality_mcp.tools.rca` and `quality_mcp.tools.canvas` registered on `quality-mcp` FastMCP server (#78).
+- Kepner-Tregoe Is/Is-Not Problem Boundary Scoping domain skill in `skills/is-is-not-scoping/SKILL.md` adhering to agentskills.io standard with 5 mandatory H2 sections and Zero Inline Math / Zero Inline Adjudication invariant (#78).
+- Updated `skills/README.md` taxonomy table marking `is-is-not-scoping` as Active (#78).
+- Extended skills governance test suite `tests/test_skills_conventions.py` with `is-is-not-scoping` discovery, tool specification, and isolation assertions (#78).
+- Deterministic 6M Fishbone (Ishikawa) categorizer and validation engine in `quality_core.rca.fishbone` (`categorize_fishbone`, `FishboneCategorizationResult`) supporting 6M taxonomy assignment (Man, Machine, Method, Material, Measurement, Environment), category alias normalization, empty branch detection (Ishikawa 1986 / AIAG CQI-20 RULE 1), duplicate cause detection, multi-category cause placement (RULE 5), and branch concentration balance auditing (#77).
+- Single-writer visual 6M Fishbone canvas controller `FishboneCanvas` and `FishboneCanvasCause` in `quality_core.canvas.rca` supporting cause CRUD, reference Sentinel-8D Pneumatic Cylinder benchmark dataset (`SAMPLE_FISHBONE_CAUSES`, `SAMPLE_FISHBONE_DATASET`), 6M branch breakdown cards, and responsive dark/light themed HTML/SVG Ishikawa diagram rendering (#77).
+- FastMCP tools `categorize_fishbone` and `render_fishbone_canvas` in `quality_mcp.tools.rca` and `quality_mcp.tools.canvas` registered on `quality-mcp` FastMCP server (#77).
+- 6M Fishbone Cause-and-Effect domain skill in `skills/fishbone-analysis/SKILL.md` adhering to agentskills.io standard with 5 mandatory H2 sections and Zero Inline Math / Zero Inline Adjudication invariant (#77).
+- Updated standards assumptions log and citation manifest in `packages/quality-core/src/quality_core/rca/` (`ASSUMPTIONS_LOG.md`, `CITATIONS.tsv`) with RULE 1 empty branch and RULE 5 multi-category placement and balance citations from Ishikawa (1986), AIAG CQI-20, and ASQ Quality Toolbox (#77).
+- Deterministic 5-Why Root Cause Analysis (RCA) validator engine in `quality_core.rca.five_why` (`validate_five_why_chain`, `FiveWhyValidationResult`, `FiveWhyLinkEval`, `AntiPatternFinding`, `SystemicAssessment`) evaluating forward drill-down, reverse "therefore" logic necessity (AIAG CQI-20 RULE 3), anti-pattern detection (circular reasoning, superficial/blame-terminal operator causes per ASQ Quality Toolbox & Ford Global 8D RULE 4, premature termination, non-causal jumps), systemic classification, and reversibility scoring (#76).
+- Single-writer visual 5-Why canvas controller `FiveWhyCanvas` and `FiveWhyCanvasStep` in `quality_core.canvas.rca` supporting step CRUD, benchmark Ford Global 8D bearing induction sample dataset, reverse check flow, anti-pattern badges, and dark/light themed HTML canvas rendering (#76).
+- FastMCP tools `validate_5why` and `render_5why_canvas` in `quality_mcp.tools.rca` and `quality_mcp.tools.canvas` registered on `quality-mcp` FastMCP server (#76).
+- Reversible 5-Why Root Cause Analysis domain skill in `skills/5why-root-cause/SKILL.md` adhering to agentskills.io standard with 5 mandatory H2 sections and Zero Inline Math / Zero Inline Adjudication invariant (#76).
+- Extended standards assumptions log and citation manifest in `packages/quality-core/src/quality_core/rca/` (`ASSUMPTIONS_LOG.md`, `CITATIONS.tsv`) with RULE 4 citations from ASQ Quality Toolbox, Ford Global 8D, and AIAG CQI-20 (#76).
+- Root Cause Analysis (RCA) engine scaffold and shared schema in `quality_core.rca` (`FiveWhyStep`, `FiveWhyChain`, `FIVE_WHY_SCHEMA`, `Category6M`, `FishboneCause`, `FishboneDataset`, `FISHBONE_SCHEMA`, `KTDimension`, `IsIsNotRow`, `IsIsNotMatrix`, `IS_IS_NOT_SCHEMA`) with 5-Why sequential step validation, 6M Fishbone category alias normalization, Kepner-Tregoe 4-dimension scoping, and CSV upload validation (#75).
+
+- Standards-grounded assumptions and citation manifest in `packages/quality-core/src/quality_core/rca/` (`ASSUMPTIONS_LOG.md`, `CITATIONS.tsv`) covering Ishikawa 6M taxonomy, Kepner-Tregoe Problem Analysis, and AIAG CQI-20 / Ford G8D 5-Why logic (#75).
+- Reference material procurement and citation scaffold for Milestone 6 Root Cause Analysis (RCA) suite (`packages/quality-core/src/quality_core/rca/ASSUMPTIONS_LOG.md` and `packages/quality-core/src/quality_core/rca/CITATIONS.tsv`) (#74).
+- Per-domain reference manual path mapping in `CLAUDE.md` covering MSA, FMEA, SPC, Control Plan, and RCA (#74).
+
+### Changed
+- Extended CI core coverage gate in `.github/workflows/ci.yml` to include `--cov=quality_core.rca` across all 8 quality-core engine surfaces (#75).
+
 ## [0.5.0] - 2026-08-17
 
 ### Added

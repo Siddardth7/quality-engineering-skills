@@ -145,6 +145,12 @@ The automated test suites exercise MCP client-server protocol lifecycles (`initi
    ```
    Drives all four quality engineering tools (`lookup_fmea_ap`, `calculate_spc_chart`, `calculate_gage_rr`, `validate_control_plan`) through a **single** in-process FastMCP client session, verifying discovery, sequential execution without crosstalk, and independent error isolation.
 
+7. **RCA Client-Server Round-Trip (Milestone 6 Checkpoint)**:
+   ```bash
+   uv run pytest packages/quality-mcp/tests/test_rca_client_roundtrip.py -v
+   ```
+   Validates in-process JSON-RPC execution of all six Root Cause Analysis (RCA) tools (`validate_5why`, `categorize_fishbone`, `scope_is_is_not`, `render_5why_canvas`, `render_fishbone_canvas`, `render_isisnot_canvas`), asserts dual-payload parity against `quality_core.rca` and `quality_core.canvas.rca`, executes real-world benchmark datasets (Sentinel-8D Pneumatic Cylinder & Ford Global 8D bearing induction), verifies multi-method chained workflow execution across a single session without state pollution, and validates protocol-level negative controls.
+
 ### Coverage Gate
 Run the full 100% line and branch coverage gate for `quality-mcp`:
 ```bash
@@ -993,6 +999,465 @@ sequenceDiagram
     Server->>Core: quality_core.controlplan.validate_pfmea_linkage(...)
     Core-->>Server: valid=true, linked_rows=1, orphans=[]
     Server-->>Client: {basis: "AIAG Control Plan", valid: true, linkage_valid: true}
+```
+
+---
+
+### 4.15 Tool Invocation (`tools/call` -> `scope_is_is_not` Sentinel-8D Scoping Success)
+
+**Client Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 15,
+  "method": "tools/call",
+  "params": {
+    "name": "scope_is_is_not",
+    "arguments": {
+      "matrix": [
+        {
+          "dimension": "WHAT",
+          "is_data": "Piston stroke binding and rod seal leakage (>50 sccm)",
+          "is_not_data": "Barrel rupture, port thread damage, or tie rod failure",
+          "distinctions": "Dynamic seal interface under 6 bar operating pressure",
+          "changes": "Seal vendor batch change to polyurethane compound 90A"
+        },
+        {
+          "dimension": "WHERE",
+          "is_data": "Assembly Line 2 (Automated cell), front rod end gland",
+          "is_not_data": "Assembly Line 1 (Manual cell), rear cap gland",
+          "distinctions": "Line 2 uses high-speed pneumatic press for seal insertion",
+          "changes": "Insertion press stroke speed increased by 25% on 2026-08-01"
+        },
+        {
+          "dimension": "WHEN",
+          "is_data": "First 100 cycles during end-of-line functional test",
+          "is_not_data": "Static leak check at assembly or endurance testing (>10,000 cycles)",
+          "distinctions": "Initial dynamic break-in under dry lubrication conditions",
+          "changes": "Pre-lube grease specification changed from Krytox to standard PTFE"
+        },
+        {
+          "dimension": "EXTENT",
+          "is_data": "14 of 250 cylinders (5.6% reject rate), 120 sccm mean leak",
+          "is_not_data": "100% defective or minor seepage (<10 sccm)",
+          "distinctions": "Clustered on Shift 1 production lots with batch 90A seals",
+          "changes": "Shift 1 tooling guide bushing wear detected (0.08 mm play)"
+        }
+      ],
+      "problem_statement": "Pneumatic cylinder functional defect requiring assembly rework (stroke binding & seal leakage)"
+    }
+  }
+}
+```
+
+**Server Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 15,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"basis\": \"Kepner & Tregoe (1997) / AIAG CQI-20 / Ford Global 8D\",\n  \"valid\": true,\n  \"verdict\": \"ACCEPT\",\n  \"problem_statement\": \"Pneumatic cylinder functional defect requiring assembly rework (stroke binding & seal leakage)\",\n  \"total_rows\": 4,\n  \"dimension_coverage\": {\n    \"WHAT\": true,\n    \"WHERE\": true,\n    \"WHEN\": true,\n    \"EXTENT\": true\n  },\n  \"complete_dimensions\": [\n    \"WHAT\",\n    \"WHERE\",\n    \"WHEN\",\n    \"EXTENT\"\n  ],\n  \"missing_dimensions\": [],\n  \"candidate_causes\": [\n    {\n      \"dimension\": \"WHAT\",\n      \"distinction\": \"Dynamic seal interface under 6 bar operating pressure\",\n      \"change\": \"Seal vendor batch change to polyurethane compound 90A\",\n      \"hypothesis\": \"Dynamic seal interface under 6 bar operating pressure caused by Seal vendor batch change to polyurethane compound 90A\",\n      \"is_paired\": true\n    },\n    {\n      \"dimension\": \"WHERE\",\n      \"distinction\": \"Line 2 uses high-speed pneumatic press for seal insertion\",\n      \"change\": \"Insertion press stroke speed increased by 25% on 2026-08-01\",\n      \"hypothesis\": \"Line 2 uses high-speed pneumatic press for seal insertion caused by Insertion press stroke speed increased by 25% on 2026-08-01\",\n      \"is_paired\": true\n    },\n    {\n      \"dimension\": \"WHEN\",\n      \"distinction\": \"Initial dynamic break-in under dry lubrication conditions\",\n      \"change\": \"Pre-lube grease specification changed from Krytox to standard PTFE\",\n      \"hypothesis\": \"Initial dynamic break-in under dry lubrication conditions caused by Pre-lube grease specification changed from Krytox to standard PTFE\",\n      \"is_paired\": true\n    },\n    {\n      \"dimension\": \"EXTENT\",\n      \"distinction\": \"Clustered on Shift 1 production lots with batch 90A seals\",\n      \"change\": \"Shift 1 tooling guide bushing wear detected (0.08 mm play)\",\n      \"hypothesis\": \"Clustered on Shift 1 production lots with batch 90A seals caused by Shift 1 tooling guide bushing wear detected (0.08 mm play)\",\n      \"is_paired\": true\n    }\n  ],\n  \"warnings\": [],\n  \"recommendations\": [\n    \"Problem boundary scoping is complete across all 4 Kepner-Tregoe dimensions (WHAT, WHERE, WHEN, EXTENT).\",\n    \"4 candidate root-cause hypotheses synthesized from paired distinctions and changes for downstream 6M Fishbone and 5-Why validation.\"\n  ]\n}"
+      }
+    ],
+    "structuredContent": {
+      "basis": "Kepner & Tregoe (1997) / AIAG CQI-20 / Ford Global 8D",
+      "valid": true,
+      "verdict": "ACCEPT",
+      "problem_statement": "Pneumatic cylinder functional defect requiring assembly rework (stroke binding & seal leakage)",
+      "total_rows": 4,
+      "dimension_coverage": {
+        "WHAT": true,
+        "WHERE": true,
+        "WHEN": true,
+        "EXTENT": true
+      },
+      "complete_dimensions": [
+        "WHAT",
+        "WHERE",
+        "WHEN",
+        "EXTENT"
+      ],
+      "missing_dimensions": [],
+      "candidate_causes": [
+        {
+          "dimension": "WHAT",
+          "distinction": "Dynamic seal interface under 6 bar operating pressure",
+          "change": "Seal vendor batch change to polyurethane compound 90A",
+          "hypothesis": "Dynamic seal interface under 6 bar operating pressure caused by Seal vendor batch change to polyurethane compound 90A",
+          "is_paired": true
+        },
+        {
+          "dimension": "WHERE",
+          "distinction": "Line 2 uses high-speed pneumatic press for seal insertion",
+          "change": "Insertion press stroke speed increased by 25% on 2026-08-01",
+          "hypothesis": "Line 2 uses high-speed pneumatic press for seal insertion caused by Insertion press stroke speed increased by 25% on 2026-08-01",
+          "is_paired": true
+        },
+        {
+          "dimension": "WHEN",
+          "distinction": "Initial dynamic break-in under dry lubrication conditions",
+          "change": "Pre-lube grease specification changed from Krytox to standard PTFE",
+          "hypothesis": "Initial dynamic break-in under dry lubrication conditions caused by Pre-lube grease specification changed from Krytox to standard PTFE",
+          "is_paired": true
+        },
+        {
+          "dimension": "EXTENT",
+          "distinction": "Clustered on Shift 1 production lots with batch 90A seals",
+          "change": "Shift 1 tooling guide bushing wear detected (0.08 mm play)",
+          "hypothesis": "Clustered on Shift 1 production lots with batch 90A seals caused by Shift 1 tooling guide bushing wear detected (0.08 mm play)",
+          "is_paired": true
+        }
+      ],
+      "warnings": [],
+      "recommendations": [
+        "Problem boundary scoping is complete across all 4 Kepner-Tregoe dimensions (WHAT, WHERE, WHEN, EXTENT).",
+        "4 candidate root-cause hypotheses synthesized from paired distinctions and changes for downstream 6M Fishbone and 5-Why validation."
+      ]
+    },
+    "isError": false
+  }
+}
+```
+
+---
+
+### 4.16 Tool Invocation (`tools/call` -> `categorize_fishbone` 6M Categorization Success)
+
+**Client Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 16,
+  "method": "tools/call",
+  "params": {
+    "name": "categorize_fishbone",
+    "arguments": {
+      "causes": [
+        {"category": "Man", "cause": "Operator not trained on updated seal insertion procedure", "sub_category": "Training"},
+        {"category": "Man", "cause": "Shift handover did not communicate bushing play warning", "sub_category": "Communication"},
+        {"category": "Machine", "cause": "Guide bushing radial runout (0.08 mm play)", "sub_category": "Tooling"},
+        {"category": "Machine", "cause": "Insertion press stroke speed excessive (350 mm/s)", "sub_category": "Equipment"},
+        {"category": "Method", "cause": "Work instruction missing insertion speed limit", "sub_category": "Standard Work"},
+        {"category": "Method", "cause": "Pre-lube application method inconsistent across shifts", "sub_category": "Standard Work"},
+        {"category": "Material", "cause": "Batch 90A polyurethane seal lip hardness out of tolerance", "sub_category": "Raw Material"},
+        {"category": "Material", "cause": "PTFE grease viscosity degradation at ambient temperature", "sub_category": "Consumables"},
+        {"category": "Measurement", "cause": "Air leak tester calibration interval exceeded", "sub_category": "Gage Calibration"},
+        {"category": "Measurement", "cause": "Gland depth gage resolution insufficient for 0.05 mm tolerance", "sub_category": "Gage Resolution"},
+        {"category": "Environment", "cause": "Assembly room humidity below 30% causing seal static cling", "sub_category": "HVAC"},
+        {"category": "Environment", "cause": "Direct sunlight on Line 2 heating assembly fixture", "sub_category": "Facility"}
+      ],
+      "effect": "Pneumatic cylinder functional defect (stroke binding & seal leakage)",
+      "check_balance": true,
+      "balance_threshold": 0.75
+    }
+  }
+}
+```
+
+**Server Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 16,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"basis\": \"Ishikawa (1986) / AIAG CQI-20 / ASQ Quality Toolbox\",\n  \"valid\": true,\n  \"verdict\": \"ACCEPT\",\n  \"effect_statement\": \"Pneumatic cylinder functional defect (stroke binding & seal leakage)\",\n  \"total_causes\": 12,\n  \"branch_counts\": {\n    \"Man\": 2,\n    \"Machine\": 2,\n    \"Method\": 2,\n    \"Material\": 2,\n    \"Measurement\": 2,\n    \"Environment\": 2\n  },\n  \"grouped_causes\": {\n    \"Man\": [\n      {\n        \"category\": \"Man\",\n        \"cause\": \"Operator not trained on updated seal insertion procedure\",\n        \"sub_category\": \"Training\"\n      },\n      {\n        \"category\": \"Man\",\n        \"cause\": \"Shift handover did not communicate bushing play warning\",\n        \"sub_category\": \"Communication\"\n      }\n    ],\n    \"Machine\": [\n      {\n        \"category\": \"Machine\",\n        \"cause\": \"Guide bushing radial runout (0.08 mm play)\",\n        \"sub_category\": \"Tooling\"\n      },\n      {\n        \"category\": \"Machine\",\n        \"cause\": \"Insertion press stroke speed excessive (350 mm/s)\",\n        \"sub_category\": \"Equipment\"\n      }\n    ],\n    \"Method\": [\n      {\n        \"category\": \"Method\",\n        \"cause\": \"Work instruction missing insertion speed limit\",\n        \"sub_category\": \"Standard Work\"\n      },\n      {\n        \"category\": \"Method\",\n        \"cause\": \"Pre-lube application method inconsistent across shifts\",\n        \"sub_category\": \"Standard Work\"\n      }\n    ],\n    \"Material\": [\n      {\n        \"category\": \"Material\",\n        \"cause\": \"Batch 90A polyurethane seal lip hardness out of tolerance\",\n        \"sub_category\": \"Raw Material\"\n      },\n      {\n        \"category\": \"Material\",\n        \"cause\": \"PTFE grease viscosity degradation at ambient temperature\",\n        \"sub_category\": \"Consumables\"\n      }\n    ],\n    \"Measurement\": [\n      {\n        \"category\": \"Measurement\",\n        \"cause\": \"Air leak tester calibration interval exceeded\",\n        \"sub_category\": \"Gage Calibration\"\n      },\n      {\n        \"category\": \"Measurement\",\n        \"cause\": \"Gland depth gage resolution insufficient for 0.05 mm tolerance\",\n        \"sub_category\": \"Gage Resolution\"\n      }\n    ],\n    \"Environment\": [\n      {\n        \"category\": \"Environment\",\n        \"cause\": \"Assembly room humidity below 30% causing seal static cling\",\n        \"sub_category\": \"HVAC\"\n      },\n      {\n        \"category\": \"Environment\",\n        \"cause\": \"Direct sunlight on Line 2 heating assembly fixture\",\n        \"sub_category\": \"Facility\"\n      }\n    ]\n  },\n  \"empty_branches\": [],\n  \"duplicate_causes\": [],\n  \"uncategorized_causes\": [],\n  \"warnings\": [],\n  \"recommendations\": [\n    \"6M cause distribution is well-balanced across all categories with zero bare branches.\"\n  ]\n}"
+      }
+    ],
+    "structuredContent": {
+      "basis": "Ishikawa (1986) / AIAG CQI-20 / ASQ Quality Toolbox",
+      "valid": true,
+      "verdict": "ACCEPT",
+      "effect_statement": "Pneumatic cylinder functional defect (stroke binding & seal leakage)",
+      "total_causes": 12,
+      "branch_counts": {
+        "Man": 2,
+        "Machine": 2,
+        "Method": 2,
+        "Material": 2,
+        "Measurement": 2,
+        "Environment": 2
+      },
+      "grouped_causes": {
+        "Man": [
+          {"category": "Man", "cause": "Operator not trained on updated seal insertion procedure", "sub_category": "Training"},
+          {"category": "Man", "cause": "Shift handover did not communicate bushing play warning", "sub_category": "Communication"}
+        ],
+        "Machine": [
+          {"category": "Machine", "cause": "Guide bushing radial runout (0.08 mm play)", "sub_category": "Tooling"},
+          {"category": "Machine", "cause": "Insertion press stroke speed excessive (350 mm/s)", "sub_category": "Equipment"}
+        ],
+        "Method": [
+          {"category": "Method", "cause": "Work instruction missing insertion speed limit", "sub_category": "Standard Work"},
+          {"category": "Method", "cause": "Pre-lube application method inconsistent across shifts", "sub_category": "Standard Work"}
+        ],
+        "Material": [
+          {"category": "Material", "cause": "Batch 90A polyurethane seal lip hardness out of tolerance", "sub_category": "Raw Material"},
+          {"category": "Material", "cause": "PTFE grease viscosity degradation at ambient temperature", "sub_category": "Consumables"}
+        ],
+        "Measurement": [
+          {"category": "Measurement", "cause": "Air leak tester calibration interval exceeded", "sub_category": "Gage Calibration"},
+          {"category": "Measurement", "cause": "Gland depth gage resolution insufficient for 0.05 mm tolerance", "sub_category": "Gage Resolution"}
+        ],
+        "Environment": [
+          {"category": "Environment", "cause": "Assembly room humidity below 30% causing seal static cling", "sub_category": "HVAC"},
+          {"category": "Environment", "cause": "Direct sunlight on Line 2 heating assembly fixture", "sub_category": "Facility"}
+        ]
+      },
+      "empty_branches": [],
+      "duplicate_causes": [],
+      "uncategorized_causes": [],
+      "warnings": [],
+      "recommendations": [
+        "6M cause distribution is well-balanced across all categories with zero bare branches."
+      ]
+    },
+    "isError": false
+  }
+}
+```
+
+---
+
+### 4.17 Tool Invocation (`tools/call` -> `validate_5why` Reverse Logic & Systemic Root Cause Validation)
+
+**Client Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 17,
+  "method": "tools/call",
+  "params": {
+    "name": "validate_5why",
+    "arguments": {
+      "steps": [
+        {
+          "step_number": 1,
+          "why": "Why did the pneumatic cylinder exhibit rod seal leakage during functional test?",
+          "because": "The rod seal lip was pinched and scored during gland insertion."
+        },
+        {
+          "step_number": 2,
+          "why": "Why was the rod seal lip pinched during gland insertion?",
+          "because": "The assembly press insertion speed exceeded the seal engagement threshold (350 mm/s vs 200 mm/s max)."
+        },
+        {
+          "step_number": 3,
+          "why": "Why did the assembly press insertion speed exceed the seal engagement threshold?",
+          "because": "The machine speed parameter was modified by maintenance to meet throughput targets without engineering approval."
+        },
+        {
+          "step_number": 4,
+          "why": "Why was the machine speed modified without engineering approval?",
+          "because": "The line change control procedure did not require parameter lock verification or engineering sign-off for pneumatic presses."
+        },
+        {
+          "step_number": 5,
+          "why": "Why did the change control procedure omit parameter lock verification?",
+          "because": "Management change control policy classified pneumatic assembly tooling as non-critical auxiliary equipment."
+        }
+      ],
+      "problem_statement": "Pneumatic cylinder functional defect requiring assembly rework (stroke binding & seal leakage)",
+      "root_cause": "Management change control policy classified pneumatic assembly tooling as non-critical auxiliary equipment",
+      "leg_type": "occurrence"
+    }
+  }
+}
+```
+
+**Server Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 17,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"basis\": \"AIAG CQI-20 / Ford Global 8D / ASQ Quality Toolbox\",\n  \"valid\": true,\n  \"verdict\": \"ACCEPT\",\n  \"reversibility_score\": 1.0,\n  \"problem_statement\": \"Pneumatic cylinder functional defect requiring assembly rework (stroke binding & seal leakage)\",\n  \"root_cause\": \"Management change control policy classified pneumatic assembly tooling as non-critical auxiliary equipment\",\n  \"total_steps\": 5,\n  \"link_evaluations\": [\n    {\n      \"step_number\": 1,\n      \"forward_statement\": \"Why did the pneumatic cylinder exhibit rod seal leakage during functional test? Because The rod seal lip was pinched and scored during gland insertion.\",\n      \"reverse_statement\": \"The rod seal lip was pinched and scored during gland insertion., therefore Pneumatic cylinder functional defect requiring assembly rework (stroke binding & seal leakage)\",\n      \"is_reversible\": true,\n      \"reversibility_score\": 1.0,\n      \"findings\": []\n    },\n    {\n      \"step_number\": 2,\n      \"forward_statement\": \"Why was the rod seal lip pinched during gland insertion? Because The assembly press insertion speed exceeded the seal engagement threshold (350 mm/s vs 200 mm/s max).\",\n      \"reverse_statement\": \"The assembly press insertion speed exceeded the seal engagement threshold (350 mm/s vs 200 mm/s max)., therefore The rod seal lip was pinched and scored during gland insertion.\",\n      \"is_reversible\": true,\n      \"reversibility_score\": 1.0,\n      \"findings\": []\n    },\n    {\n      \"step_number\": 3,\n      \"forward_statement\": \"Why did the assembly press insertion speed exceed the seal engagement threshold? Because The machine speed parameter was modified by maintenance to meet throughput targets without engineering approval.\",\n      \"reverse_statement\": \"The machine speed parameter was modified by maintenance to meet throughput targets without engineering approval., therefore The assembly press insertion speed exceeded the seal engagement threshold (350 mm/s vs 200 mm/s max).\",\n      \"is_reversible\": true,\n      \"reversibility_score\": 1.0,\n      \"findings\": []\n    },\n    {\n      \"step_number\": 4,\n      \"forward_statement\": \"Why was the machine speed modified without engineering approval? Because The line change control procedure did not require parameter lock verification or engineering sign-off for pneumatic presses.\",\n      \"reverse_statement\": \"The line change control procedure did not require parameter lock verification or engineering sign-off for pneumatic presses., therefore The machine speed parameter was modified by maintenance to meet throughput targets without engineering approval.\",\n      \"is_reversible\": true,\n      \"reversibility_score\": 1.0,\n      \"findings\": []\n    },\n    {\n      \"step_number\": 5,\n      \"forward_statement\": \"Why did the change control procedure omit parameter lock verification? Because Management change control policy classified pneumatic assembly tooling as non-critical auxiliary equipment.\",\n      \"reverse_statement\": \"Management change control policy classified pneumatic assembly tooling as non-critical auxiliary equipment., therefore The line change control procedure did not require parameter lock verification or engineering sign-off for pneumatic presses.\",\n      \"is_reversible\": true,\n      \"reversibility_score\": 1.0,\n      \"findings\": []\n    }\n  ],\n  \"anti_patterns\": [],\n  \"systemic_assessment\": {\n    \"classification\": \"SYSTEMIC_POLICY_FAILURE\",\n    \"is_systemic\": true,\n    \"terminal_cause\": \"Management change control policy classified pneumatic assembly tooling as non-critical auxiliary equipment\",\n    \"systemic_factors\": [\n      \"Management policy oversight\",\n      \"Change management gap\",\n      \"Governance and procedure deficiency\"\n    ],\n    \"recommendations\": [\n      \"Update management change control policy to classify all assembly parameter settings under engineering sign-off governance.\",\n      \"Implement physical/electronic parameter locks on pneumatic press controllers.\"\n    ]\n  },\n  \"recommendations\": [\n    \"5-Why causal chain is fully reversible (reversibility score 1.0) with zero anti-patterns.\",\n    \"Terminal root cause correctly identifies systemic policy failure per AIAG CQI-20 / Ford Global 8D RULE 4.\"\n  ],\n  \"leg_type\": \"occurrence\"\n}"
+      }
+    ],
+    "structuredContent": {
+      "basis": "AIAG CQI-20 / Ford Global 8D / ASQ Quality Toolbox",
+      "valid": true,
+      "verdict": "ACCEPT",
+      "reversibility_score": 1.0,
+      "problem_statement": "Pneumatic cylinder functional defect requiring assembly rework (stroke binding & seal leakage)",
+      "root_cause": "Management change control policy classified pneumatic assembly tooling as non-critical auxiliary equipment",
+      "total_steps": 5,
+      "link_evaluations": [
+        {
+          "step_number": 1,
+          "forward_statement": "Why did the pneumatic cylinder exhibit rod seal leakage during functional test? Because The rod seal lip was pinched and scored during gland insertion.",
+          "reverse_statement": "The rod seal lip was pinched and scored during gland insertion., therefore Pneumatic cylinder functional defect requiring assembly rework (stroke binding & seal leakage)",
+          "is_reversible": true,
+          "reversibility_score": 1.0,
+          "findings": []
+        },
+        {
+          "step_number": 2,
+          "forward_statement": "Why was the rod seal lip pinched during gland insertion? Because The assembly press insertion speed exceeded the seal engagement threshold (350 mm/s vs 200 mm/s max).",
+          "reverse_statement": "The assembly press insertion speed exceeded the seal engagement threshold (350 mm/s vs 200 mm/s max)., therefore The rod seal lip was pinched and scored during gland insertion.",
+          "is_reversible": true,
+          "reversibility_score": 1.0,
+          "findings": []
+        },
+        {
+          "step_number": 3,
+          "forward_statement": "Why did the assembly press insertion speed exceed the seal engagement threshold? Because The machine speed parameter was modified by maintenance to meet throughput targets without engineering approval.",
+          "reverse_statement": "The machine speed parameter was modified by maintenance to meet throughput targets without engineering approval., therefore The assembly press insertion speed exceeded the seal engagement threshold (350 mm/s vs 200 mm/s max).",
+          "is_reversible": true,
+          "reversibility_score": 1.0,
+          "findings": []
+        },
+        {
+          "step_number": 4,
+          "forward_statement": "Why was the machine speed modified without engineering approval? Because The line change control procedure did not require parameter lock verification or engineering sign-off for pneumatic presses.",
+          "reverse_statement": "The line change control procedure did not require parameter lock verification or engineering sign-off for pneumatic presses., therefore The machine speed parameter was modified by maintenance to meet throughput targets without engineering approval.",
+          "is_reversible": true,
+          "reversibility_score": 1.0,
+          "findings": []
+        },
+        {
+          "step_number": 5,
+          "forward_statement": "Why did the change control procedure omit parameter lock verification? Because Management change control policy classified pneumatic assembly tooling as non-critical auxiliary equipment.",
+          "reverse_statement": "Management change control policy classified pneumatic assembly tooling as non-critical auxiliary equipment., therefore The line change control procedure did not require parameter lock verification or engineering sign-off for pneumatic presses.",
+          "is_reversible": true,
+          "reversibility_score": 1.0,
+          "findings": []
+        }
+      ],
+      "anti_patterns": [],
+      "systemic_assessment": {
+        "classification": "SYSTEMIC_POLICY_FAILURE",
+        "is_systemic": true,
+        "terminal_cause": "Management change control policy classified pneumatic assembly tooling as non-critical auxiliary equipment",
+        "systemic_factors": [
+          "Management policy oversight",
+          "Change management gap",
+          "Governance and procedure deficiency"
+        ],
+        "recommendations": [
+          "Update management change control policy to classify all assembly parameter settings under engineering sign-off governance.",
+          "Implement physical/electronic parameter locks on pneumatic press controllers."
+        ]
+      },
+      "recommendations": [
+        "5-Why causal chain is fully reversible (reversibility score 1.0) with zero anti-patterns.",
+        "Terminal root cause correctly identifies systemic policy failure per AIAG CQI-20 / Ford Global 8D RULE 4."
+      ],
+      "leg_type": "occurrence"
+    },
+    "isError": false
+  }
+}
+```
+
+---
+
+### 4.18 Tool Invocation (`tools/call` -> Visual Canvas Rendering: 5-Why, Fishbone, Is/Is-Not)
+
+**Client Request (`render_5why_canvas`):**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 18,
+  "method": "tools/call",
+  "params": {
+    "name": "render_5why_canvas",
+    "arguments": {
+      "theme": "dark",
+      "standalone": true
+    }
+  }
+}
+```
+
+**Server Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 18,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"title\": \"5-Why Root Cause Analysis Canvas\",\n  \"rows_count\": 5,\n  \"steps_count\": 5,\n  \"verdict\": \"ACCEPT\",\n  \"valid\": true,\n  \"reversibility_score\": 1.0,\n  \"summary\": {\n    \"title\": \"5-Why Root Cause Analysis Canvas\",\n    \"steps_count\": 5,\n    \"valid\": true,\n    \"verdict\": \"ACCEPT\",\n    \"reversibility_score\": 1.0,\n    \"hard_anti_patterns_count\": 0,\n    \"soft_anti_patterns_count\": 0,\n    \"is_systemic\": true,\n    \"terminal_cause\": \"The induction plan was not signed by Engineering\",\n    \"leg_type\": \"occurrence\"\n  },\n  \"html\": \"<!DOCTYPE html>\\n<html lang=\\\"en\\\">...</html>\"\n}"
+      }
+    ],
+    "structuredContent": {
+      "title": "5-Why Root Cause Analysis Canvas",
+      "rows_count": 5,
+      "steps_count": 5,
+      "verdict": "ACCEPT",
+      "valid": true,
+      "reversibility_score": 1.0,
+      "summary": {
+        "title": "5-Why Root Cause Analysis Canvas",
+        "steps_count": 5,
+        "valid": true,
+        "verdict": "ACCEPT",
+        "reversibility_score": 1.0,
+        "hard_anti_patterns_count": 0,
+        "soft_anti_patterns_count": 0,
+        "is_systemic": true,
+        "terminal_cause": "The induction plan was not signed by Engineering",
+        "leg_type": "occurrence"
+      },
+      "html": "<!DOCTYPE html>\n<html lang=\"en\">...</html>"
+    },
+    "isError": false
+  }
+}
+```
+
+---
+
+### 4.19 Multi-Tool RCA Chained Workflow (KT Is/Is-Not -> 6M Fishbone -> 5-Why -> Canvas)
+
+The following sequence illustrates a single client session executing an end-to-end qualitative Root Cause Analysis workflow across all four stages:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Client as MCP Client
+    participant Server as quality-mcp Server
+    participant Core as quality-core Engines
+
+    Note over Client,Server: Single In-Process JSON-RPC Session Handshake
+    Client->>Server: initialize
+    Server-->>Client: serverInfo ("quality-mcp")
+    Client->>Server: tools/list
+    Server-->>Client: [scope_is_is_not, categorize_fishbone, validate_5why, render_isisnot_canvas, ...]
+
+    Note over Client,Server: Stage 1. Kepner-Tregoe Is/Is-Not Problem Scoping
+    Client->>Server: tools/call ("scope_is_is_not", matrix, problem_statement)
+    Server->>Core: quality_core.rca.is_is_not.scope_is_is_not(...)
+    Core-->>Server: valid=true, 4 dimensions complete, 4 candidate hypotheses synthesized
+    Server-->>Client: {valid: true, verdict: "ACCEPT", candidate_causes: [...]}
+
+    Note over Client,Server: Stage 2. 6M Fishbone Categorization & Bare Branch Detection
+    Client->>Server: tools/call ("categorize_fishbone", combined_causes, effect)
+    Server->>Core: quality_core.rca.fishbone.categorize_fishbone(...)
+    Core-->>Server: valid=true, 6M balanced, empty_branches=[]
+    Server-->>Client: {valid: true, verdict: "ACCEPT", total_causes: 10, empty_branches: []}
+
+    Note over Client,Server: Stage 3. 5-Why Reversible Logic & Systemic Root Cause
+    Client->>Server: tools/call ("validate_5why", steps, root_cause, leg_type="occurrence")
+    Server->>Core: quality_core.rca.five_why.validate_five_why_chain(...)
+    Core-->>Server: valid=true, reversibility=1.0, is_systemic=true
+    Server-->>Client: {valid: true, verdict: "ACCEPT", reversibility_score: 1.0, systemic_assessment: {...}}
+
+    Note over Client,Server: Stage 4. Visual Themed HTML Canvas Generation
+    Client->>Server: tools/call ("render_isisnot_canvas" / "render_fishbone_canvas" / "render_5why_canvas")
+    Server->>Core: quality_core.canvas.rca (*Canvas controllers)
+    Core-->>Server: Rendered HTML5 artifacts + summary KPI cards
+    Server-->>Client: {rows_count: N, valid: true, html: "<!DOCTYPE html>..."}
 ```
 
 ---

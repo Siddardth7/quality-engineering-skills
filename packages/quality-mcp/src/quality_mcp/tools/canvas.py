@@ -1,8 +1,8 @@
 """
 canvas.py
-FMEA, SPC, MSA, and Control Plan visual canvas rendering tools for Model Context Protocol (MCP).
+FMEA, SPC, MSA, Control Plan, and 5-Why visual canvas rendering tools for Model Context Protocol (MCP).
 
-Exposes styled interactive HTML canvas generation and risk/stability/MSA/ControlPlan summary metrics
+Exposes styled interactive HTML canvas generation and risk/stability/MSA/ControlPlan/5-Why summary metrics
 from quality_core.canvas to AI agents and MCP client hosts.
 """
 
@@ -11,7 +11,19 @@ from __future__ import annotations
 from typing import Annotated, Any
 
 from pydantic import Field
-from quality_core.canvas import ControlPlanCanvas, FMEACanvas, MSACanvas, SPCCanvas
+from quality_core.canvas import (
+    ControlPlanCanvas,
+    FMEACanvas,
+    MSACanvas,
+    SPCCanvas,
+)
+
+from quality_mcp.tools.rca import (
+    render_5why_canvas,
+    render_fishbone_canvas,
+    render_is_is_not_canvas,
+    render_isisnot_canvas,
+)
 
 
 def render_fmea_canvas(
@@ -446,8 +458,13 @@ def render_controlplan_canvas(
 
 
 __all__ = [
+    "render_5why_canvas",
     "render_controlplan_canvas",
+    "render_fishbone_canvas",
     "render_fmea_canvas",
+    "render_is_is_not_canvas",
+    "render_isisnot_canvas",
     "render_msa_canvas",
     "render_spc_canvas",
 ]
+

@@ -21,7 +21,7 @@ from pathlib import Path
 
 import pytest
 
-_REPO_ROOT = Path("/Users/sid/Documents/Upskill/Projects/quality-engineering/tools/Quality engineering Skills")
+_REPO_ROOT = Path(__file__).resolve().parents[1]
 _QUALITY_CORE = _REPO_ROOT / "packages" / "quality-core" / "src" / "quality_core"
 
 _NCR_DIR = _QUALITY_CORE / "ncr"

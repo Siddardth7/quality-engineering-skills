@@ -41,3 +41,20 @@ Instead, the deterministic engines in `quality_core.ncr` implement structural lo
 **Rationale:** ISO 9001:2015 §8.7.1 and IATF 16949:2016 §8.7 define the fundamental taxonomy of nonconformance control actions: correction (rework), concession/authorization ("use as is", regrade), segregation/return ("return to vendor"), and rendering scrap unusable prior to disposal ("scrap"). ISO 9001:2015 §8.7.2 mandates retained documented information describing the nonconformity, actions taken, concessions obtained, and the deciding authority. Adopting these 5 canonical disposition states and 5 required objective-evidence fields aligns nonconformance capture with international quality standards.
 
 **Applied In:** `packages/quality-core/src/quality_core/ncr/schema.py` (`Disposition`, `DISPOSITION_VALUES`, `DISPOSITION_ALIASES`, `NonconformanceRecord`, `NCRDataset`, `NCR_SCHEMA`, `load_ncr_csv`, `validate_ncr`); `packages/quality-core/src/quality_core/ncr/nonconformance.py` (`write_nonconformance`, `recommend_disposition`, `NonconformanceWriteResult`, `DispositionRecommendation`).
+
+## RULE 2: Safety-Critical Disposition Gate Precedence Over Supplier Origin
+
+**Decision:** Prioritize the safety-critical disposition evaluation gate (`safety_critical is True`) over supplier defect origin routing (`is_supplier_origin`). When a defect involves a safety or regulatory critical characteristic and is not reworkable (`is_reworkable is not True`), the disposition engine strictly recommends `disposition="Scrap"` with mandatory defacing/destruction and Material Review Board (MRB) / Safety Officer approval authority, rather than releasing the part for vendor return (`ReturnToVendor`). Commercial recovery is preserved by issuing a Supplier Corrective Action Request (SCAR) and debit memo recommendation.
+
+**Source:**
+- IATF 16949:2016 Clause 8.7.1.7:
+> "The organization shall have a documented process for disposition of nonconforming product not eligible for rework or repair. For product not meeting requirements, the organization shall verify that the product to be scrapped is rendered unusable prior to disposal."
+- IATF 16949:2016 Clause 8.7.1.3:
+> "The organization shall ensure that product with unidentified or suspect status is classified and controlled as nonconforming product. The organization shall ensure that all appropriate manufacturing personnel receive training for containment of suspect and nonconforming product."
+- ISO 9001:2015 Clause 8.7.1:
+> "The organization shall deal with nonconforming outputs in one or more of the following ways: a) correction; b) segregation, containment, return or suspension of provision of products and services; c) informing the customer; d) obtaining authorization for acceptance under concession."
+
+**Rationale:** Under IATF 16949:2016 §8.7.1.7, nonconforming automotive products ineligible for rework or repair must be verified as rendered unusable prior to disposal. Returning non-reworkable safety-critical components to external suppliers without mandatory defacing creates a severe risk of inadvertent re-entry into the manufacturing supply chain. Safety-critical non-reworkable defects therefore mandate immediate scrap rendering, witnessing, and MRB / Safety Officer oversight. Commercial remedy (SCAR and debit memo) is issued in parallel to recover costs without compromising physical containment.
+
+**Applied In:** `packages/quality-core/src/quality_core/ncr/nonconformance.py` (`recommend_disposition`).
+

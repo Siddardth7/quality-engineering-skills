@@ -21,6 +21,7 @@ from quality_mcp.server import (
     recommend_disposition,
     render_5why_canvas,
     render_controlplan_canvas,
+    render_copq_canvas,
     render_fishbone_canvas,
     render_fmea_canvas,
     render_is_is_not_canvas,
@@ -198,6 +199,26 @@ def test_mcp_instance_configuration() -> None:
     assert "summary" in ncr_canvas_content
     assert "html" in ncr_canvas_content
 
+    _, copq_calc_content = asyncio.run(
+        mcp.call_tool(
+            "estimate_copq",
+            {
+                "scrap_qty": 20,
+                "unit_cost": 50.0,
+                "rework_hours": 10.0,
+                "labor_rate": 50.0,
+                "revenue_base": 100000.0,
+            },
+        )
+    )
+    assert copq_calc_content["total_copq"] == 1500.0
+    assert copq_calc_content["copq_percentage_of_revenue"] == 1.5
+
+    _, copq_canvas_content = asyncio.run(mcp.call_tool("render_copq_canvas", {}))
+    assert copq_canvas_content["rows_count"] == 9
+    assert "summary" in copq_canvas_content
+    assert "html" in copq_canvas_content
+
 
 def test_main_invokes_mcp_run() -> None:
     """main() entry point must call mcp.run() once."""
@@ -226,6 +247,7 @@ def test_package_exports() -> None:
     assert quality_mcp.render_fmea_canvas is render_fmea_canvas
     assert quality_mcp.render_msa_canvas is render_msa_canvas
     assert quality_mcp.render_ncr_canvas is render_ncr_canvas
+    assert quality_mcp.render_copq_canvas is render_copq_canvas
     assert quality_mcp.render_spc_canvas is render_spc_canvas
     assert quality_mcp.calculate_spc_chart is calculate_spc_chart
     assert quality_mcp.calculate_gage_rr is calculate_gage_rr

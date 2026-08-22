@@ -38,4 +38,19 @@ While the PAF categories and summation formulas are standardized, specific busin
 
 ## RULE Entries
 
-*(Header-only state: specific RULE entries will be populated in subsequent epics).*
+## RULE 1: Prevention-Appraisal-Failure (PAF) Cost Category Taxonomy & Arithmetic Rollup Definitions
+
+**Decision:** Establish canonical PAF cost taxonomy `Literal["Prevention", "Appraisal", "InternalFailure", "ExternalFailure"]` with case-insensitive alias normalization and deterministic arithmetic rollup properties (`total_cost`, `copq`, `cogq`, `copq_pct_revenue`) cited against the ASQ Certified Six Sigma Green Belt (CSSGB) Body of Knowledge and CSSC Lean Six Sigma curricula.
+
+**Source:**
+- ASQ Certified Six Sigma Green Belt Body of Knowledge (CSSGB BoK) & Handbook (2nd Ed.):
+> "Prevention costs: Costs incurred to prevent or avoid quality problems. Examples include quality planning, process control, training, and preventive maintenance."
+> "Appraisal costs: Costs incurred to measure, audit, or evaluate products or services to assure conformance to quality standards and performance requirements. Examples include inspection, testing, and audits."
+> "Internal failure costs: Costs resulting from products or services failing to conform to requirements or customer needs prior to delivery. Examples include scrap, rework, re-inspection, and scrap disposal."
+> "External failure costs: Costs resulting from products or services failing to conform to requirements or customer needs after delivery. Examples include warranty claims, customer complaints, returns, and field servicing."
+> "Total Cost of Quality = Prevention + Appraisal + Internal Failure + External Failure"
+> "Cost of Poor Quality (COPQ) = Internal Failure Costs + External Failure Costs"
+
+**Rationale:** The Prevention-Appraisal-Failure (PAF) model, originally formulated by Armand Feigenbaum and Joseph Juran, is the globally recognized standard for Cost of Quality (CoQ) accounting in Six Sigma and Lean manufacturing frameworks. Conformance costs (Prevention and Appraisal) represent proactive investments in quality, whereas Nonconformance costs / COPQ (Internal and External Failure) represent financial waste resulting from defects. Providing structured row models with cost drivers (scrap, rework, containment, warranty, direct costs) and dataset aggregations ensures standard-compliant financial rollup.
+
+**Applied In:** `packages/quality-core/src/quality_core/copq/schema.py` (`PAFCategory`, `PAF_CATEGORY_VALUES`, `PAF_CATEGORY_ALIASES`, `CostItem`, `COPQDataset`, `COPQ_SCHEMA`, `load_copq_csv`, `validate_copq`).

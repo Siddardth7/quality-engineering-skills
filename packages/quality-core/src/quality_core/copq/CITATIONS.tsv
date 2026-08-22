@@ -1,1 +1,7 @@
 site	src_line	quote
+RULE 1	1	Prevention costs: Costs incurred to prevent or avoid quality problems. Examples include quality planning, process control, training, and preventive maintenance.
+RULE 1	2	Appraisal costs: Costs incurred to measure, audit, or evaluate products or services to assure conformance to quality standards and performance requirements. Examples include inspection, testing, and audits.
+RULE 1	3	Internal failure costs: Costs resulting from products or services failing to conform to requirements or customer needs prior to delivery. Examples include scrap, rework, re-inspection, and scrap disposal.
+RULE 1	4	External failure costs: Costs resulting from products or services failing to conform to requirements or customer needs after delivery. Examples include warranty claims, customer complaints, returns, and field servicing.
+RULE 1	5	Total Cost of Quality = Prevention + Appraisal + Internal Failure + External Failure
+RULE 1	6	Cost of Poor Quality (COPQ) = Internal Failure Costs + External Failure Costs

@@ -17,6 +17,7 @@ from quality_mcp.server import (
     main,
     mcp,
     ping,
+    recommend_disposition,
     render_5why_canvas,
     render_controlplan_canvas,
     render_fishbone_canvas,
@@ -24,10 +25,12 @@ from quality_mcp.server import (
     render_is_is_not_canvas,
     render_isisnot_canvas,
     render_msa_canvas,
+    render_ncr_canvas,
     render_spc_canvas,
     scope_is_is_not,
     validate_5why,
     validate_control_plan,
+    write_ncr,
 )
 
 
@@ -67,6 +70,9 @@ def test_mcp_instance_configuration() -> None:
     assert "scope_is_is_not" in tool_names
     assert "validate_5why" in tool_names
     assert "validate_control_plan" in tool_names
+    assert "write_ncr" in tool_names
+    assert "recommend_disposition" in tool_names
+    assert "render_ncr_canvas" in tool_names
 
     # Verify tool execution via FastMCP interface
     _, content = asyncio.run(mcp.call_tool("ping", {}))
@@ -156,6 +162,39 @@ def test_mcp_instance_configuration() -> None:
     assert fishbone_canvas_content["verdict"] == "ACCEPT"
     assert "html" in fishbone_canvas_content
 
+    _, ncr_write_content = asyncio.run(
+        mcp.call_tool(
+            "write_ncr",
+            {
+                "raw_defect_note": "Found 10 bad parts at incoming inspection.",
+                "requirement_violated": "Spec-100",
+                "measured_evidence": "Measured out of spec",
+                "what_deviated": "Bore diameter out of spec",
+                "quantity_affected": 10,
+                "detection_point": "Receiving Inspection",
+            },
+        )
+    )
+    assert ncr_write_content["valid"] is True
+    assert "statement" in ncr_write_content
+
+    _, ncr_disp_content = asyncio.run(
+        mcp.call_tool(
+            "recommend_disposition",
+            {
+                "is_reworkable": True,
+                "defect_origin": "Internal",
+            },
+        )
+    )
+    assert ncr_disp_content["disposition"] == "Rework"
+    assert ncr_disp_content["verdict"] == "VALID"
+
+    _, ncr_canvas_content = asyncio.run(mcp.call_tool("render_ncr_canvas", {}))
+    assert ncr_canvas_content["rows_count"] == 5
+    assert "summary" in ncr_canvas_content
+    assert "html" in ncr_canvas_content
+
 
 def test_main_invokes_mcp_run() -> None:
     """main() entry point must call mcp.run() once."""
@@ -174,7 +213,7 @@ def test_main_dunder_execution() -> None:
 
 
 def test_package_exports() -> None:
-    """Package root __init__.py must re-export mcp, ping, lookup_fmea_ap, render_controlplan_canvas, render_fmea_canvas, render_msa_canvas, render_spc_canvas, calculate_spc_chart, calculate_gage_rr, validate_control_plan, scope_is_is_not, render_isisnot_canvas, render_is_is_not_canvas, categorize_fishbone, render_fishbone_canvas, and __version__ correctly."""
+    """Package root __init__.py must re-export all tools and __version__ correctly."""
     assert quality_mcp.mcp is mcp
     assert quality_mcp.ping is ping
     assert quality_mcp.lookup_fmea_ap is lookup_fmea_ap
@@ -183,6 +222,7 @@ def test_package_exports() -> None:
     assert quality_mcp.render_fishbone_canvas is render_fishbone_canvas
     assert quality_mcp.render_fmea_canvas is render_fmea_canvas
     assert quality_mcp.render_msa_canvas is render_msa_canvas
+    assert quality_mcp.render_ncr_canvas is render_ncr_canvas
     assert quality_mcp.render_spc_canvas is render_spc_canvas
     assert quality_mcp.calculate_spc_chart is calculate_spc_chart
     assert quality_mcp.calculate_gage_rr is calculate_gage_rr
@@ -192,6 +232,8 @@ def test_package_exports() -> None:
     assert quality_mcp.scope_is_is_not is scope_is_is_not
     assert quality_mcp.render_isisnot_canvas is render_isisnot_canvas
     assert quality_mcp.render_is_is_not_canvas is render_is_is_not_canvas
+    assert quality_mcp.write_ncr is write_ncr
+    assert quality_mcp.recommend_disposition is recommend_disposition
     assert quality_mcp.__version__ == "0.6.0"
     assert set(quality_mcp.__all__) == {
         "__version__",
@@ -201,6 +243,7 @@ def test_package_exports() -> None:
         "lookup_fmea_ap",
         "mcp",
         "ping",
+        "recommend_disposition",
         "render_5why_canvas",
         "render_controlplan_canvas",
         "render_fishbone_canvas",
@@ -208,10 +251,12 @@ def test_package_exports() -> None:
         "render_is_is_not_canvas",
         "render_isisnot_canvas",
         "render_msa_canvas",
+        "render_ncr_canvas",
         "render_spc_canvas",
         "scope_is_is_not",
         "validate_5why",
         "validate_control_plan",
+        "write_ncr",
     }
     assert sorted(quality_mcp.__all__) == [
         "__version__",
@@ -221,6 +266,7 @@ def test_package_exports() -> None:
         "lookup_fmea_ap",
         "mcp",
         "ping",
+        "recommend_disposition",
         "render_5why_canvas",
         "render_controlplan_canvas",
         "render_fishbone_canvas",
@@ -228,9 +274,11 @@ def test_package_exports() -> None:
         "render_is_is_not_canvas",
         "render_isisnot_canvas",
         "render_msa_canvas",
+        "render_ncr_canvas",
         "render_spc_canvas",
         "scope_is_is_not",
         "validate_5why",
         "validate_control_plan",
+        "write_ncr",
     ]
 

@@ -76,6 +76,10 @@ def test_ncr_module_all_exports() -> None:
         "load_ncr_csv",
         "validate_ncr",
         "IngestError",
+        "write_nonconformance",
+        "recommend_disposition",
+        "NonconformanceWriteResult",
+        "DispositionRecommendation",
     }
     assert set(ncr.__all__) == expected_exports
     for symbol in expected_exports:

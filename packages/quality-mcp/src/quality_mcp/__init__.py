@@ -14,6 +14,7 @@ from quality_mcp.server import (
     lookup_fmea_ap,
     mcp,
     ping,
+    recommend_disposition,
     render_5why_canvas,
     render_controlplan_canvas,
     render_fishbone_canvas,
@@ -21,10 +22,12 @@ from quality_mcp.server import (
     render_is_is_not_canvas,
     render_isisnot_canvas,
     render_msa_canvas,
+    render_ncr_canvas,
     render_spc_canvas,
     scope_is_is_not,
     validate_5why,
     validate_control_plan,
+    write_ncr,
 )
 
 __all__ = [
@@ -35,6 +38,7 @@ __all__ = [
     "lookup_fmea_ap",
     "mcp",
     "ping",
+    "recommend_disposition",
     "render_5why_canvas",
     "render_controlplan_canvas",
     "render_fishbone_canvas",
@@ -42,9 +46,10 @@ __all__ = [
     "render_is_is_not_canvas",
     "render_isisnot_canvas",
     "render_msa_canvas",
+    "render_ncr_canvas",
     "render_spc_canvas",
     "scope_is_is_not",
     "validate_5why",
     "validate_control_plan",
+    "write_ncr",
 ]
-

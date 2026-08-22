@@ -488,3 +488,174 @@ def test_recommend_disposition_scrap_without_origin() -> None:
     assert "defect_origin" in res.missing_evidence
 
 
+def test_recommend_disposition_supplier_safety_critical_non_reworkable_scraps() -> None:
+    """Supplier origin + safety critical + non-reworkable (is_reworkable=False) routes to Scrap with MRB, Safety Officer, defacing, and SCAR."""
+    res = recommend_disposition(
+        defect_origin="Supplier",
+        safety_critical=True,
+        is_reworkable=False,
+    )
+    assert isinstance(res, DispositionRecommendation)
+    assert res.disposition == "Scrap"
+    assert res.verdict == "VALID"
+    assert res.mrb_review_required is True
+    assert res.customer_authorization_required is False
+    assert res.fmea_risk_analysis_required is False
+    assert res.approval_authority == "Quality Manager / Scrap Authority & Safety Officer"
+    assert "Safety/regulatory critical characteristic nonconformance." in res.warnings
+    assert "Mandatory defacing and scrap witnessing required for safety-critical nonconformance." in res.recommendations
+    assert "Issue Supplier Corrective Action Request (SCAR) and debit memo to vendor." in res.recommendations
+    assert "IATF 16949:2016 Clause 8.7.1.7" in res.rationale
+    assert res.standards_basis == "ISO 9001:2015 §8.7 / IATF 16949:2016 §8.7"
+
+
+def test_recommend_disposition_supplier_safety_critical_unknown_reworkability_scraps() -> None:
+    """Supplier origin + safety critical + unknown reworkability (is_reworkable=None) routes to Scrap and preserves SCAR + defacing."""
+    res = recommend_disposition(
+        defect_origin="Vendor",
+        safety_critical=True,
+        is_reworkable=None,
+    )
+    assert isinstance(res, DispositionRecommendation)
+    assert res.disposition == "Scrap"
+    assert res.verdict == "VALID"
+    assert res.mrb_review_required is True
+    assert res.approval_authority == "Quality Manager / Scrap Authority & Safety Officer"
+    assert "Mandatory defacing and scrap witnessing required for safety-critical nonconformance." in res.recommendations
+    assert "Issue Supplier Corrective Action Request (SCAR) and debit memo to vendor." in res.recommendations
+    assert "Safety/regulatory critical characteristic nonconformance." in res.warnings
+    assert "is_reworkable" in res.missing_evidence
+
+
+def test_recommend_disposition_supplier_safety_critical_reworkable_returns_to_vendor() -> None:
+    """Supplier origin + safety critical + reworkable (is_reworkable=True) routes to ReturnToVendor with warnings and SCAR."""
+    res = recommend_disposition(
+        defect_origin="Supplier",
+        safety_critical=True,
+        is_reworkable=True,
+    )
+    assert isinstance(res, DispositionRecommendation)
+    assert res.disposition == "ReturnToVendor"
+    assert res.verdict == "VALID"
+    assert res.mrb_review_required is False
+    assert res.customer_authorization_required is False
+    assert res.fmea_risk_analysis_required is False
+    assert res.approval_authority == "Supplier Quality Assurance (SQA) / Purchasing"
+    assert "Safety/regulatory critical characteristic nonconformance." in res.warnings
+    assert "Defect originated externally from supplier; internal rework is discouraged without vendor authorization." in res.warnings
+    assert "Issue Supplier Corrective Action Request (SCAR) and debit memo to vendor." in res.recommendations
+
+
+def test_recommend_disposition_safety_critical_blocks_regrade_and_concession() -> None:
+    """Safety-critical defects cannot be regraded or accepted under concession."""
+    # Secondary spec non-reworkable -> Scrap with Safety Officer authority
+    res_regrade_non_rework = recommend_disposition(
+        safety_critical=True,
+        meets_secondary_spec=True,
+        is_reworkable=False,
+        defect_origin="Internal",
+    )
+    assert res_regrade_non_rework.disposition == "Scrap"
+    assert res_regrade_non_rework.mrb_review_required is True
+    assert res_regrade_non_rework.approval_authority == "Quality Manager / Scrap Authority & Safety Officer"
+    assert "Mandatory defacing and scrap witnessing required for safety-critical nonconformance." in res_regrade_non_rework.recommendations
+
+    # Secondary spec reworkable -> Rework with FMEA risk analysis
+    res_regrade_rework = recommend_disposition(
+        safety_critical=True,
+        meets_secondary_spec=True,
+        is_reworkable=True,
+        defect_origin="Internal",
+    )
+    assert res_regrade_rework.disposition == "Rework"
+    assert res_regrade_rework.fmea_risk_analysis_required is True
+    assert "Safety/regulatory critical characteristic nonconformance." in res_regrade_rework.warnings
+
+    # Concession non-reworkable -> Scrap with Safety Officer authority
+    res_concession_non_rework = recommend_disposition(
+        safety_critical=True,
+        customer_concession_eligible=True,
+        is_reworkable=False,
+        defect_origin="Internal",
+    )
+    assert res_concession_non_rework.disposition == "Scrap"
+    assert res_concession_non_rework.mrb_review_required is True
+    assert res_concession_non_rework.approval_authority == "Quality Manager / Scrap Authority & Safety Officer"
+
+    # Concession reworkable -> Rework with FMEA risk analysis
+    res_concession_rework = recommend_disposition(
+        safety_critical=True,
+        customer_concession_eligible=True,
+        is_reworkable=True,
+        defect_origin="Internal",
+    )
+    assert res_concession_rework.disposition == "Rework"
+    assert res_concession_rework.fmea_risk_analysis_required is True
+    assert "Safety/regulatory critical characteristic nonconformance." in res_concession_rework.warnings
+
+
+@pytest.mark.parametrize(
+    (
+        "defect_origin",
+        "safety_critical",
+        "is_reworkable",
+        "meets_secondary_spec",
+        "customer_concession_eligible",
+        "expected_disposition",
+        "expected_mrb",
+        "expected_fmea",
+    ),
+    [
+        # 1. Supplier origin
+        ("Supplier", True, False, False, False, "Scrap", True, False),
+        ("Supplier", True, None, False, False, "Scrap", True, False),
+        ("Supplier", True, True, False, False, "ReturnToVendor", False, False),
+        ("Supplier", False, False, False, False, "ReturnToVendor", False, False),
+        ("Supplier", False, True, False, False, "ReturnToVendor", False, False),
+        ("Supplier", None, False, False, False, "ReturnToVendor", False, False),
+        # 2. Internal origin non-safety
+        ("Internal", False, False, False, False, "Scrap", False, False),
+        ("Internal", False, True, False, False, "Rework", False, True),
+        ("Internal", None, False, False, False, "Scrap", False, False),
+        ("Internal", None, True, False, False, "Rework", False, True),
+        # 3. Internal origin safety-critical
+        ("Internal", True, False, False, False, "Scrap", True, False),
+        ("Internal", True, None, False, False, "Scrap", True, False),
+        ("Internal", True, True, False, False, "Rework", False, True),
+        # 4. Secondary spec (Regrade candidate)
+        ("Internal", False, False, True, False, "Regrade", True, False),
+        ("Internal", None, False, True, False, "Regrade", True, False),
+        ("Internal", True, False, True, False, "Scrap", True, False),
+        ("Internal", True, True, True, False, "Rework", False, True),
+        # 5. Customer concession (UseAsIs candidate)
+        ("Internal", False, False, False, True, "UseAsIs", True, False),
+        ("Internal", None, False, False, True, "UseAsIs", True, False),
+        ("Internal", True, False, False, True, "Scrap", True, False),
+        ("Internal", True, True, False, True, "Rework", False, True),
+    ],
+)
+def test_recommend_disposition_safety_critical_matrix(
+    defect_origin: str | None,
+    safety_critical: bool | None,
+    is_reworkable: bool | None,
+    meets_secondary_spec: bool | None,
+    customer_concession_eligible: bool | None,
+    expected_disposition: str,
+    expected_mrb: bool,
+    expected_fmea: bool,
+) -> None:
+    """Parametric verification of the 5-disposition matrix under safety_critical vs non-safety paths."""
+    res = recommend_disposition(
+        defect_origin=defect_origin,
+        safety_critical=safety_critical,
+        is_reworkable=is_reworkable,
+        meets_secondary_spec=meets_secondary_spec,
+        customer_concession_eligible=customer_concession_eligible,
+    )
+    assert res.disposition == expected_disposition
+    assert res.verdict == "VALID"
+    assert res.mrb_review_required is expected_mrb
+    assert res.fmea_risk_analysis_required is expected_fmea
+
+
+

@@ -635,7 +635,29 @@ def recommend_disposition(
     if customer_concession_eligible is None:
         missing_evidence.append("customer_concession_eligible")
 
-    # 1. Supplier Defect -> ReturnToVendor
+    # 1. Safety Critical Non-conformance override:
+    # If safety critical and not reworkable or no customer concession allowed -> Scrap
+    if safety_critical is True:
+        warnings.append("Safety/regulatory critical characteristic nonconformance.")
+        if is_reworkable is not True:
+            recommendations.append("Mandatory defacing and scrap witnessing required for safety-critical nonconformance.")
+            if is_supplier_origin:
+                recommendations.append("Issue Supplier Corrective Action Request (SCAR) and debit memo to vendor.")
+            return DispositionRecommendation(
+                disposition="Scrap",
+                verdict="VALID",
+                rationale="Product has safety-critical nonconformance and cannot be reworked; must be rendered unusable prior to disposal per IATF 16949:2016 Clause 8.7.1.7.",
+                approval_authority="Quality Manager / Scrap Authority & Safety Officer",
+                mrb_review_required=True,
+                customer_authorization_required=False,
+                fmea_risk_analysis_required=False,
+                missing_evidence=missing_evidence,
+                warnings=warnings,
+                recommendations=recommendations,
+                standards_basis=_STANDARDS_BASIS,
+            )
+
+    # 2. Supplier Defect -> ReturnToVendor
     if is_supplier_origin:
         recommendations.append("Issue Supplier Corrective Action Request (SCAR) and debit memo to vendor.")
         if is_reworkable is True:
@@ -654,26 +676,6 @@ def recommend_disposition(
             recommendations=recommendations,
             standards_basis=_STANDARDS_BASIS,
         )
-
-    # 2. Safety Critical Non-conformance override:
-    # If safety critical and not reworkable or no customer concession allowed -> Scrap
-    if safety_critical is True:
-        warnings.append("Safety/regulatory critical characteristic nonconformance.")
-        if is_reworkable is not True:
-            recommendations.append("Mandatory defacing and scrap witnessing required for safety-critical nonconformance.")
-            return DispositionRecommendation(
-                disposition="Scrap",
-                verdict="VALID",
-                rationale="Product has safety-critical nonconformance and cannot be reworked; must be rendered unusable prior to disposal per IATF 16949:2016 Clause 8.7.1.7.",
-                approval_authority="Quality Manager / Scrap Authority & Safety Officer",
-                mrb_review_required=True,
-                customer_authorization_required=False,
-                fmea_risk_analysis_required=False,
-                missing_evidence=missing_evidence,
-                warnings=warnings,
-                recommendations=recommendations,
-                standards_basis=_STANDARDS_BASIS,
-            )
 
     # 3. Secondary Specification Conformance -> Regrade
     if meets_secondary_spec is True and safety_critical is not True:

@@ -13,6 +13,7 @@ from typing import Annotated, Any
 from pydantic import Field
 from quality_core.canvas import (
     ControlPlanCanvas,
+    COPQCanvas,
     FMEACanvas,
     MSACanvas,
     NCRCanvas,
@@ -544,9 +545,80 @@ def render_ncr_canvas(
     }
 
 
+def render_copq_canvas(
+    items: Annotated[
+        list[dict[str, Any]] | None,
+        Field(
+            description=(
+                "Optional list of CostItem dictionaries with category (Prevention, Appraisal, "
+                "InternalFailure, ExternalFailure), description, and cost drivers. "
+                "If omitted or None, loads the benchmark sample manufacturing dataset."
+            ),
+        ),
+    ] = None,
+    revenue_base: Annotated[
+        float | None,
+        Field(
+            description="Optional annual or batch revenue base ($) to calculate COPQ as a percentage of sales."
+        ),
+    ] = None,
+    title: Annotated[
+        str,
+        Field(description="Title displayed on the canvas header."),
+    ] = "Cost of Poor Quality (COPQ) Canvas",
+    standalone: Annotated[
+        bool,
+        Field(description="If True, returns complete HTML5 document; if False, returns embeddable container."),
+    ] = True,
+) -> dict[str, Any]:
+    """Render an interactive Cost of Poor Quality (COPQ) canvas HTML visualization.
+
+    Displays PAF cost categories, aggregate COPQ (Failure Costs), Conformance Cost (CoGQ),
+    Total Cost of Quality (CoQ), %-of-revenue, and financial Pareto cost item ranking.
+    """
+    if type(standalone) is not bool:
+        raise TypeError(f"standalone must be a boolean, got {type(standalone).__name__}: {standalone!r}")
+
+    if isinstance(title, bool) or not isinstance(title, str):
+        raise TypeError(f"title must be a string, got {type(title).__name__}: {title!r}")
+    if not title.strip():
+        raise ValueError("title must not be empty.")
+
+    if revenue_base is not None:
+        if isinstance(revenue_base, bool) or not isinstance(revenue_base, (int, float)):
+            raise TypeError(f"revenue_base must be a number or None, got {type(revenue_base).__name__}: {revenue_base!r}")
+        if float(revenue_base) < 0.0:
+            raise ValueError(f"revenue_base must be >= 0.0, got {revenue_base}")
+
+    if items is None:
+        canvas = COPQCanvas(title=title, revenue_base=revenue_base)
+        from quality_core.canvas.copq import SAMPLE_COPQ_ITEMS
+        for itm in SAMPLE_COPQ_ITEMS:
+            canvas.add_item(itm)
+    else:
+        if isinstance(items, (str, dict, int, bool)) or not isinstance(items, list):
+            raise TypeError(f"items must be a list of dictionaries or None, got {type(items).__name__}: {items!r}")
+        canvas = COPQCanvas(title=title, revenue_base=revenue_base)
+        for idx, item in enumerate(items):
+            if not isinstance(item, dict):
+                raise TypeError(f"items element at index {idx} must be a dict, got {type(item).__name__}: {item!r}")
+            canvas.add_item(item)
+
+    html_content = canvas.to_html(standalone=standalone)
+    summary = canvas.get_summary()
+
+    return {
+        "title": canvas.title,
+        "rows_count": len(canvas.items),
+        "summary": summary,
+        "html": html_content,
+    }
+
+
 __all__ = [
     "render_5why_canvas",
     "render_controlplan_canvas",
+    "render_copq_canvas",
     "render_fishbone_canvas",
     "render_fmea_canvas",
     "render_is_is_not_canvas",

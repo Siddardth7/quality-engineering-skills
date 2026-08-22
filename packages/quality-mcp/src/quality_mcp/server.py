@@ -13,6 +13,7 @@ from quality_mcp import __version__
 from quality_mcp.tools.canvas import (
     render_5why_canvas,
     render_controlplan_canvas,
+    render_copq_canvas,
     render_fishbone_canvas,
     render_fmea_canvas,
     render_is_is_not_canvas,
@@ -22,6 +23,7 @@ from quality_mcp.tools.canvas import (
     render_spc_canvas,
 )
 from quality_mcp.tools.controlplan import validate_control_plan
+from quality_mcp.tools.copq import estimate_copq
 from quality_mcp.tools.fmea import lookup_fmea_ap
 from quality_mcp.tools.msa import calculate_gage_rr
 from quality_mcp.tools.ncr import (
@@ -41,6 +43,7 @@ mcp = FastMCP("quality-mcp")
 mcp.tool()(lookup_fmea_ap)
 mcp.tool()(render_5why_canvas)
 mcp.tool()(render_controlplan_canvas)
+mcp.tool()(render_copq_canvas)
 mcp.tool()(render_fishbone_canvas)
 mcp.tool()(render_fmea_canvas)
 mcp.tool()(render_isisnot_canvas)
@@ -55,6 +58,7 @@ mcp.tool()(validate_5why)
 mcp.tool()(validate_control_plan)
 mcp.tool()(write_ncr)
 mcp.tool()(recommend_disposition)
+mcp.tool()(estimate_copq)
 
 
 @mcp.tool()
@@ -79,6 +83,7 @@ __all__ = [
     "calculate_gage_rr",
     "calculate_spc_chart",
     "categorize_fishbone",
+    "estimate_copq",
     "lookup_fmea_ap",
     "main",
     "mcp",
@@ -86,6 +91,7 @@ __all__ = [
     "recommend_disposition",
     "render_5why_canvas",
     "render_controlplan_canvas",
+    "render_copq_canvas",
     "render_fishbone_canvas",
     "render_fmea_canvas",
     "render_is_is_not_canvas",

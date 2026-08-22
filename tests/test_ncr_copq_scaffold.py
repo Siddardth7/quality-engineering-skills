@@ -209,16 +209,14 @@ def test_claude_md_standards_fidelity_mapping() -> None:
 
 
 def test_changelog_entry_unreleased_ncr_copq_scaffold() -> None:
-    """Verify CHANGELOG.md contains the Issue #91 entry under [Unreleased] -> Added."""
+    """Verify CHANGELOG.md contains the Issue #91 entry."""
     assert _CHANGELOG_MD.is_file(), f"Missing CHANGELOG.md: {_CHANGELOG_MD}"
     content = _CHANGELOG_MD.read_text(encoding="utf-8")
 
-    assert "## [Unreleased]" in content
-    unreleased_section = _extract_unreleased_changelog_section(content)
-    assert "#91" in unreleased_section, "CHANGELOG.md [Unreleased] section must reference issue #91"
-    assert "quality_core/ncr/ASSUMPTIONS_LOG.md" in unreleased_section
-    assert "quality_core/copq/ASSUMPTIONS_LOG.md" in unreleased_section
-    assert "CLAUDE.md" in unreleased_section
+    assert "#91" in content, "CHANGELOG.md must reference issue #91"
+    assert "quality_core/ncr/ASSUMPTIONS_LOG.md" in content
+    assert "quality_core/copq/ASSUMPTIONS_LOG.md" in content
+    assert "CLAUDE.md" in content
 
 
 # ==============================================================================

@@ -8,7 +8,14 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-08-22
+
 ### Added
+- Finalized Milestone 7 documentation in `docs/milestones/v0.7.0.md` with complete verification artifacts, retrospective, and test evidence for Epics E0–E5 (#96).
+- Updated `docs/milestones/README.md` canonical mapping table marking `v0.7.0` as Complete and updated `ROADMAP.md` Summary Release Matrix linking `docs/milestones/v0.7.0.md` (#96).
+- Updated `README.md` milestone status table marking `v0.7.0` as Completed with `docs/milestones/v0.7.0.md` link, advancing `v0.8.0` to Up Next, and queuing `v0.9.0–v1.0.0` (#96).
+- Extended milestone governance test suite `tests/test_milestones_convention.py` with `v0.7.0` traceability assertions across all 6 task issues (#91–#96), release gate criteria, verification artifacts, and negative mutation controls (#96).
+- Synchronized workspace version bump to `0.7.0` across root `pyproject.toml`, `packages/quality-core`, `packages/quality-mcp`, and `uv.lock` (#96).
 - Unified in-process FastMCP client-server round-trip integration test suite `packages/quality-mcp/tests/test_ncr_copq_client_roundtrip.py` validating tool discovery across all five NCR & COPQ tools (`write_ncr`, `recommend_disposition`, `render_ncr_canvas`, `estimate_copq`, `render_copq_canvas`), dual-payload parity (`structuredContent` vs JSON text), direct `quality_core.ncr` and `quality_core.copq` engine parity, session error isolation, protocol negative controls, and single-session chained workflows (`write_ncr` -> `recommend_disposition` -> `estimate_copq` -> `render_copq_canvas`) across benchmark manufacturing datasets (#95).
 - Extended FastMCP server configuration tests in `packages/quality-mcp/tests/test_server.py` asserting discovery, execution, and root exports for all five NCR and COPQ tools (#95).
 - Updated MCP client configuration guide `docs/mcp-client-setup.md` with Item 8 in-process round-trip test instructions, copy-verified JSON-RPC 2.0 transcripts (4.20–4.24), and an end-to-end chained NCR→COPQ sequence diagram (4.25) (#95).

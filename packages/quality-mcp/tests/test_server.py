@@ -42,7 +42,7 @@ def test_ping_returns_correct_dict() -> None:
     expected = {
         "status": "ok",
         "server": "quality-mcp",
-        "version": "0.6.0",
+        "version": "0.7.0",
     }
     assert result == expected
     assert result["status"] == "ok"
@@ -260,7 +260,7 @@ def test_package_exports() -> None:
     assert quality_mcp.write_ncr is write_ncr
     assert quality_mcp.recommend_disposition is recommend_disposition
     assert quality_mcp.estimate_copq is estimate_copq
-    assert quality_mcp.__version__ == "0.6.0"
+    assert quality_mcp.__version__ == "0.7.0"
     assert set(quality_mcp.__all__) == {
         "__version__",
         "calculate_gage_rr",

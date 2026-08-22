@@ -27,8 +27,15 @@ from __future__ import annotations
 
 import pytest
 from quality_core.ncr.nonconformance import (
+    _BLAME_PHRASES,
+    _BLAME_VERBS,
+    _HUMAN_NOUNS,
+    _SPECULATION_PHRASES,
     DispositionRecommendation,
     NonconformanceWriteResult,
+    _detect_blame_phrases,
+    _detect_speculation,
+    _sanitize_blame_and_speculation,
     recommend_disposition,
     write_nonconformance,
 )
@@ -94,9 +101,21 @@ def test_write_nonconformance_blame_detection_and_sanitization() -> None:
     assert len(res.warnings) > 0
     assert any("blame" in w.lower() for w in res.warnings)
     assert any("5-why" in r.lower() or "rca" in r.lower() for r in res.recommendations)
-    # Statement should have blame phrases removed
+    # Statement and extracted fields should have blame phrases and blame tokens removed
     assert "operator forgot" not in res.statement.lower()
     assert "worker error" not in res.statement.lower()
+    assert "operator" not in res.statement.lower()
+    assert "worker" not in res.statement.lower()
+    if res.what_deviated:
+        assert "operator forgot" not in res.what_deviated.lower()
+        assert "worker error" not in res.what_deviated.lower()
+        assert "operator" not in res.what_deviated.lower()
+        assert "worker" not in res.what_deviated.lower()
+    if res.measured_evidence:
+        assert "operator forgot" not in res.measured_evidence.lower()
+        assert "worker error" not in res.measured_evidence.lower()
+        assert "operator" not in res.measured_evidence.lower()
+        assert "worker" not in res.measured_evidence.lower()
 
 
 def test_write_nonconformance_speculation_detection_and_sanitization() -> None:
@@ -391,10 +410,23 @@ def test_recommend_disposition_to_dict_keys() -> None:
 
 
 def test_write_nonconformance_token_blame_pair() -> None:
-    """write_nonconformance detects tokenized noun + verb blame pairs."""
-    res = write_nonconformance(raw_defect_note="Technician ignored the calibration cycle at station 4.")
+    """write_nonconformance detects tokenized noun + verb blame pairs and completely sanitizes them."""
+    res = write_nonconformance(
+        raw_defect_note="Technician ignored the calibration cycle at station 4, drawing spec: 10mm, measured: 12mm on 5 pcs at station 4."
+    )
     assert len(res.blame_phrases_detected) > 0
-    assert any("technician" in b for b in res.blame_phrases_detected)
+    assert "technician ignored" in res.blame_phrases_detected
+    assert "technician ignored" not in res.statement.lower()
+    assert "technician" not in res.statement.lower()
+    assert "ignored" not in res.statement.lower()
+    if res.what_deviated:
+        assert "technician ignored" not in res.what_deviated.lower()
+        assert "technician" not in res.what_deviated.lower()
+        assert "ignored" not in res.what_deviated.lower()
+    if res.measured_evidence:
+        assert "technician ignored" not in res.measured_evidence.lower()
+        assert "technician" not in res.measured_evidence.lower()
+        assert "ignored" not in res.measured_evidence.lower()
 
 
 def test_write_nonconformance_zero_quantity_string_error() -> None:
@@ -656,6 +688,206 @@ def test_recommend_disposition_safety_critical_matrix(
     assert res.verdict == "VALID"
     assert res.mrb_review_required is expected_mrb
     assert res.fmea_risk_analysis_required is expected_fmea
+
+
+@pytest.mark.parametrize("noun", sorted(_HUMAN_NOUNS))
+@pytest.mark.parametrize("verb", sorted(_BLAME_VERBS))
+def test_write_nonconformance_blame_cross_product_sanitization(noun: str, verb: str) -> None:
+    """Property test over all 143 combinations of _HUMAN_NOUNS x _BLAME_VERBS asserting detection and zero leakage."""
+    pair = f"{noun} {verb}"
+    # 1. Detection unit check
+    detected = _detect_blame_phrases(f"Defect logged: {pair} on station 1.")
+    assert pair in detected
+
+    # 2. Direct sanitization check
+    cleaned = _sanitize_blame_and_speculation(f"Defect observed because {pair} during setup.")
+    assert pair not in cleaned.lower()
+    assert noun not in cleaned.lower()
+    assert verb not in cleaned.lower()
+
+    # 3. End-to-end write_nonconformance check
+    raw_note = (
+        f"Found defect on Part: LOT-123. {pair} setup, drawing spec: 10.0 mm, "
+        f"measured: 10.5 mm on 5 pcs at CNC station."
+    )
+    res = write_nonconformance(raw_defect_note=raw_note)
+    assert pair in res.blame_phrases_detected
+    assert pair not in res.statement.lower()
+    assert noun not in res.statement.lower()
+    assert verb not in res.statement.lower()
+    assert res.what_deviated is not None
+    assert pair not in res.what_deviated.lower()
+    assert noun not in res.what_deviated.lower()
+    assert verb not in res.what_deviated.lower()
+    assert res.measured_evidence is not None
+    assert pair not in res.measured_evidence.lower()
+    assert res.valid is True
+    assert any("blame" in w.lower() for w in res.warnings)
+
+
+def test_write_nonconformance_pure_token_blame_negative_control() -> None:
+    """Inputs containing solely token-pair blame sanitize to empty strings and trigger missing field validation."""
+    # Raw defect note containing only token-pair blame
+    res1 = write_nonconformance(raw_defect_note="machinist ignored")
+    assert _sanitize_blame_and_speculation("machinist ignored") == ""
+    assert res1.what_deviated is None
+    assert res1.valid is False
+    assert "what_deviated" in res1.fields_missing
+    assert any("blame" in w.lower() for w in res1.warnings)
+    assert "[Defect description missing]" in res1.statement
+
+    # Explicit what_deviated containing only token-pair blame
+    res2 = write_nonconformance(
+        what_deviated="assembler careless",
+        requirement_violated="DWG-001 Rev A: 10.0 +/- 0.1 mm",
+        measured_evidence="10.5 mm",
+        quantity_affected=10,
+        detection_point="Station 1",
+    )
+    assert _sanitize_blame_and_speculation("assembler careless") == ""
+    assert res2.what_deviated is None
+    assert res2.valid is False
+    assert "what_deviated" in res2.fields_missing
+    assert any("blame" in w.lower() for w in res2.warnings)
+    assert "[Defect description missing]" in res2.statement
+
+    # Explicit measured_evidence containing only token-pair blame
+    res3 = write_nonconformance(
+        what_deviated="Dimension out of tolerance",
+        requirement_violated="DWG-001 Rev A: 10.0 +/- 0.1 mm",
+        measured_evidence="technician mistake",
+        quantity_affected=10,
+        detection_point="Station 1",
+    )
+    assert _sanitize_blame_and_speculation("technician mistake") == ""
+    assert res3.measured_evidence is None
+    assert res3.valid is False
+    assert "measured_evidence" in res3.fields_missing
+    assert any("blame" in w.lower() for w in res3.warnings)
+
+
+@pytest.mark.parametrize(
+    ("raw_text", "innocent_keyword"),
+    [
+        (
+            "Machinist defaulted to feed rate 2, spec: 10mm, measured: 12mm on 5 pcs at station 1.",
+            "Machinist defaulted",
+        ),
+        (
+            "Whole forgotten batch was reviewed at station 2, spec: 10mm, measured: 12mm on 20 pcs at station 2.",
+            "Whole forgotten",
+        ),
+        (
+            "Default setting on controller was 10 bar, spec: 8 bar, measured: 10 bar on 5 pcs at operator station 2.",
+            "Default",
+        ),
+        (
+            "Whole lot inspected at station 2, spec: 10mm, measured: 12mm on 20 pcs at station 2.",
+            "Whole",
+        ),
+        (
+            "Pause in line cycle caused cooling, spec: 100C, measured: 80C on 10 pcs at station 1.",
+            "Pause",
+        ),
+        (
+            "Operator station 4 calibrated, spec: 5.0 mm, measured: 5.2 mm on 10 pcs at station 4.",
+            "Operator station",
+        ),
+    ],
+)
+def test_write_nonconformance_word_boundary_negative_control(
+    raw_text: str, innocent_keyword: str
+) -> None:
+    """Innocent words sharing substrings with blame terms do not trigger false positive blame detections."""
+    res = write_nonconformance(raw_defect_note=raw_text)
+    assert res.blame_phrases_detected == []
+    assert not any("blame" in w.lower() for w in res.warnings)
+    assert not any("blame" in r.lower() for r in res.recommendations)
+    assert innocent_keyword.lower() in res.statement.lower()
+
+
+@pytest.mark.parametrize(
+    "raw_text",
+    [
+        "TECHNICIAN   IGNORED drawing spec: 12mm. Measured: 15mm on 10 pcs at Line 1.",
+        "OPERATOR \t\n ERROR drawing spec: 12mm. Measured: 15mm on 10 pcs at Line 1.",
+        "did   not   follow drawing spec: 12mm. Measured: 15mm on 10 pcs at Line 1.",
+        "LACK   OF   ATTENTION drawing spec: 12mm. Measured: 15mm on 10 pcs at Line 1.",
+    ],
+)
+def test_write_nonconformance_blame_whitespace_and_case_invariance(raw_text: str) -> None:
+    """Blame detection and sanitization functions correctly across uppercase and irregular whitespace."""
+    res = write_nonconformance(raw_defect_note=raw_text)
+    assert len(res.blame_phrases_detected) > 0
+    assert "technician ignored" in res.blame_phrases_detected or any(
+        b in res.blame_phrases_detected
+        for b in ["operator error", "did not follow", "lack of attention"]
+    )
+    assert "technician" not in res.statement.lower()
+    assert "ignored" not in res.statement.lower()
+    assert "operator error" not in res.statement.lower()
+    assert "did not follow" not in res.statement.lower()
+    assert "lack of attention" not in res.statement.lower()
+
+
+@pytest.mark.parametrize(
+    ("speculation_input", "expected_phrase", "trailing_cause"),
+    [
+        (
+            "Shaft diameter oversized due to bad tooling at lathe 1. Spec: 20mm. Measured: 22mm on 5 pcs at station 1.",
+            "due to bad",
+            "tooling at lathe 1",
+        ),
+        (
+            "Dimensions oversized root cause was worn insert during roughing. Spec: 10mm. Measured: 11mm on 8 pcs at station 1.",
+            "root cause was",
+            "worn insert during roughing",
+        ),
+        (
+            "Surface porosity probably because the supplier sent bad material. Spec: 0.1mm. Measured: 0.5mm on 12 pcs at station 1.",
+            "probably because",
+            "the supplier sent bad material",
+        ),
+        (
+            "Cracked housing suspected cause is thermal shock during quench. Spec: crack-free. Measured: 2mm crack on 3 pcs at station 1.",
+            "suspected cause is",
+            "thermal shock during quench",
+        ),
+        (
+            "Part out of round likely caused by spindle vibration. Spec: 0.02mm. Measured: 0.05mm on 7 pcs at station 1.",
+            "likely caused by",
+            "spindle vibration",
+        ),
+    ],
+)
+def test_write_nonconformance_speculation_clause_stripping(
+    speculation_input: str, expected_phrase: str, trailing_cause: str
+) -> None:
+    """Premature speculation and trailing causal clauses are stripped from statement and fields."""
+    res = write_nonconformance(raw_defect_note=speculation_input)
+    assert len(res.speculation_detected) > 0
+    assert any(expected_phrase in s for s in res.speculation_detected)
+    assert expected_phrase not in res.statement.lower()
+    assert trailing_cause.lower() not in res.statement.lower()
+    if res.what_deviated:
+        assert expected_phrase not in res.what_deviated.lower()
+        assert trailing_cause.lower() not in res.what_deviated.lower()
+    assert any("speculation" in w.lower() for w in res.warnings)
+    assert any("rca" in r.lower() or "5-why" in r.lower() for r in res.recommendations)
+
+
+@pytest.mark.parametrize("phrase", _BLAME_PHRASES)
+def test_detect_blame_phrases_static_catalogue(phrase: str) -> None:
+    """All static blame phrases in _BLAME_PHRASES are detected by _detect_blame_phrases."""
+    detected = _detect_blame_phrases(f"Defect log indicates {phrase} at operation 10.")
+    assert phrase in detected
+
+
+@pytest.mark.parametrize("phrase", _SPECULATION_PHRASES)
+def test_detect_speculation_phrases_catalogue(phrase: str) -> None:
+    """All static speculation phrases in _SPECULATION_PHRASES are detected by _detect_speculation."""
+    detected = _detect_speculation(f"Defect observed {phrase} component defect.")
+    assert phrase in detected
 
 
 

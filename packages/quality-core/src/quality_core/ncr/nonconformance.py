@@ -112,36 +112,28 @@ _SUPPLIER_ORIGIN_KEYWORDS: set[str] = {
     "oem",
 }
 
-
-def _tokenize(text: str) -> list[str]:
-    """Tokenize string into lowercase alphanumeric words."""
-    return re.findall(r"[a-z0-9]+", text.lower())
-
-
 def _detect_blame_phrases(text: str) -> list[str]:
     """Detect human blame phrasing in text."""
-    text_lower = text.lower()
     detected: list[str] = []
     for phrase in _BLAME_PHRASES:
-        if phrase in text_lower:
+        pattern = r"\b" + r"\s+".join(re.escape(w) for w in phrase.split()) + r"\b"
+        if re.search(pattern, text, re.IGNORECASE):
             detected.append(phrase)
 
-    tokens = set(_tokenize(text_lower))
-    if bool(tokens & _HUMAN_NOUNS) and bool(tokens & _BLAME_VERBS):
-        for noun in tokens & _HUMAN_NOUNS:
-            for verb in tokens & _BLAME_VERBS:
-                pair = f"{noun} {verb}"
-                if pair not in detected and pair in text_lower:
-                    detected.append(pair)
+    for noun in _HUMAN_NOUNS:
+        for verb in _BLAME_VERBS:
+            pattern = r"\b" + re.escape(noun) + r"\s+" + re.escape(verb) + r"\b"
+            if re.search(pattern, text, re.IGNORECASE):
+                detected.append(f"{noun} {verb}")
     return sorted(set(detected))
 
 
 def _detect_speculation(text: str) -> list[str]:
     """Detect premature root-cause speculation in text."""
-    text_lower = text.lower()
     detected: list[str] = []
     for phrase in _SPECULATION_PHRASES:
-        if phrase in text_lower:
+        pattern = r"\b" + r"\s+".join(re.escape(w) for w in phrase.split()) + r"\b"
+        if re.search(pattern, text, re.IGNORECASE):
             detected.append(phrase)
     return sorted(set(detected))
 
@@ -149,20 +141,40 @@ def _detect_speculation(text: str) -> list[str]:
 def _sanitize_blame_and_speculation(text: str) -> str:
     """Remove blame and speculation phrases from statement text."""
     cleaned = text
-    # Remove blame phrases
-    for phrase in _BLAME_PHRASES:
-        pattern = re.compile(re.escape(phrase), re.IGNORECASE)
+
+    # Remove blame phrases (both static and dynamically detected token pairs)
+    blame_to_remove = sorted(
+        set(_BLAME_PHRASES) | set(_detect_blame_phrases(cleaned)),
+        key=lambda p: (len(p.split()), len(p)),
+        reverse=True,
+    )
+    for phrase in blame_to_remove:
+        pattern = re.compile(
+            r"\b" + r"\s+".join(re.escape(w) for w in phrase.split()) + r"\b",
+            re.IGNORECASE,
+        )
         cleaned = pattern.sub("", cleaned)
 
-    # Remove speculation phrases and following trailing cause text if anchored by 'due to / caused by'
-    for phrase in _SPECULATION_PHRASES:
-        pattern = re.compile(re.escape(phrase) + r"[^.;,]*", re.IGNORECASE)
+    # Remove speculation phrases and following trailing cause text
+    speculation_to_remove = sorted(
+        set(_SPECULATION_PHRASES) | set(_detect_speculation(cleaned)),
+        key=lambda p: (len(p.split()), len(p)),
+        reverse=True,
+    )
+    for phrase in speculation_to_remove:
+        pattern = re.compile(
+            r"\b" + r"\s+".join(re.escape(w) for w in phrase.split()) + r"\b\s*[^.;,]*",
+            re.IGNORECASE,
+        )
         cleaned = pattern.sub("", cleaned)
 
     # Clean up whitespace and punctuation
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
-    cleaned = re.sub(r"\s+([,.;])", r"\1", cleaned)
-    cleaned = re.sub(r"[,;]\s*[,;]", ",", cleaned)
+    cleaned = re.sub(r"\s+([,.;:])", r"\1", cleaned)
+    cleaned = re.sub(r"\.\s*\.+", ".", cleaned)
+    cleaned = re.sub(r"[,;]\s*[,;]+", ",", cleaned)
+    cleaned = re.sub(r"[,;:]\s*\.", ".", cleaned)
+    cleaned = re.sub(r"\.\s*[,;:]", ".", cleaned)
     cleaned = re.sub(r"^[.\s,;:-]+|[.\s,;:-]+$", "", cleaned).strip()
     return cleaned
 
@@ -427,9 +439,11 @@ def write_nonconformance(
 
     # Sanitize populated fields from blame
     if extracted_what:
-        extracted_what = _sanitize_blame_and_speculation(extracted_what)
+        sanitized_what = _sanitize_blame_and_speculation(extracted_what)
+        extracted_what = sanitized_what if sanitized_what else None
     if extracted_meas:
-        extracted_meas = _sanitize_blame_and_speculation(extracted_meas)
+        sanitized_meas = _sanitize_blame_and_speculation(extracted_meas)
+        extracted_meas = sanitized_meas if sanitized_meas else None
 
     fields_populated: list[str] = []
     fields_missing: list[str] = []

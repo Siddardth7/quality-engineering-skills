@@ -151,6 +151,12 @@ The automated test suites exercise MCP client-server protocol lifecycles (`initi
    ```
    Validates in-process JSON-RPC execution of all six Root Cause Analysis (RCA) tools (`validate_5why`, `categorize_fishbone`, `scope_is_is_not`, `render_5why_canvas`, `render_fishbone_canvas`, `render_isisnot_canvas`), asserts dual-payload parity against `quality_core.rca` and `quality_core.canvas.rca`, executes real-world benchmark datasets (Sentinel-8D Pneumatic Cylinder & Ford Global 8D bearing induction), verifies multi-method chained workflow execution across a single session without state pollution, and validates protocol-level negative controls.
 
+8. **Unified NCR & COPQ Client-Server Round-Trip (Milestone 7 Checkpoint)**:
+   ```bash
+   uv run pytest packages/quality-mcp/tests/test_ncr_copq_client_roundtrip.py -v
+   ```
+   Validates in-process JSON-RPC execution of all five Nonconformance Reporting (NCR) and Cost of Poor Quality (COPQ) tools (`write_ncr`, `recommend_disposition`, `render_ncr_canvas`, `estimate_copq`, `render_copq_canvas`), asserts dual-payload parity against `quality_core.ncr` and `quality_core.copq`, executes real-world benchmark manufacturing datasets (Cylinder Bore Honing Porosity, Connecting Rod Pin Bore Rework, Turbocharger Seal Warranty Escapes), verifies multi-tool chained workflow execution (`write_ncr` -> `recommend_disposition` -> `estimate_copq` -> `render_copq_canvas`) across a single session without state pollution, and validates session error isolation and protocol-level negative controls.
+
 ### Coverage Gate
 Run the full 100% line and branch coverage gate for `quality-mcp`:
 ```bash
@@ -1458,6 +1464,237 @@ sequenceDiagram
     Server->>Core: quality_core.canvas.rca (*Canvas controllers)
     Core-->>Server: Rendered HTML5 artifacts + summary KPI cards
     Server-->>Client: {rows_count: N, valid: true, html: "<!DOCTYPE html>..."}
+```
+
+### 4.20 Tool Invocation (tools/call -> write_ncr ISO 9001 §8.7 Statement Writing Success)
+
+**Client Request**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 20,
+  "method": "tools/call",
+  "params": {
+    "name": "write_ncr",
+    "arguments": {
+      "raw_defect_note": "Found 45 engine blocks with bore porosity at Final Honing Station 4. Spec max pore depth 0.01 mm, measured 0.08 mm. Operator error suspected.",
+      "what_deviated": "Cylinder bore surface porosity pits",
+      "requirement_violated": "Drawing Note 4: Max pore depth 0.01 mm",
+      "measured_evidence": "0.08 mm pore depth measured via optical profilometer",
+      "quantity_affected": 45,
+      "detection_point": "Final Honing Inspection Station 4",
+      "part_lot_id": "LOT-2026-08A"
+    }
+  }
+}
+```
+
+**Server Response (`structuredContent` and `content[0].text` matching)**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 20,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"valid\": true,\n  \"statement\": \"At Final Honing Inspection Station 4, 45 units of part/lot LOT-2026-08A were found with Cylinder bore surface porosity pits. Requirement: Drawing Note 4: Max pore depth 0.01 mm. Measured evidence: 0.08 mm pore depth measured via optical profilometer.\",\n  \"what_deviated\": \"Cylinder bore surface porosity pits\",\n  \"requirement_violated\": \"Drawing Note 4: Max pore depth 0.01 mm\",\n  \"measured_evidence\": \"0.08 mm pore depth measured via optical profilometer\",\n  \"quantity_affected\": 45,\n  \"detection_point\": \"Final Honing Inspection Station 4\",\n  \"part_lot_id\": \"LOT-2026-08A\",\n  \"unit_of_measure\": \"units\",\n  \"blame_phrases_detected\": [\n    \"operator error\"\n  ],\n  \"speculation_detected\": [\n    \"suspected\"\n  ],\n  \"fields_populated\": [\n    \"what_deviated\",\n    \"requirement_violated\",\n    \"measured_evidence\",\n    \"quantity_affected\",\n    \"detection_point\",\n    \"part_lot_id\"\n  ],\n  \"fields_missing\": [],\n  \"warnings\": [\n    \"Blame phrases detected ('operator error'). Quality standard ISO 9001 §8.7 requires objective factual reporting without personal attribution.\",\n    \"Speculation phrases detected ('suspected'). Root cause must be investigated via formal RCA (5-Why / Fishbone) rather than stated as fact in defect description.\"\n  ],\n  \"recommendations\": [\n    \"Remove personal attribution ('operator error') and document only physical nonconformance evidence.\",\n    \"Initiate formal 8D/RCA to establish verified root cause.\"\n  ],\n  \"standards_basis\": \"ISO 9001:2015 §8.7 / IATF 16949:2016 §8.7\"\n}"
+      }
+    ],
+    "isError": false
+  }
+}
+```
+
+### 4.21 Tool Invocation (tools/call -> recommend_disposition Rule-Based Routing)
+
+**Client Request**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 21,
+  "method": "tools/call",
+  "params": {
+    "name": "recommend_disposition",
+    "arguments": {
+      "is_reworkable": false,
+      "defect_origin": "Internal",
+      "part_value": 120.0,
+      "rework_cost": 0.0
+    }
+  }
+}
+```
+
+**Server Response**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 21,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"disposition\": \"Scrap\",\n  \"verdict\": \"VALID\",\n  \"rationale\": \"Part cannot be reworked to original engineering specifications. Scrapping is required under IATF 16949:2016 §8.7.1.7 with physical rendering unusable.\",\n  \"approval_authority\": \"Quality Manager + Operations Lead (MRB)\",\n  \"mrb_review_required\": true,\n  \"customer_authorization_required\": false,\n  \"fmea_risk_analysis_required\": false,\n  \"missing_evidence\": [],\n  \"warnings\": [],\n  \"recommendations\": [\n    \"Ensure nonconforming parts are physically rendered unusable prior to disposal per IATF 16949 §8.7.1.7.\",\n    \"Account for scrap quantities in financial COPQ tracking.\"\n  ],\n  \"standards_basis\": \"ISO 9001:2015 §8.7 / IATF 16949:2016 §8.7\"\n}"
+      }
+    ],
+    "isError": false
+  }
+}
+```
+
+### 4.22 Tool Invocation (tools/call -> render_ncr_canvas Visual NCR Canvas Rendering)
+
+**Client Request**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 22,
+  "method": "tools/call",
+  "params": {
+    "name": "render_ncr_canvas",
+    "arguments": {
+      "standalone": true,
+      "title": "Automotive Machining NCR Log Canvas"
+    }
+  }
+}
+```
+
+**Server Response**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 22,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"title\": \"Automotive Machining NCR Log Canvas\",\n  \"rows_count\": 5,\n  \"summary\": {\n    \"title\": \"Automotive Machining NCR Log Canvas\",\n    \"total_records\": 5,\n    \"total_quantity_affected\": 157,\n    \"open_count\": 0,\n    \"closed_count\": 5,\n    \"mrb_count\": 4,\n    \"disposition_breakdown\": {\n      \"Scrap\": 2,\n      \"Rework\": 1,\n      \"UseAsIs\": 1,\n      \"ReturnToVendor\": 1,\n      \"Regrade\": 0\n    }\n  },\n  \"html\": \"<!DOCTYPE html>...\"\n}"
+      }
+    ],
+    "isError": false
+  }
+}
+```
+
+### 4.23 Tool Invocation (tools/call -> estimate_copq ASQ CSSGB PAF Rollup & % of Revenue)
+
+**Client Request**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 23,
+  "method": "tools/call",
+  "params": {
+    "name": "estimate_copq",
+    "arguments": {
+      "scrap_qty": 45,
+      "unit_cost": 120.0,
+      "sort_hours": 40.0,
+      "labor_rate": 45.0,
+      "prevention_cost": 5000.0,
+      "appraisal_cost": 7500.0,
+      "revenue_base": 500000.0,
+      "title": "Plant Q3 COPQ Financial Estimate"
+    }
+  }
+}
+```
+
+**Server Response**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 23,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"title\": \"Plant Q3 COPQ Financial Estimate\",\n  \"item_count\": 4,\n  \"internal_failure_total\": 7200.0,\n  \"external_failure_total\": 0.0,\n  \"total_copq\": 7200.0,\n  \"prevention_total\": 5000.0,\n  \"appraisal_total\": 7500.0,\n  \"cogq_total\": 12500.0,\n  \"total_coq\": 19700.0,\n  \"copq_percentage_of_revenue\": 1.44,\n  \"internal_failure_pct\": 100.0,\n  \"external_failure_pct\": 0.0,\n  \"breakdown\": {\n    \"scrap_cost\": 5400.0,\n    \"rework_cost\": 0.0,\n    \"containment_cost\": 1800.0,\n    \"retest_cost\": 0.0,\n    \"downtime_cost\": 0.0,\n    \"warranty_cost\": 0.0,\n    \"returns_cost\": 0.0,\n    \"recall_cost\": 0.0,\n    \"concession_cost\": 0.0,\n    \"prevention_cost\": 5000.0,\n    \"appraisal_cost\": 7500.0\n  },\n  \"warnings\": [],\n  \"recommendations\": [\n    \"Shift quality investment upstream into Prevention (APQP, DFMEA, poka-yoke) to reduce recurring Internal Failure costs.\"\n  ],\n  \"standards_basis\": \"ASQ Certified Six Sigma Green Belt (CSSGB) Body of Knowledge / PAF Model (Feigenbaum & Juran) / CSSC Lean Six Sigma Manual (2018)\"\n}"
+      }
+    ],
+    "isError": false
+  }
+}
+```
+
+### 4.24 Tool Invocation (tools/call -> render_copq_canvas Visual COPQ Pareto Canvas Rendering)
+
+**Client Request**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 24,
+  "method": "tools/call",
+  "params": {
+    "name": "render_copq_canvas",
+    "arguments": {
+      "revenue_base": 500000.0,
+      "standalone": true,
+      "title": "Plant Q3 Financial Quality Canvas"
+    }
+  }
+}
+```
+
+**Server Response**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 24,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"title\": \"Plant Q3 Financial Quality Canvas\",\n  \"rows_count\": 9,\n  \"summary\": {\n    \"title\": \"Plant Q3 Financial Quality Canvas\",\n    \"revenue_base\": 500000.0,\n    \"total_items\": 9,\n    \"prevention_total\": 7300.0,\n    \"appraisal_total\": 11300.0,\n    \"cogq\": 18600.0,\n    \"internal_failure_total\": 12125.0,\n    \"external_failure_total\": 13800.0,\n    \"copq\": 25925.0,\n    \"total_coq\": 44525.0,\n    \"copq_pct_revenue\": 5.185,\n    \"pareto_breakdown\": [...]\n  },\n  \"html\": \"<!DOCTYPE html>...\"\n}"
+      }
+    ],
+    "isError": false
+  }
+}
+```
+
+### 4.25 Multi-Tool Chained NCR -> Disposition -> COPQ Estimation -> Canvas Workflow
+
+The following sequence illustrates a single client session executing a chained workflow from raw defect observation through formal NCR statement, rule-based disposition routing, financial COPQ rollup, and visual Pareto canvas generation:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Client as MCP Client
+    participant Server as quality-mcp Server
+    participant Core as quality-core Engines
+
+    Note over Client,Server: Single In-Process JSON-RPC Session Handshake
+    Client->>Server: initialize
+    Server-->>Client: serverInfo ("quality-mcp")
+    Client->>Server: tools/list
+    Server-->>Client: [write_ncr, recommend_disposition, render_ncr_canvas, estimate_copq, render_copq_canvas, ...]
+
+    Note over Client,Server: Stage 1. ISO 9001 §8.7 Defect Statement Formulation
+    Client->>Server: tools/call ("write_ncr", raw_defect_note, what_deviated, ...)
+    Server->>Core: quality_core.ncr.nonconformance.write_nonconformance(...)
+    Core-->>Server: valid=true, quantity_affected=45, statement generated, blame filtered
+    Server-->>Client: {valid: true, statement: "...", quantity_affected: 45, warnings: [...]}
+
+    Note over Client,Server: Stage 2. Rule-Based Nonconformance Disposition Routing
+    Client->>Server: tools/call ("recommend_disposition", is_reworkable=false, part_value=120.0)
+    Server->>Core: quality_core.ncr.nonconformance.recommend_disposition(...)
+    Core-->>Server: disposition="Scrap", authority="MRB", clause="IATF 16949 §8.7.1.7"
+    Server-->>Client: {disposition: "Scrap", verdict: "VALID", mrb_review_required: true}
+
+    Note over Client,Server: Stage 3. ASQ CSSGB COPQ Financial Estimation
+    Client->>Server: tools/call ("estimate_copq", scrap_qty=45, unit_cost=120.0, sort_hours=40.0, ...)
+    Server->>Core: quality_core.copq.estimator.estimate_copq(...)
+    Core-->>Server: scrap=$5,400, containment=$1,800, total_copq=$7,200, copq_pct_rev=1.44%
+    Server-->>Client: {total_copq: 7200.0, cogq_total: 12500.0, copq_percentage_of_revenue: 1.44}
+
+    Note over Client,Server: Stage 4. Financial Pareto & Waterfall Canvas Rendering
+    Client->>Server: tools/call ("render_copq_canvas", items=[...], revenue_base=500000.0)
+    Server->>Core: quality_core.canvas.copq.COPQCanvas.to_html(...)
+    Core-->>Server: Rendered HTML5 artifact + Pareto ranking table + KPI summary cards
+    Server-->>Client: {rows_count: 4, summary: {copq: 7200.0}, html: "<!DOCTYPE html>..."}
 ```
 
 ---

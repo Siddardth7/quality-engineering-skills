@@ -1,4 +1,4 @@
-"""Test suite for milestone documentation, SemVer naming, and governance conventions (#7, #21, #34, #41, #48, #80).
+"""Test suite for milestone documentation, SemVer naming, and governance conventions (#7, #21, #34, #41, #48, #80, #96).
 
 Validates:
 1. Presence of docs/milestones/ directory and README.md governance documentation.
@@ -10,11 +10,12 @@ Validates:
 7. Milestone 4 (v0.4.0.md) Epic definitions (E1-E7), Issue traceability (#35 through #41), and branch mapping.
 8. Milestone 5 (v0.5.0.md) Epic definitions (E1-E7), Issue traceability (#42 through #48), and branch mapping.
 9. Milestone 6 (v0.6.0.md) Epic definitions (E0-E6), Issue traceability (#74 through #80), and branch mapping.
-10. Real MCP client release gate, 4-engine checkpoint, and verification artifacts cataloging.
-11. Summary Release Matrix table link updates in ROADMAP.md for v0.1.0 through v0.6.0.
-12. Markdown relative link resolution against repository filesystem.
-13. CHANGELOG.md entry formatting under [Unreleased] -> Added (#7, #21, #34, #41, #48, #80).
-14. Negative controls: detection of invalid filenames, missing sections, invalid issue URLs, broken links, missing epics/issues/artifacts, and corrupted branch names.
+10. Milestone 7 (v0.7.0.md) Epic definitions (E0-E5), Issue traceability (#91 through #96), and branch mapping.
+11. Real MCP client release gate, 4-engine checkpoint, and verification artifacts cataloging.
+12. Summary Release Matrix table link updates in ROADMAP.md for v0.1.0 through v0.7.0.
+13. Markdown relative link resolution against repository filesystem.
+14. CHANGELOG.md entry formatting under [Unreleased] or release headings (#7, #21, #34, #41, #48, #80, #96).
+15. Negative controls: detection of invalid filenames, missing sections, invalid issue URLs, broken links, missing epics/issues/artifacts, and corrupted branch names.
 """
 
 from __future__ import annotations
@@ -34,6 +35,7 @@ _V030_MILESTONE = _MILESTONES_DIR / "v0.3.0.md"
 _V040_MILESTONE = _MILESTONES_DIR / "v0.4.0.md"
 _V050_MILESTONE = _MILESTONES_DIR / "v0.5.0.md"
 _V060_MILESTONE = _MILESTONES_DIR / "v0.6.0.md"
+_V070_MILESTONE = _MILESTONES_DIR / "v0.7.0.md"
 _ROADMAP = _REPO_ROOT / "ROADMAP.md"
 _CHANGELOG = _REPO_ROOT / "CHANGELOG.md"
 
@@ -609,6 +611,100 @@ def test_roadmap_links_v060_milestone() -> None:
     )
 
 
+def test_v070_milestone_epics_and_issues_traceability() -> None:
+    """Verify docs/milestones/v0.7.0.md defines Epics E0-E5 and links issues #91 through #96 with branch names."""
+    assert _V070_MILESTONE.is_file(), f"Missing milestone v0.7.0 file: {_V070_MILESTONE}"
+    content = _V070_MILESTONE.read_text(encoding="utf-8")
+
+    # Verify all 6 Epics are present (E0 through E5)
+    for epic_num in range(0, 6):
+        assert f"Epic {epic_num} (E{epic_num})" in content or f"E{epic_num}:" in content, (
+            f"Missing Epic {epic_num} in v0.7.0.md"
+        )
+
+    # Verify all 6 issues are present with canonical URLs and branch names
+    issue_tuples = _extract_issue_urls(content)
+    issue_numbers = {num for _, num in issue_tuples}
+
+    expected_issues = {
+        91: "chore/ncr-copq-literature-citations-91",
+        92: "feat/ncr-copq-schema-92",
+        93: "feat/ncr-nonconformance-engine-93",
+        94: "feat/copq-estimator-94",
+        95: "feat/ncr-copq-client-roundtrip-95",
+        96: "feat/milestone-7-closeout-96",
+    }
+
+    for expected_issue, branch_name in expected_issues.items():
+        assert expected_issue in issue_numbers, f"Missing issue #{expected_issue} in v0.7.0.md"
+        expected_url = f"https://github.com/Siddardth7/quality-engineering-skills/issues/{expected_issue}"
+        assert expected_url in content, f"Missing canonical URL for issue #{expected_issue}: {expected_url}"
+        assert branch_name in content, f"Missing branch {branch_name} for issue #{expected_issue} in v0.7.0.md"
+
+
+def test_v070_milestone_release_gate_and_artifacts() -> None:
+    """Verify v0.7.0.md specifies the release gate criteria and catalogs verification artifacts."""
+    assert _V070_MILESTONE.is_file(), f"Missing milestone v0.7.0 file: {_V070_MILESTONE}"
+    content = _V070_MILESTONE.read_text(encoding="utf-8")
+
+    # Release gate criteria
+    assert "write_ncr" in content
+    assert "recommend_disposition" in content
+    assert "estimate_copq" in content
+    assert "render_ncr_canvas" in content
+    assert "render_copq_canvas" in content
+    assert "ncr-writing" in content
+    assert "copq-estimator" in content
+    assert "ISO 9001" in content
+    assert "ASQ" in content
+    assert "100%" in content
+    assert "CITATIONS.tsv" in content
+
+    # Key verification artifacts cataloged
+    expected_artifacts = [
+        "packages/quality-core/src/quality_core/ncr/schema.py",
+        "packages/quality-core/src/quality_core/ncr/nonconformance.py",
+        "packages/quality-core/src/quality_core/ncr/ASSUMPTIONS_LOG.md",
+        "packages/quality-core/src/quality_core/ncr/CITATIONS.tsv",
+        "packages/quality-core/src/quality_core/copq/schema.py",
+        "packages/quality-core/src/quality_core/copq/estimator.py",
+        "packages/quality-core/src/quality_core/copq/ASSUMPTIONS_LOG.md",
+        "packages/quality-core/src/quality_core/copq/CITATIONS.tsv",
+        "packages/quality-core/src/quality_core/canvas/ncr.py",
+        "packages/quality-core/src/quality_core/canvas/copq.py",
+        "packages/quality-core/tests/test_ncr_engine.py",
+        "packages/quality-core/tests/test_copq_engine.py",
+        "packages/quality-core/tests/test_ncr_schema.py",
+        "packages/quality-core/tests/test_copq_schema.py",
+        "packages/quality-core/tests/test_ncr_canvas.py",
+        "packages/quality-core/tests/test_copq_canvas.py",
+        "packages/quality-core/tests/test_ncr_citations.py",
+        "packages/quality-core/tests/test_ncr_copq_scaffold.py",
+        "packages/quality-mcp/src/quality_mcp/tools/ncr.py",
+        "packages/quality-mcp/src/quality_mcp/tools/copq.py",
+        "packages/quality-mcp/src/quality_mcp/tools/canvas.py",
+        "packages/quality-mcp/tests/test_ncr_tools.py",
+        "packages/quality-mcp/tests/test_copq_tools.py",
+        "packages/quality-mcp/tests/test_ncr_copq_client_roundtrip.py",
+        "packages/quality-mcp/tests/test_server.py",
+        "skills/ncr-writing/SKILL.md",
+        "skills/copq-estimator/SKILL.md",
+        "docs/mcp-client-setup.md",
+    ]
+    for artifact in expected_artifacts:
+        assert artifact in content, f"Missing expected verification artifact in v0.7.0.md: {artifact}"
+
+
+def test_roadmap_links_v070_milestone() -> None:
+    """Verify ROADMAP.md links v0.7.0 in Summary Release Matrix to docs/milestones/v0.7.0.md."""
+    assert _ROADMAP.is_file(), f"Missing ROADMAP: {_ROADMAP}"
+    content = _ROADMAP.read_text(encoding="utf-8")
+
+    assert "[**`v0.7.0`**](docs/milestones/v0.7.0.md)" in content or "[`v0.7.0`](docs/milestones/v0.7.0.md)" in content, (
+        "ROADMAP.md Summary Release Matrix must link v0.7.0 to docs/milestones/v0.7.0.md"
+    )
+
+
 def test_milestones_markdown_links_resolve() -> None:
     """Verify all relative markdown links in docs/milestones/*.md resolve to existing repository files."""
     for md_file in _MILESTONES_DIR.glob("*.md"):
@@ -621,7 +717,7 @@ def test_milestones_markdown_links_resolve() -> None:
 
 
 def test_changelog_entry_unreleased() -> None:
-    """Verify CHANGELOG.md contains the issue #7, #21, #34, #41, #48, and #80 entries under [0.1.0], [0.2.0], [0.3.0], [0.4.0], [0.5.0], [0.6.0], or [Unreleased]."""
+    """Verify CHANGELOG.md contains the issue #7, #21, #34, #41, #48, #80, and #96 entries."""
     assert _CHANGELOG.is_file(), f"Missing CHANGELOG file: {_CHANGELOG}"
     content = _CHANGELOG.read_text(encoding="utf-8")
 
@@ -631,6 +727,7 @@ def test_changelog_entry_unreleased() -> None:
     assert "#41" in content, "CHANGELOG.md must reference issue #41"
     assert "#48" in content, "CHANGELOG.md must reference issue #48"
     assert "#80" in content, "CHANGELOG.md must reference issue #80"
+    assert "#96" in content, "CHANGELOG.md must reference issue #96"
     assert "docs/milestones/README.md" in content
     assert "docs/milestones/v0.1.0.md" in content
     assert "docs/milestones/v0.2.0.md" in content
@@ -638,6 +735,7 @@ def test_changelog_entry_unreleased() -> None:
     assert "docs/milestones/v0.4.0.md" in content
     assert "docs/milestones/v0.5.0.md" in content
     assert "docs/milestones/v0.6.0.md" in content
+    assert "docs/milestones/v0.7.0.md" in content
     assert "tests/test_milestones_convention.py" in content
 
 
@@ -743,3 +841,46 @@ def test_negative_control_changelog_missing_issue_80_rejected() -> None:
     content = _CHANGELOG.read_text(encoding="utf-8")
     mutated = content.replace("#80", "#999")
     assert "#80" not in mutated
+
+
+def test_negative_control_v070_missing_epic_or_issue_rejected() -> None:
+    """Negative control: assert missing Epic or Issue in v0.7.0.md content is detected."""
+    content = _V070_MILESTONE.read_text(encoding="utf-8")
+
+    # Mutate by removing Epic 0
+    mutated_no_e0 = content.replace("Epic 0 (E0)", "Removed Epic 0")
+    assert "Epic 0 (E0)" not in mutated_no_e0
+
+    # Mutate by removing issue #96
+    mutated_no_issue96 = content.replace("https://github.com/Siddardth7/quality-engineering-skills/issues/96", "")
+    extracted = _extract_issue_urls(mutated_no_issue96)
+    issue_nums = {num for _, num in extracted}
+    assert 96 not in issue_nums
+
+
+def test_negative_control_v070_corrupted_branch_name_rejected() -> None:
+    """Negative control: assert altered or corrupted feature branch name in v0.7.0.md is detected."""
+    content = _V070_MILESTONE.read_text(encoding="utf-8")
+    mutated = content.replace("feat/milestone-7-closeout-96", "feat/corrupted-branch-99")
+    assert "feat/milestone-7-closeout-96" not in mutated
+
+
+def test_negative_control_v070_missing_artifact_rejected() -> None:
+    """Negative control: assert missing critical verification artifact in v0.7.0.md is detected."""
+    content = _V070_MILESTONE.read_text(encoding="utf-8")
+    mutated = content.replace("packages/quality-mcp/tests/test_ncr_copq_client_roundtrip.py", "")
+    assert "packages/quality-mcp/tests/test_ncr_copq_client_roundtrip.py" not in mutated
+
+
+def test_negative_control_roadmap_missing_v070_rejected() -> None:
+    """Negative control: assert ROADMAP missing v0.7.0 link is detected."""
+    content = _ROADMAP.read_text(encoding="utf-8")
+    mutated = content.replace("[**`v0.7.0`**](docs/milestones/v0.7.0.md)", "**`v0.7.0`**")
+    assert "[**`v0.7.0`**](docs/milestones/v0.7.0.md)" not in mutated
+
+
+def test_negative_control_changelog_missing_issue_96_rejected() -> None:
+    """Negative control: assert CHANGELOG missing #96 reference is detected."""
+    content = _CHANGELOG.read_text(encoding="utf-8")
+    mutated = content.replace("#96", "#999")
+    assert "#96" not in mutated

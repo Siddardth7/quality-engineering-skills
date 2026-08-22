@@ -8,6 +8,34 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 
 ## [Unreleased]
 
+### Fixed
+- Enforce safety-critical disposition gate precedence over supplier-origin defects in `quality_core.ncr.recommend_disposition` per IATF 16949:2016 §8.7.1.7, preventing non-reworkable supplier defects from bypassing Material Review Board review, mandatory scrap defacing directives, and safety officer approval authority (#133).
+
+## [0.7.0] - 2026-08-22
+
+### Added
+- Finalized Milestone 7 documentation in `docs/milestones/v0.7.0.md` with complete verification artifacts, retrospective, and test evidence for Epics E0–E5 (#96).
+- Updated `docs/milestones/README.md` canonical mapping table marking `v0.7.0` as Complete and updated `ROADMAP.md` Summary Release Matrix linking `docs/milestones/v0.7.0.md` (#96).
+- Updated `README.md` milestone status table marking `v0.7.0` as Completed with `docs/milestones/v0.7.0.md` link, advancing `v0.8.0` to Up Next, and queuing `v0.9.0–v1.0.0` (#96).
+- Extended milestone governance test suite `tests/test_milestones_convention.py` with `v0.7.0` traceability assertions across all 6 task issues (#91–#96), release gate criteria, verification artifacts, and negative mutation controls (#96).
+- Synchronized workspace version bump to `0.7.0` across root `pyproject.toml`, `packages/quality-core`, `packages/quality-mcp`, and `uv.lock` (#96).
+- Unified in-process FastMCP client-server round-trip integration test suite `packages/quality-mcp/tests/test_ncr_copq_client_roundtrip.py` validating tool discovery across all five NCR & COPQ tools (`write_ncr`, `recommend_disposition`, `render_ncr_canvas`, `estimate_copq`, `render_copq_canvas`), dual-payload parity (`structuredContent` vs JSON text), direct `quality_core.ncr` and `quality_core.copq` engine parity, session error isolation, protocol negative controls, and single-session chained workflows (`write_ncr` -> `recommend_disposition` -> `estimate_copq` -> `render_copq_canvas`) across benchmark manufacturing datasets (#95).
+- Extended FastMCP server configuration tests in `packages/quality-mcp/tests/test_server.py` asserting discovery, execution, and root exports for all five NCR and COPQ tools (#95).
+- Updated MCP client configuration guide `docs/mcp-client-setup.md` with Item 8 in-process round-trip test instructions, copy-verified JSON-RPC 2.0 transcripts (4.20–4.24), and an end-to-end chained NCR→COPQ sequence diagram (4.25) (#95).
+- Single-writer visual Cost of Poor Quality (COPQ) canvas controller `COPQCanvas` in `quality_core.canvas.copq` supporting in-memory item CRUD, manufacturing benchmark dataset (`SAMPLE_COPQ_ITEMS`, `load_sample_copq_canvas`), summary metrics, proportional PAF distribution waterfall bar, financial Pareto cost ranking table, and responsive dark/light themed HTML rendering (`render_copq`) (#94).
+- FastMCP tool `estimate_copq` in `quality_mcp.tools.copq` and `render_copq_canvas` in `quality_mcp.tools.canvas` registered on `quality-mcp` server with dual-payload structured content parity (#94).
+- Cost of Poor Quality Estimator domain skill in `skills/copq-estimator/SKILL.md` adhering to agentskills.io standard with 5 mandatory H2 sections and strict Zero Inline Math enforcement (#94).
+- Extended skills governance test suite `tests/test_skills_conventions.py` with `copq-estimator` discovery, tool specification, and isolation assertions (#94).
+- Single-writer visual Nonconformance Report (NCR) canvas controller `NCRCanvas` in `quality_core.canvas.ncr` supporting in-memory record CRUD, benchmark automotive/machining sample dataset (`SAMPLE_NCR_RECORDS`, `load_sample_ncr_canvas`), summary metrics, and responsive dark/light themed HTML canvas card log rendering (`render_ncr`) (#93).
+- FastMCP tools `write_ncr` and `recommend_disposition` in `quality_mcp.tools.ncr` and `render_ncr_canvas` in `quality_mcp.tools.canvas` registered on `quality-mcp` server with dual-payload structured content parity (#93).
+- Nonconformance Reporting domain skill in `skills/ncr-writing/SKILL.md` adhering to agentskills.io standard with 5 mandatory H2 sections and Zero Inline Adjudication invariant (#93).
+- Extended skills governance test suite `tests/test_skills_conventions.py` with `ncr-writing` discovery, tool specification, and isolation assertions (#93).
+- Nonconformance Reporting (NCR) and Cost of Poor Quality (COPQ) schema scaffold in `quality_core.ncr` and `quality_core.copq` (`NonconformanceRecord`, `NCRDataset`, `NCR_SCHEMA`, `CostItem`, `COPQDataset`, `COPQ_SCHEMA`), ISO 9001:2015 / IATF 16949:2016 disposition vocabulary, PAF cost model taxonomy, CSV loaders (`load_ncr_csv`, `load_copq_csv`), trust-boundary validators (`validate_ncr`, `validate_copq`), and machine-checkable citation manifests (#92).
+- Extended CI core coverage gate in `.github/workflows/ci.yml` with `--cov=quality_core.ncr` and `--cov=quality_core.copq` (#92).
+- Reference material procurement and citation scaffold for Milestone 7 NCR and COPQ suites (`packages/quality-core/src/quality_core/ncr/ASSUMPTIONS_LOG.md`, `ncr/CITATIONS.tsv`, `packages/quality-core/src/quality_core/copq/ASSUMPTIONS_LOG.md`, and `copq/CITATIONS.tsv`) (#91).
+- Per-domain reference manual path mapping in `CLAUDE.md` under `## Standards fidelity` covering Nonconformance Reporting (ISO 9001:2015 §8.7, IATF 16949:2016 §8.7) and Cost of Poor Quality (ASQ CSSGB BoK PAF model, CSSC Green Belt Manual, Lumafield Report) (#91).
+- Scaffold verification and negative control test suite `tests/test_ncr_copq_scaffold.py` verifying file headers, TSV delimiter integrity, on-machine reference manual markers, CLAUDE.md mapping, and changelog traceability (#91).
+
 ## [0.6.0] - 2026-08-20
 
 ### Added

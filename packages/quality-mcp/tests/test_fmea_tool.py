@@ -277,24 +277,29 @@ def test_client_session_call_fmea_invalid_type_negative_control() -> None:
 
 
 def test_tools_package_exports() -> None:
-    """quality_mcp.tools package re-exports lookup_fmea_ap, render_5why_canvas, render_controlplan_canvas, render_fmea_canvas, render_msa_canvas, calculate_spc_chart, render_spc_canvas, calculate_gage_rr, validate_5why, validate_control_plan, scope_is_is_not, render_isisnot_canvas, and render_is_is_not_canvas."""
+    """quality_mcp.tools package re-exports all registered MCP tools."""
     assert quality_mcp.tools.lookup_fmea_ap is lookup_fmea_ap
     assert quality_mcp.tools.render_fmea_canvas is quality_mcp.tools.render_fmea_canvas
     assert sorted(quality_mcp.tools.__all__) == [
         "calculate_gage_rr",
         "calculate_spc_chart",
         "categorize_fishbone",
+        "estimate_copq",
         "lookup_fmea_ap",
+        "recommend_disposition",
         "render_5why_canvas",
         "render_controlplan_canvas",
+        "render_copq_canvas",
         "render_fishbone_canvas",
         "render_fmea_canvas",
         "render_is_is_not_canvas",
         "render_isisnot_canvas",
         "render_msa_canvas",
+        "render_ncr_canvas",
         "render_spc_canvas",
         "scope_is_is_not",
         "validate_5why",
         "validate_control_plan",
+        "write_ncr",
     ]
 

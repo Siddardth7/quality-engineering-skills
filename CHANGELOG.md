@@ -9,6 +9,8 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- Nonconformance Reporting (NCR) and Cost of Poor Quality (COPQ) schema scaffold in `quality_core.ncr` and `quality_core.copq` (`NonconformanceRecord`, `NCRDataset`, `NCR_SCHEMA`, `CostItem`, `COPQDataset`, `COPQ_SCHEMA`), ISO 9001:2015 / IATF 16949:2016 disposition vocabulary, PAF cost model taxonomy, CSV loaders (`load_ncr_csv`, `load_copq_csv`), trust-boundary validators (`validate_ncr`, `validate_copq`), and machine-checkable citation manifests (#92).
+- Extended CI core coverage gate in `.github/workflows/ci.yml` with `--cov=quality_core.ncr` and `--cov=quality_core.copq` (#92).
 - Reference material procurement and citation scaffold for Milestone 7 NCR and COPQ suites (`packages/quality-core/src/quality_core/ncr/ASSUMPTIONS_LOG.md`, `ncr/CITATIONS.tsv`, `packages/quality-core/src/quality_core/copq/ASSUMPTIONS_LOG.md`, and `copq/CITATIONS.tsv`) (#91).
 - Per-domain reference manual path mapping in `CLAUDE.md` under `## Standards fidelity` covering Nonconformance Reporting (ISO 9001:2015 §8.7, IATF 16949:2016 §8.7) and Cost of Poor Quality (ASQ CSSGB BoK PAF model, CSSC Green Belt Manual, Lumafield Report) (#91).
 - Scaffold verification and negative control test suite `tests/test_ncr_copq_scaffold.py` verifying file headers, TSV delimiter integrity, on-machine reference manual markers, CLAUDE.md mapping, and changelog traceability (#91).

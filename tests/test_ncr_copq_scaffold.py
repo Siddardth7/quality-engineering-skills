@@ -141,7 +141,7 @@ def test_copq_assumptions_log_exists_and_metadata() -> None:
 
 
 def test_ncr_citations_tsv_exists_and_header() -> None:
-    """Verify ncr/CITATIONS.tsv exists, is tab-delimited, and has the exact header row with zero data rows."""
+    """Verify ncr/CITATIONS.tsv exists, is tab-delimited, and has the exact header row."""
     assert _NCR_CITATIONS_TSV.is_file(), f"Missing NCR CITATIONS.tsv: {_NCR_CITATIONS_TSV}"
     raw_content = _NCR_CITATIONS_TSV.read_text(encoding="utf-8")
 
@@ -152,11 +152,10 @@ def test_ncr_citations_tsv_exists_and_header() -> None:
 
     headers, rows = _validate_citations_tsv_format(raw_content)
     assert headers == ["site", "src_line", "quote"]
-    assert len(rows) == 0, f"Expected 0 data rows in scaffold, got {len(rows)}"
 
 
 def test_copq_citations_tsv_exists_and_header() -> None:
-    """Verify copq/CITATIONS.tsv exists, is tab-delimited, and has the exact header row with zero data rows."""
+    """Verify copq/CITATIONS.tsv exists, is tab-delimited, and has the exact header row."""
     assert _COPQ_CITATIONS_TSV.is_file(), f"Missing COPQ CITATIONS.tsv: {_COPQ_CITATIONS_TSV}"
     raw_content = _COPQ_CITATIONS_TSV.read_text(encoding="utf-8")
 
@@ -167,7 +166,6 @@ def test_copq_citations_tsv_exists_and_header() -> None:
 
     headers, rows = _validate_citations_tsv_format(raw_content)
     assert headers == ["site", "src_line", "quote"]
-    assert len(rows) == 0, f"Expected 0 data rows in scaffold, got {len(rows)}"
 
 
 @pytest.mark.parametrize(

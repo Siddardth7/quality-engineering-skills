@@ -177,6 +177,8 @@ def test_discoverable_skill_directories_exist() -> None:
     assert "5why-root-cause" in dir_names, "skills/5why-root-cause directory missing"
     assert "fishbone-analysis" in dir_names, "skills/fishbone-analysis directory missing"
     assert "is-is-not-scoping" in dir_names, "skills/is-is-not-scoping directory missing"
+    assert "ncr-writing" in dir_names, "skills/ncr-writing directory missing"
+    assert "copq-estimator" in dir_names, "skills/copq-estimator directory missing"
 
 
 @pytest.mark.parametrize(
@@ -291,6 +293,32 @@ def test_is_is_not_scoping_skill_specifies_tools() -> None:
     )
 
 
+def test_ncr_writing_skill_specifies_tools() -> None:
+    """skills/ncr-writing/SKILL.md must document write_ncr, recommend_disposition, and render_ncr_canvas tools, reference quality-mcp, and cite ISO 9001 §8.7 / IATF 16949 §8.7."""
+    ncr_file = _SKILLS_DIR / "ncr-writing" / "SKILL.md"
+    assert ncr_file.exists(), "skills/ncr-writing/SKILL.md does not exist"
+    content = ncr_file.read_text(encoding="utf-8")
+    assert "write_ncr" in content, "ncr-writing skill must document write_ncr tool"
+    assert "recommend_disposition" in content, "ncr-writing skill must document recommend_disposition tool"
+    assert "render_ncr_canvas" in content, "ncr-writing skill must document render_ncr_canvas tool"
+    assert "quality-mcp" in content, "ncr-writing skill must reference quality-mcp"
+    assert "ISO 9001" in content, "ncr-writing skill must cite ISO 9001"
+    assert "8.7" in content, "ncr-writing skill must cite Section/Clause 8.7"
+    assert "IATF 16949" in content, "ncr-writing skill must cite IATF 16949"
+
+
+def test_copq_estimator_skill_specifies_tools() -> None:
+    """skills/copq-estimator/SKILL.md must document estimate_copq and render_copq_canvas tools, reference quality-mcp, and cite ASQ CSSGB / PAF model."""
+    copq_file = _SKILLS_DIR / "copq-estimator" / "SKILL.md"
+    assert copq_file.exists(), "skills/copq-estimator/SKILL.md does not exist"
+    content = copq_file.read_text(encoding="utf-8")
+    assert "estimate_copq" in content, "copq-estimator skill must document estimate_copq tool"
+    assert "render_copq_canvas" in content, "copq-estimator skill must document render_copq_canvas tool"
+    assert "quality-mcp" in content, "copq-estimator skill must reference quality-mcp"
+    assert "PAF" in content or "Prevention" in content, "copq-estimator skill must cite PAF model"
+    assert "ASQ" in content or "CSSGB" in content, "copq-estimator skill must cite ASQ CSSGB"
+
+
 def test_claude_skills_isolation() -> None:
     """.claude/skills/ must remain segregated from domain skills/."""
     if not _CLAUDE_SKILLS_DIR.exists():
@@ -306,6 +334,8 @@ def test_claude_skills_isolation() -> None:
     assert "5why-root-cause" not in claude_dirs, "5why-root-cause domain skill leaked into .claude/skills/"
     assert "fishbone-analysis" not in claude_dirs, "fishbone-analysis domain skill leaked into .claude/skills/"
     assert "is-is-not-scoping" not in claude_dirs, "is-is-not-scoping domain skill leaked into .claude/skills/"
+    assert "ncr-writing" not in claude_dirs, "ncr-writing domain skill leaked into .claude/skills/"
+    assert "copq-estimator" not in claude_dirs, "copq-estimator domain skill leaked into .claude/skills/"
 
 
 

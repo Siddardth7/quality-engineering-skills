@@ -84,9 +84,10 @@ jobs:
       # validated ingest), schema (shared FMEA row/dataset contracts), scoring (RPN +
       # the AIAG-VDA Action Priority table), spc (control-chart + capability
       # primitives), canvas (FMEA/SPC/MSA visual canvas architectures), msa (MSA Gage
-      # R&R engine), controlplan (Control Plan engine & PFMEA linkage), and rca (Root Cause
-      # Analysis schema & engine) — must be fully covered by quality-core's OWN tests. One run
-      # over packages/quality-core covers all eight; the combined --cov-fail-under=100 fails
+      # R&R engine), controlplan (Control Plan engine & PFMEA linkage), rca (Root Cause
+      # Analysis schema & engine), ncr (Nonconformance Reporting schema), and copq (Cost of Poor
+      # Quality schema) — must be fully covered by quality-core's OWN tests. One run
+      # over packages/quality-core covers all ten; the combined --cov-fail-under=100 fails
       # if any line in any of them is uncovered. branch coverage is inherited from
       # [tool.coverage.run] branch=true in pyproject.
       - name: Core coverage gate
@@ -100,6 +101,8 @@ jobs:
           --cov=quality_core.msa
           --cov=quality_core.controlplan
           --cov=quality_core.rca
+          --cov=quality_core.ncr
+          --cov=quality_core.copq
           --cov-report=term-missing
           --cov-fail-under=100
 

@@ -13,8 +13,10 @@ from typing import Annotated, Any
 from pydantic import Field
 from quality_core.canvas import (
     ControlPlanCanvas,
+    COPQCanvas,
     FMEACanvas,
     MSACanvas,
+    NCRCanvas,
     SPCCanvas,
 )
 
@@ -457,14 +459,172 @@ def render_controlplan_canvas(
     }
 
 
+def render_ncr_canvas(
+    records: Annotated[
+        list[dict[str, Any]] | None,
+        Field(
+            description=(
+                "Optional list of Nonconformance Record dictionaries. Each dictionary contains "
+                "record_id, part_lot_id, defect_description, requirement_violated, quantity_affected, "
+                "detection_point, and optional disposition, severity, rationale, approval_authority. "
+                "If omitted or None, loads the standard reference automotive/machining sample dataset."
+            ),
+        ),
+    ] = None,
+    title: Annotated[
+        str,
+        Field(description="Title displayed on the canvas header."),
+    ] = "Nonconformance Report (NCR) Canvas",
+    standalone: Annotated[
+        bool,
+        Field(description="If True, returns a complete standalone HTML document; if False, returns an embeddable container."),
+    ] = True,
+) -> dict[str, Any]:
+    """Render an interactive visual HTML canvas for an ISO 9001 §8.7 Nonconformance Report dataset.
+
+    Deterministic function wrapping `quality_core.canvas.NCRCanvas`. Ingests Nonconformance
+    records, computes disposition breakdown and MRB gate metrics, and generates a themed HTML
+    canvas card log.
+
+    Parameters
+    ----------
+    records : list[dict[str, Any]] | None, optional
+        List of Nonconformance Record dictionaries. If None, loads the reference sample dataset.
+    title : str, default "Nonconformance Report (NCR) Canvas"
+        Title of the NCR canvas.
+    standalone : bool, default True
+        Whether to generate a full standalone HTML5 document or embeddable markup.
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary containing:
+        - ``"title"``: The canvas title (str).
+        - ``"rows_count"``: Total number of rendered records (int).
+        - ``"summary"``: NCR summary statistics breakdown (dict).
+        - ``"html"``: Rendered HTML string (str).
+
+    Raises
+    ------
+    TypeError
+        If records is not a list/None, title is not a string, standalone is not a boolean,
+        or any item in records is not a dictionary.
+    ValueError
+        If title is empty, or any record contains invalid data.
+    """
+    if type(standalone) is not bool:
+        raise TypeError(f"standalone must be a boolean, got {type(standalone).__name__}: {standalone!r}")
+
+    if isinstance(title, bool) or not isinstance(title, str):
+        raise TypeError(f"title must be a string, got {type(title).__name__}: {title!r}")
+    if not title.strip():
+        raise ValueError("title must not be empty.")
+
+    if records is None:
+        canvas = NCRCanvas(title=title)
+        from quality_core.canvas.ncr import SAMPLE_NCR_RECORDS
+        for r in SAMPLE_NCR_RECORDS:
+            canvas.add_record(r)
+    else:
+        if isinstance(records, (str, dict, int, bool)) or not isinstance(records, list):
+            raise TypeError(f"records must be a list of dictionaries or None, got {type(records).__name__}: {records!r}")
+        canvas = NCRCanvas(title=title)
+        for idx, item in enumerate(records):
+            if not isinstance(item, dict):
+                raise TypeError(f"records item at index {idx} must be a dict, got {type(item).__name__}: {item!r}")
+            canvas.add_record(item)
+
+    html_content = canvas.to_html(standalone=standalone)
+    summary = canvas.get_summary()
+
+    return {
+        "title": canvas.title,
+        "rows_count": len(canvas.records),
+        "summary": summary,
+        "html": html_content,
+    }
+
+
+def render_copq_canvas(
+    items: Annotated[
+        list[dict[str, Any]] | None,
+        Field(
+            description=(
+                "Optional list of CostItem dictionaries with category (Prevention, Appraisal, "
+                "InternalFailure, ExternalFailure), description, and cost drivers. "
+                "If omitted or None, loads the benchmark sample manufacturing dataset."
+            ),
+        ),
+    ] = None,
+    revenue_base: Annotated[
+        float | None,
+        Field(
+            description="Optional annual or batch revenue base ($) to calculate COPQ as a percentage of sales."
+        ),
+    ] = None,
+    title: Annotated[
+        str,
+        Field(description="Title displayed on the canvas header."),
+    ] = "Cost of Poor Quality (COPQ) Canvas",
+    standalone: Annotated[
+        bool,
+        Field(description="If True, returns complete HTML5 document; if False, returns embeddable container."),
+    ] = True,
+) -> dict[str, Any]:
+    """Render an interactive Cost of Poor Quality (COPQ) canvas HTML visualization.
+
+    Displays PAF cost categories, aggregate COPQ (Failure Costs), Conformance Cost (CoGQ),
+    Total Cost of Quality (CoQ), %-of-revenue, and financial Pareto cost item ranking.
+    """
+    if type(standalone) is not bool:
+        raise TypeError(f"standalone must be a boolean, got {type(standalone).__name__}: {standalone!r}")
+
+    if isinstance(title, bool) or not isinstance(title, str):
+        raise TypeError(f"title must be a string, got {type(title).__name__}: {title!r}")
+    if not title.strip():
+        raise ValueError("title must not be empty.")
+
+    if revenue_base is not None:
+        if isinstance(revenue_base, bool) or not isinstance(revenue_base, (int, float)):
+            raise TypeError(f"revenue_base must be a number or None, got {type(revenue_base).__name__}: {revenue_base!r}")
+        if float(revenue_base) < 0.0:
+            raise ValueError(f"revenue_base must be >= 0.0, got {revenue_base}")
+
+    if items is None:
+        canvas = COPQCanvas(title=title, revenue_base=revenue_base)
+        from quality_core.canvas.copq import SAMPLE_COPQ_ITEMS
+        for itm in SAMPLE_COPQ_ITEMS:
+            canvas.add_item(itm)
+    else:
+        if isinstance(items, (str, dict, int, bool)) or not isinstance(items, list):
+            raise TypeError(f"items must be a list of dictionaries or None, got {type(items).__name__}: {items!r}")
+        canvas = COPQCanvas(title=title, revenue_base=revenue_base)
+        for idx, item in enumerate(items):
+            if not isinstance(item, dict):
+                raise TypeError(f"items element at index {idx} must be a dict, got {type(item).__name__}: {item!r}")
+            canvas.add_item(item)
+
+    html_content = canvas.to_html(standalone=standalone)
+    summary = canvas.get_summary()
+
+    return {
+        "title": canvas.title,
+        "rows_count": len(canvas.items),
+        "summary": summary,
+        "html": html_content,
+    }
+
+
 __all__ = [
     "render_5why_canvas",
     "render_controlplan_canvas",
+    "render_copq_canvas",
     "render_fishbone_canvas",
     "render_fmea_canvas",
     "render_is_is_not_canvas",
     "render_isisnot_canvas",
     "render_msa_canvas",
+    "render_ncr_canvas",
     "render_spc_canvas",
 ]
 

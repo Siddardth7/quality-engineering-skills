@@ -97,7 +97,8 @@ The skill catalog maps directly to the releases defined in `ROADMAP.md`:
 | **`v0.6.0`** | `5why-root-cause` | Reversible 5-Why Causal Logic | `quality_mcp.tools.rca` (`quality_core.rca`) | Active |
 | **`v0.6.0`** | `fishbone-analysis` | 6M Ishikawa Categorization | `quality_mcp.tools.rca` (`quality_core.rca`) | Active |
 | **`v0.6.0`** | `is-is-not-scoping` | Kepner-Tregoe Problem Boundary Scoping | `quality_mcp.tools.rca` (`quality_core.rca`) | Active |
-| **`v0.7.0`** | `ncr-writing` | ISO 9001 §8.7 Defect & COPQ Estimator | `quality_mcp.tools.ncr` (`quality_core.ncr`) | Planned |
+| **`v0.7.0`** | `ncr-writing` | ISO 9001 §8.7 Defect Statement & Disposition | `quality_mcp.tools.ncr` (`quality_core.ncr`) | Active |
+| **`v0.7.0`** | `copq-estimator` | ASQ CSSGB PAF Cost of Poor Quality Estimator | `quality_mcp.tools.copq` (`quality_core.copq`) | Active |
 | **`v0.8.0`** | `ppap-checker` | AIAG PPAP 4th Ed. 18-Element Completeness | `quality_mcp.tools.ppap` (`quality_core.ppap`) | Planned |
 | **`v0.9.0`** | `supplier-scar` | Supplier Corrective Action & Vendor Scorecard | `quality_mcp.tools.sqe` (`quality_core.sqe`) | Planned |
 | **`v1.0.0`** | *All Skills* | Production Hardening & Live Excel Exporters | Full Platform Integration | Planned |

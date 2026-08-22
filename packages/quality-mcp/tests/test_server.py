@@ -13,6 +13,7 @@ from quality_mcp.server import (
     calculate_gage_rr,
     calculate_spc_chart,
     categorize_fishbone,
+    estimate_copq,
     lookup_fmea_ap,
     main,
     mcp,
@@ -59,6 +60,7 @@ def test_mcp_instance_configuration() -> None:
     assert "lookup_fmea_ap" in tool_names
     assert "render_5why_canvas" in tool_names
     assert "render_controlplan_canvas" in tool_names
+    assert "render_copq_canvas" in tool_names
     assert "render_fishbone_canvas" in tool_names
     assert "render_fmea_canvas" in tool_names
     assert "render_isisnot_canvas" in tool_names
@@ -73,6 +75,7 @@ def test_mcp_instance_configuration() -> None:
     assert "write_ncr" in tool_names
     assert "recommend_disposition" in tool_names
     assert "render_ncr_canvas" in tool_names
+    assert "estimate_copq" in tool_names
 
     # Verify tool execution via FastMCP interface
     _, content = asyncio.run(mcp.call_tool("ping", {}))
@@ -234,18 +237,21 @@ def test_package_exports() -> None:
     assert quality_mcp.render_is_is_not_canvas is render_is_is_not_canvas
     assert quality_mcp.write_ncr is write_ncr
     assert quality_mcp.recommend_disposition is recommend_disposition
+    assert quality_mcp.estimate_copq is estimate_copq
     assert quality_mcp.__version__ == "0.6.0"
     assert set(quality_mcp.__all__) == {
         "__version__",
         "calculate_gage_rr",
         "calculate_spc_chart",
         "categorize_fishbone",
+        "estimate_copq",
         "lookup_fmea_ap",
         "mcp",
         "ping",
         "recommend_disposition",
         "render_5why_canvas",
         "render_controlplan_canvas",
+        "render_copq_canvas",
         "render_fishbone_canvas",
         "render_fmea_canvas",
         "render_is_is_not_canvas",
@@ -263,12 +269,14 @@ def test_package_exports() -> None:
         "calculate_gage_rr",
         "calculate_spc_chart",
         "categorize_fishbone",
+        "estimate_copq",
         "lookup_fmea_ap",
         "mcp",
         "ping",
         "recommend_disposition",
         "render_5why_canvas",
         "render_controlplan_canvas",
+        "render_copq_canvas",
         "render_fishbone_canvas",
         "render_fmea_canvas",
         "render_is_is_not_canvas",

@@ -152,6 +152,32 @@ def test_copq_itemized_costitem_objects_and_copqdataset() -> None:
     res_ds = estimate_copq(items=dataset)
     assert res_ds.item_count == 2
     assert res_ds.total_copq == 1200.0
+    assert res_ds.revenue_base == 200000.0
+    assert res_ds.copq_percentage_of_revenue == round((1200.0 / 200000.0) * 100.0, 4)
+
+    # Explicit override precedence over dataset revenue_base
+    res_override = estimate_copq(items=dataset, revenue_base=500000.0)
+    assert res_override.revenue_base == 500000.0
+    assert res_override.copq_percentage_of_revenue == round((1200.0 / 500000.0) * 100.0, 4)
+
+
+def test_copq_validated_dataset_dict_revenue_base_fallback() -> None:
+    """Test that dictionary data validated to COPQDataset falls back to dataset revenue_base."""
+    raw_data = {
+        "items": [
+            {"category": "InternalFailure", "description": "Casting scrap", "scrap_qty": 20, "unit_cost": 100.0},
+        ],
+        "revenue_base": 400000.0,
+    }
+    res = estimate_copq(items=raw_data)
+    assert res.revenue_base == 400000.0
+    assert res.total_copq == 2000.0
+    assert res.copq_percentage_of_revenue == round((2000.0 / 400000.0) * 100.0, 4)
+
+    # Explicit override precedence on validated dict ingest
+    res_override = estimate_copq(items=raw_data, revenue_base=800000.0)
+    assert res_override.revenue_base == 800000.0
+    assert res_override.copq_percentage_of_revenue == round((2000.0 / 800000.0) * 100.0, 4)
 
 
 def test_copq_dataframe_input() -> None:
@@ -185,13 +211,32 @@ def test_copq_combined_items_and_direct_drivers() -> None:
 
 
 def test_copq_percentage_of_revenue_calculation() -> None:
-    """Test COPQ percentage of revenue calculations with valid and missing revenue base."""
+    """Test COPQ percentage of revenue calculations with valid, zero, and missing revenue base."""
     res_with_rev = estimate_copq(scrap_qty=100, unit_cost=50.0, revenue_base=1000000.0)
+    assert res_with_rev.revenue_base == 1000000.0
     assert res_with_rev.copq_percentage_of_revenue == 0.5
 
     res_no_rev = estimate_copq(scrap_qty=100, unit_cost=50.0, revenue_base=None)
+    assert res_no_rev.revenue_base is None
     assert res_no_rev.copq_percentage_of_revenue is None
-    assert any("Provide revenue_base" in r for r in res_no_rev.recommendations)
+    assert any("Provide revenue_base ($) to calculate COPQ as a percentage of product/organization sales." in r for r in res_no_rev.recommendations)
+    assert not any("revenue_base must be greater than 0.0" in w for w in res_no_rev.warnings)
+
+    res_zero = estimate_copq(scrap_qty=100, unit_cost=50.0, revenue_base=0.0)
+    assert res_zero.revenue_base == 0.0
+    assert res_zero.copq_percentage_of_revenue is None
+    assert any(
+        "revenue_base must be greater than 0.0 to calculate COPQ as a percentage of revenue; received 0.0." in w
+        for w in res_zero.warnings
+    )
+    assert any(
+        "Provide a positive revenue_base ($ > 0.0) to calculate COPQ as a percentage of product/organization sales." in r
+        for r in res_zero.recommendations
+    )
+    assert not any(
+        r == "Provide revenue_base ($) to calculate COPQ as a percentage of product/organization sales."
+        for r in res_zero.recommendations
+    )
 
 
 def test_copq_external_failure_exceeds_internal_warning() -> None:
@@ -260,16 +305,66 @@ def test_copq_to_dict_serialization() -> None:
     assert "standards_basis" in d
 
 
+def test_copq_alias_parameter_conflicts_and_matches() -> None:
+    """Test alias conflict warnings when differing values are provided, and clean execution when values match."""
+    # sort_hours vs containment_hours conflict
+    res_sort_conflict = estimate_copq(
+        sort_hours=10.0,
+        containment_hours=20.0,
+        labor_rate=50.0,
+    )
+    assert res_sort_conflict.internal_failure_total == 500.0
+    assert res_sort_conflict.cost_breakdown["internal_failure"]["containment"] == 500.0
+    assert any(
+        "Conflicting values provided for sort_hours (10.0) and containment_hours (20.0); using sort_hours=10.0." in w
+        for w in res_sort_conflict.warnings
+    )
+
+    # warranty_cost_per_unit vs warranty_unit_cost conflict
+    res_w_conflict = estimate_copq(
+        warranty_units=5,
+        warranty_cost_per_unit=300.0,
+        warranty_unit_cost=400.0,
+    )
+    assert res_w_conflict.external_failure_total == 1500.0
+    assert res_w_conflict.cost_breakdown["external_failure"]["warranty"] == 1500.0
+    assert any(
+        "Conflicting values provided for warranty_cost_per_unit (300.0) and warranty_unit_cost (400.0); using warranty_cost_per_unit=300.0." in w
+        for w in res_w_conflict.warnings
+    )
+
+    # Matching alias values (no conflict warnings)
+    res_sort_match = estimate_copq(
+        sort_hours=15.0,
+        containment_hours=15.0,
+        labor_rate=50.0,
+    )
+    assert res_sort_match.internal_failure_total == 750.0
+    assert not any("Conflicting values provided for sort_hours" in w for w in res_sort_match.warnings)
+
+    res_w_match = estimate_copq(
+        warranty_units=4,
+        warranty_cost_per_unit=250.0,
+        warranty_unit_cost=250.0,
+    )
+    assert res_w_match.external_failure_total == 1000.0
+    assert not any("Conflicting values provided for warranty_cost_per_unit" in w for w in res_w_match.warnings)
+
+
 # ---------------------------------------------------------------------------
 # Negative Controls and Exception Handling Tests
 # ---------------------------------------------------------------------------
 
 def test_negative_control_invalid_title() -> None:
-    """Non-string or empty title must raise TypeError."""
-    with pytest.raises(TypeError, match="title must be a non-empty string"):
+    """Non-string title must raise TypeError; empty or whitespace string title must raise ValueError."""
+    with pytest.raises(ValueError, match="title must be a non-empty string"):
         estimate_copq(title="")
-    with pytest.raises(TypeError, match="title must be a non-empty string"):
+    with pytest.raises(ValueError, match="title must be a non-empty string"):
+        estimate_copq(title="   ")
+    with pytest.raises(TypeError, match="title must be a string"):
         estimate_copq(title=123)  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match="title must be a string"):
+        estimate_copq(title=None)  # type: ignore[arg-type]
 
 
 def test_negative_control_negative_quantities() -> None:

@@ -3,11 +3,15 @@
 Guidance for Claude Code (claude.ai/code) working anywhere in the
 `quality-engineering-skills` repository. Read this file first.
 
-> **📮 Read [`docs/AGENT_COMMS.md`](docs/AGENT_COMMS.md) at the start of every session.** It is
-> the async channel between **Claude** (PM/SME reviewer) and **Antigravity** (implementer):
-> review notes, decisions, hand-offs, and questions flow through it. Check the "Open items"
-> index for anything addressed to you, and post there when you have something for the other
-> agent. Both agents feed this doc in by default.
+> **📮 Team comms live in Slack** — workspace *Oruborus - QE Agent*. Post status, hand-offs,
+> and questions in `#general-eng-comms` (thread per topic); milestone work in `#m8-ppap-core` /
+> `#m9-supplier-sqe`; releases in `#announcements-releases`. Setup: [`docs/SLACK_SETUP.md`](docs/SLACK_SETUP.md).
+>
+> **🪪 Establish your identity at session start.** Read `SLACK_IDENTITY` from `.env` (or your
+> `docs/onboarding/<NAME>.md`), adopt that persona, and post a one-line "online" in
+> `#general-eng-comms` before working — then check for anything addressed to you. The team is a
+> 5-agent cast (see [`docs/onboarding/`](docs/onboarding/) and the master [`Setup.md`](Setup.md)).
+> (`docs/AGENT_COMMS.md` is the deprecated doc-based channel, kept only until Slack is proven on every machine.)
 
 ## What this repo is
 

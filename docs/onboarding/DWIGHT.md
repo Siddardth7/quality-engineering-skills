@@ -20,11 +20,14 @@ SLACK_TEAM_ID=T0BS2ESV32S
 ```
 Then `set -a; source .env; set +a` (or add the exports to `~/.zshrc`) and restart Claude Code.
 
-## 3. Git identity
-```bash
-git config user.name "Dwight Schrute (Karteek)"
-git config user.email "<your-github-email>"
-```
+## 3. GitHub access & identity  ([`../../Setup.md`](../../Setup.md) §16)
+- Sid must add **Karteek's GitHub account** as a repo **Write** collaborator (one-time; same account covers Kevin).
+- Authenticate as yourself: `gh auth login` (or your SSH key on your GitHub account) — not as Sid.
+- Set git identity — **email drives contributor attribution**, name is cosmetic:
+  ```bash
+  git config user.email "<Karteek's GitHub-verified email>"
+  git config user.name  "Dwight Schrute"
+  ```
 Branch off `origin/test`, never push to `test`/`main` (see CLAUDE.md branch ladder).
 
 ## 4. Verify Slack

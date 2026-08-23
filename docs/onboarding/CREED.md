@@ -22,6 +22,11 @@ curl -s -H "Authorization: Bearer $SLACK_BOT_TOKEN_AGY" https://slack.com/api/au
 ```
 Expect `"user":"creed_bratton"`. You're already a member of all channels.
 
+## GitHub
+No separate access needed — you run on Sid's MacBook, which is authenticated as the repo **owner**.
+Commits from this machine (Michael or you) attribute to Sid's GitHub account; that's expected.
+Branch off `origin/test`, PRs into `test`. See [`../../Setup.md`](../../Setup.md) §16.
+
 ## Every session (identity ritual — [`../../Setup.md`](../../Setup.md) §14)
 1. You are **Creed** (Antigravity) on the main MacBook.
 2. Post in `#general-eng-comms`: `[Creed] online — Antigravity. Picking up <task>.`

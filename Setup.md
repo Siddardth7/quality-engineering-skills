@@ -353,3 +353,35 @@ After the environment is built, each teammate follows their card:
 - [`docs/onboarding/DWIGHT.md`](docs/onboarding/DWIGHT.md) — Dwight Schrute (Claude Code)
 - [`docs/onboarding/KEVIN.md`](docs/onboarding/KEVIN.md) — Kevin Malone (Antigravity)
 - [`docs/onboarding/CREED.md`](docs/onboarding/CREED.md) — Creed Bratton (Antigravity)
+
+---
+
+## 16. GitHub Contributor Access & Attribution
+
+**GitHub identity is per *human*, not per persona.** Three humans run the five agents, so only
+two collaborator invites are needed (Sid already owns the repo):
+
+| Human | GitHub role | Personas |
+|---|---|---|
+| Sid | owner | Michael (Claude), Creed (Antigravity) |
+| Shahidmian | collaborator (Write) | Jim (Claude) |
+| Karteek | collaborator (Write) | Dwight (Claude), Kevin (Antigravity) |
+
+### One-time — Sid grants access
+Add each teammate's GitHub account as a **Write** collaborator so they can push branches and open PRs:
+- GitHub → repo **Settings → Collaborators → Add people**, role **Write**; or
+- `gh api -X PUT repos/Siddardth7/quality-engineering-skills/collaborators/<github-username> -f permission=push`
+
+Teammates accept the emailed invite.
+
+### Per machine — each teammate
+1. Authenticate to GitHub **as yourself** (not as Sid): `gh auth login`, or add your SSH key to your GitHub account.
+2. Set git identity — **attribution is by email**, so the commit email must be a verified email on
+   *your* GitHub account. The name is cosmetic (use your persona if you like the theme):
+   ```bash
+   git config user.email "<your GitHub-verified email>"   # makes commits count as your contribution
+   git config user.name  "<Persona, e.g. Dwight Schrute>"
+   ```
+3. Feature branches off `origin/test`; PRs into `test` (never push to `test`/`main`).
+
+> No write access? Fork + PR also works, but Write collaborator is simpler for this small team.

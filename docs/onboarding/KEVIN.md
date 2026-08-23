@@ -21,11 +21,14 @@ Point **Antigravity's own Slack MCP config** at `${SLACK_BOT_TOKEN_AGY}` (Antigr
 own config; the repo's `.mcp.json` is for the Claude-Code personas). Then restart Antigravity.
 If this laptop runs *only* Antigravity, you may instead use `SLACK_BOT_TOKEN` — just be consistent.
 
-## 3. Git identity
-```bash
-git config user.name "Kevin Malone (Karteek)"
-git config user.email "<your-github-email>"
-```
+## 3. GitHub access & identity  ([`../../Setup.md`](../../Setup.md) §16)
+- Sid must add **Karteek's GitHub account** as a repo **Write** collaborator (one-time; same account covers Dwight).
+- Authenticate as yourself: `gh auth login` (or your SSH key on your GitHub account) — not as Sid.
+- Set git identity — **email drives contributor attribution**, name is cosmetic:
+  ```bash
+  git config user.email "<Karteek's GitHub-verified email>"
+  git config user.name  "Kevin Malone"
+  ```
 Branch off `origin/test`, never push to `test`/`main` (see CLAUDE.md branch ladder).
 
 ## 4. Verify Slack

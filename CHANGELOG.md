@@ -10,6 +10,7 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 
 ### Fixed
 - Unify operator blame and root-cause speculation detection with statement sanitization in `quality_core.ncr.nonconformance`, applying word-boundary and flexible whitespace regexes across the complete 143-combination human noun x blame verb cross-product to eliminate token-pair blame leakage in nonconformance statements (#131).
+- Delimit requirement and measured evidence extraction with lookahead boundaries in `quality_core.ncr.nonconformance.write_nonconformance` to preserve decimals, tolerances, and engineering units while eliminating duplicated statement periods and narrative keyword leakage (#132).
 - Enforce safety-critical disposition gate precedence over supplier-origin defects in `quality_core.ncr.recommend_disposition` per IATF 16949:2016 §8.7.1.7, preventing non-reworkable supplier defects from bypassing Material Review Board review, mandatory scrap defacing directives, and safety officer approval authority (#133).
 
 ## [0.7.0] - 2026-08-22

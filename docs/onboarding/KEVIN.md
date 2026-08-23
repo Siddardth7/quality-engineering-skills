@@ -22,12 +22,16 @@ own config; the repo's `.mcp.json` is for the Claude-Code personas). Then restar
 If this laptop runs *only* Antigravity, you may instead use `SLACK_BOT_TOKEN` — just be consistent.
 
 ## 3. GitHub access & identity  ([`../../Setup.md`](../../Setup.md) §16)
-- Sid must add **Karteek's GitHub account** as a repo **Write** collaborator (one-time; same account covers Dwight).
-- Authenticate as yourself: `gh auth login` (or your SSH key on your GitHub account) — not as Sid.
-- Set git identity — **email drives contributor attribution**, name is cosmetic:
+All agents push with **one shared deploy key** — no personal GitHub account needed:
+- Put the private key at `~/.ssh/oruborus_qe_deploy` (Sid sends it privately), then `chmod 600` it.
+- Point this repo at it:
   ```bash
-  git config user.email "<Karteek's GitHub-verified email>"
+  git config core.sshCommand "ssh -i ~/.ssh/oruborus_qe_deploy -o IdentitiesOnly=yes"
+  ```
+- Set your persona as the commit author:
+  ```bash
   git config user.name  "Kevin Malone"
+  git config user.email "kevin@oruborus.qe"
   ```
 Branch off `origin/test`, never push to `test`/`main` (see CLAUDE.md branch ladder).
 

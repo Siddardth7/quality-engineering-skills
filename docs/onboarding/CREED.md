@@ -23,8 +23,9 @@ curl -s -H "Authorization: Bearer $SLACK_BOT_TOKEN_AGY" https://slack.com/api/au
 Expect `"user":"creed_bratton"`. You're already a member of all channels.
 
 ## GitHub
-No separate access needed — you run on Sid's MacBook, which is authenticated as the repo **owner**.
-Commits from this machine (Michael or you) attribute to Sid's GitHub account; that's expected.
+You run on Sid's MacBook, which already has push access (owner + the shared `oruborus-qe-deploy`
+key) — no setup needed. Commit author on this shared machine defaults to Michael; if you want your
+commits authored as "Creed Bratton", override per-commit with `GIT_AUTHOR_NAME` / `GIT_AUTHOR_EMAIL`.
 Branch off `origin/test`, PRs into `test`. See [`../../Setup.md`](../../Setup.md) §16.
 
 ## Every session (identity ritual — [`../../Setup.md`](../../Setup.md) §14)

@@ -356,32 +356,35 @@ After the environment is built, each teammate follows their card:
 
 ---
 
-## 16. GitHub Contributor Access & Attribution
+## 16. GitHub Access (single-login deploy key) & Attribution
 
-**GitHub identity is per *human*, not per persona.** Three humans run the five agents, so only
-two collaborator invites are needed (Sid already owns the repo):
+All five agents push with **one shared, repo-scoped credential** — a write-enabled **deploy key**
+under Sid's ownership. No collaborator accounts, no per-friend GitHub logins. Personas appear as
+**commit authors** in history/PRs (set via git config); GitHub sees one account pushing.
 
-| Human | GitHub role | Personas |
-|---|---|---|
-| Sid | owner | Michael (Claude), Creed (Antigravity) |
-| Shahidmian | collaborator (Write) | Jim (Claude) |
-| Karteek | collaborator (Write) | Dwight (Claude), Kevin (Antigravity) |
+> Trade-off (chosen deliberately): you get 5 author identities *in the commit history*, not 5
+> GitHub profiles / per-account contribution graphs — those would require separate accounts.
 
-### One-time — Sid grants access
-Add each teammate's GitHub account as a **Write** collaborator so they can push branches and open PRs:
-- GitHub → repo **Settings → Collaborators → Add people**, role **Write**; or
-- `gh api -X PUT repos/Siddardth7/quality-engineering-skills/collaborators/<github-username> -f permission=push`
+### One-time — already done on the main MacBook
+- Write deploy key **`oruborus-qe-deploy`** is registered on the repo (GitHub → Settings → Deploy keys, *Allow write access*).
+- Keypair lives at `~/.ssh/oruborus_qe_deploy` (private) + `.pub` (public). **The private key is a
+  secret — never commit it; distribute out-of-band (AirDrop / USB / password manager).**
 
-Teammates accept the emailed invite.
-
-### Per machine — each teammate
-1. Authenticate to GitHub **as yourself** (not as Sid): `gh auth login`, or add your SSH key to your GitHub account.
-2. Set git identity — **attribution is by email**, so the commit email must be a verified email on
-   *your* GitHub account. The name is cosmetic (use your persona if you like the theme):
+### Per machine (Jim / Dwight / Kevin)
+1. Place the private key and lock it down:
    ```bash
-   git config user.email "<your GitHub-verified email>"   # makes commits count as your contribution
-   git config user.name  "<Persona, e.g. Dwight Schrute>"
+   # copy the file to ~/.ssh/oruborus_qe_deploy first, then:
+   chmod 600 ~/.ssh/oruborus_qe_deploy
    ```
-3. Feature branches off `origin/test`; PRs into `test` (never push to `test`/`main`).
-
-> No write access? Fork + PR also works, but Write collaborator is simpler for this small team.
+2. Make **this repo** use the deploy key (per-repo, won't affect other GitHub work on the machine):
+   ```bash
+   git remote set-url origin git@github.com:Siddardth7/quality-engineering-skills.git
+   git config core.sshCommand "ssh -i ~/.ssh/oruborus_qe_deploy -o IdentitiesOnly=yes"
+   ```
+3. Set your persona as the commit author:
+   ```bash
+   git config user.name  "Dwight Schrute"        # your persona
+   git config user.email "dwight@oruborus.qe"    # any stable per-persona email
+   ```
+4. Verify: `git ls-remote origin HEAD` returns a hash. Branch off `origin/test`; PR into `test`
+   (never push to `test`/`main`).

@@ -30,6 +30,8 @@ Both agents read this file **at the start of every session** (it is required rea
 
 ## Open items (index — keep in sync with the Log)
  
+- **[OPEN]** Parallel execution — M8 (`v0.8.0 · PPAP Core`, Antigravity, main checkout) ∥ M9 (`v0.9.0 · Supplier SCAR & Vendor Rating`, Claude, worktree). — see 2026-08-23 #24
+- **[OPEN]** Milestone 9 (`v0.9.0 · Supplier SCAR & Vendor Rating`) scoped; issues **#114–#125** filed (E0 `#114` is a P0 reference-procurement blocker). — see 2026-08-21 #23
 - **[OPEN]** Milestone 6 (`v0.6.0 · RCA Suite (5-Why, Fishbone, Is/Is-Not)`) issues **#74–#80** filed, awaiting implementation (E0 `#74` is a P0 reference-procurement blocker). — see 2026-08-19 #22
 - **[RESOLVED]** Milestone 5 (`v0.5.0 · Control Plan Engine via MCP & 4-Engine Checkpoint`) completed & ready for release to `main` (Issues #42–#48 shipped). — see 2026-08-17 #21
 - **[RESOLVED]** Milestone 4 (`v0.4.0 · MSA Engine via MCP`) completed & released to `main` (PRs #57–#63 + release PR #64). — see 2026-08-16 #14
@@ -41,7 +43,96 @@ Both agents read this file **at the start of every session** (it is required rea
 ---
  
 ## Log
- 
+
+### [2026-08-23] Claude → Antigravity — #24 · Parallel execution: M8 (Antigravity) ∥ M9 (Claude)
+**Status:** OPEN (pick up)
+
+We're running **two milestones at once**: you (Antigravity) ship **M8**
+(`v0.8.0 · PPAP Core`, [`docs/milestones/v0.8.0.md`](milestones/v0.8.0.md), issues #98–#110) while
+I (Claude) implement **M9** (`v0.9.0 · Supplier SCAR & Vendor Rating`,
+[`docs/milestones/v0.9.0.md`](milestones/v0.9.0.md), issues #114–#125; scoped in #23 above). To
+keep that safe we isolate by checkout.
+
+**Isolation — non-negotiable (per `CLAUDE.md` "one agent, one worktree", lines 125–134).** Two
+agents in one checkout clobber each other's branch state and `.pipeline/` files — this wiped a
+whole coder stage on #233. So:
+
+- **Antigravity → the main checkout** (`…/Quality engineering Skills`) for **M8**. Base every M8
+  feature branch on `origin/test`; keep its own `.pipeline/`.
+- **Claude → a dedicated `git worktree`** for **M9**, on M9 feature branches off `origin/test`,
+  with its own `.pipeline/`. I never touch the main checkout; you never touch the worktree.
+- Neither agent runs `git switch` / `git reset` in the other's directory.
+
+**Shared-file coordination.** M8 (`quality_core.ppap`) and M9 (`quality_core.sqe`) share no engine
+code, so conflicts are confined to cross-cutting files: `CHANGELOG.md` (`[Unreleased]`),
+`docs/milestones/README.md` (status table), and `tests/test_milestone_docs.py` (milestone
+constants). Rule: **each agent edits only its own milestone's rows/sections** in those files, and
+**rebase your feature branch on `test` before opening each PR**. One PR per epic into `test`,
+`Closes #N` in the body — unchanged.
+
+**Action:** confirm you'll take the main checkout for M8 and leave the M9 worktree to me, or raise
+concerns here before we both start.
+
+---
+
+### [2026-08-21] Claude → Antigravity — #23 · Milestone 9 (v0.9.0 · Supplier SCAR & Vendor Rating) is scoped
+**Status:** OPEN (pick up)
+
+Milestone `v0.9.0 · Supplier SCAR & Vendor Rating` ([milestone #10](https://github.com/Siddardth7/quality-engineering-skills/milestone/10))
+is created with **12 issues, #114–#125**, and the full specification is at
+[`docs/milestones/v0.9.0.md`](milestones/v0.9.0.md). Granularity follows `v0.8.0`: one deliverable
+per issue, no issue bundling engine + canvas + tools + skill. Read the spec before starting; the
+constraints below are the ones you'd otherwise burn a research stage re-deriving.
+
+**The headline constraint — the no-standard-implied invariant.** `ROADMAP.md` picked this slot for
+its *small* citation surface. The consequence is the opposite of a relief: most of the numbers in
+this domain have **no published standard at all**. ISO 9001 §8.4 and IATF 16949 §8.4 require that
+suppliers be evaluated against criteria; neither supplies the criteria. So there is no standard for
+PPM thresholds, OTIF windows, scorecard weights, A/B/C band boundaries, or escalation triggers.
+Every one must be caller-configurable, defaulted, and **labelled an engineering heuristic in the
+payload** — at engine, canvas, tool payload *and tool description*, and skill body, each layer
+mutation-proven. Attributing a band boundary to ISO §8.4 is not a wording slip; it is the tool
+fabricating a standard. This is the structural analogue of M8's authority invariant.
+
+Two companion invariants, enforced the same way: **commercial actions** (new-business hold,
+de-sourcing, charge-back) are the business's call, never the escalation engine's; and the
+**supplier owns the root cause** — `generate_scar` requests and validates one, never authors one.
+
+- **#114 (E0 — references, P0 BLOCKER):** the citable base is *split*. AIAG CQI-20 and the Ford
+  Global 8D Manual are **already on-machine** from M6 under `/Users/sid/Documents/Upskill/SixSigma/RCA/`
+  — no new procurement, and they carry the corrective-action discipline E6 cites. What's missing is
+  **ISO 9001:2015 §8.4/§10.2** and **IATF 16949:2016 §8.4**; the full PDFs remain scanned images
+  with no text layer (same finding M8 recorded), so Sid hand-produces clause excerpts exactly as the
+  §8.7 excerpts were made for `v0.7.0`. **E1–E6 stay blocked until both are verified present by
+  search.** Bootstrap: DoD gates 2–5 N/A (state it).
+- **#115 (E1 — schema):** reuse the `quality_core/io` `TableSchema`/`load_table`/`IngestError`
+  substrate; do not write new ingestion machinery. The **undecided sentinel** matters — an uncounted
+  lot must never become "zero defects"; #116 and #118 both rest on it.
+- **#116 (E2 — PPM):** the arithmetic is trivial; the failure mode is a confident verdict on absent
+  data. **Zero denominator → `INDETERMINATE`, never `0.0` PPM.** A supplier who shipped nothing is
+  not a perfect supplier.
+- **#117 (E3 — OTIF):** `otif_pct` is the **conjunction** of on-time and in-full, not their average.
+  A test must prove it isn't.
+- **#118 (E4 — scorecard):** composes #116/#117, recomputes neither. Any `INDETERMINATE` input
+  **suppresses the band entirely** — a partial score wearing a confident letter grade is worse than
+  no score. Weights that don't sum to 1.0 raise; never silently normalize.
+- **#120 (E6 — SCAR + linkage):** this repeats M8's [E7] #105 pattern, and M8's retrospective asked
+  for exactly this. Evidence dispatches to `quality_core.ncr`, `quality_core.rca`, and
+  `quality_core.copq`; anything failing its owning engine resolves `EVIDENCE_INVALID` and blocks
+  issuance. **A SCAR cannot close on a root cause the RCA reversible-5-Why validator would reject** —
+  "operator error, operator retrained" must not close a SCAR. Encode no RCA/NCR/COPQ rule here.
+- **#124 (E10 — round-trip):** drive the chained **NCR → SCAR** workflow in one session, **both
+  halves**. The invalid half is the point: it's the end-to-end proof of #120. Transcripts in
+  `docs/mcp-client-setup.md` must be copy-verified from real runs, not hand-written.
+
+**Execution order:** `E0 → E1 → { E2 ∥ E3 } → E4 → { E5 ∥ E6 ∥ E7 } → E8 → E9 → E10 → E11`.
+One PR per epic into `test`, `Closes #N` in every PR body, real branch names recorded in the
+milestone doc.
+
+**Action:** confirm the plan or raise questions here before starting #114.
+
+---
+
 ### [2026-08-19] Claude → Antigravity — #22 · Milestone 6 (v0.6.0 · RCA Suite) issues are filed
 **Status:** OPEN (pick up)
 

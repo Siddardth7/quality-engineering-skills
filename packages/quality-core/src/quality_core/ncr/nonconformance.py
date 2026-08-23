@@ -112,6 +112,17 @@ _SUPPLIER_ORIGIN_KEYWORDS: set[str] = {
     "oem",
 }
 
+_NEXT_FIELD_KEYWORDS = (
+    r"(?:measured|actual|reading|dimension|result|spec|specification|"
+    r"requirement|drawing|nominal|target|standard|part|lot|batch|"
+    r"p/n|sn|serial|qty|quantity|detected|at\s+(?:station|line|cell|inspection))\b|"
+    r"found\s*[:=]"
+)
+
+_FIELD_VALUE_PATTERN = (
+    r"((?:(?!\.\s|\.$|[,;\n]|\s+\b(?:" + _NEXT_FIELD_KEYWORDS + r")).)+)"
+)
+
 def _detect_blame_phrases(text: str) -> list[str]:
     """Detect human blame phrasing in text."""
     detected: list[str] = []
@@ -378,12 +389,12 @@ def write_nonconformance(
         )
 
     # Field extraction heuristics from raw_defect_note if explicit fields not provided
-    extracted_what = what_deviated.strip() if what_deviated else None
-    extracted_req = requirement_violated.strip() if requirement_violated else None
-    extracted_meas = measured_evidence.strip() if measured_evidence else None
-    extracted_det = detection_point.strip() if detection_point else None
-    extracted_part = part_lot_id.strip() if part_lot_id else None
-    extracted_uom = unit_of_measure.strip() if unit_of_measure else "units"
+    extracted_what = what_deviated.strip().rstrip(" .,;:") if what_deviated else None
+    extracted_req = requirement_violated.strip().rstrip(" .,;:") if requirement_violated else None
+    extracted_meas = measured_evidence.strip().rstrip(" .,;:") if measured_evidence else None
+    extracted_det = detection_point.strip().rstrip(" .,;:") if detection_point else None
+    extracted_part = part_lot_id.strip().rstrip(" .,;:") if part_lot_id else None
+    extracted_uom = unit_of_measure.strip().rstrip(" .,;:") if unit_of_measure else "units"
 
     if raw_text:
         # Extract quantity if missing
@@ -396,7 +407,7 @@ def write_nonconformance(
         if extracted_part is None:
             part_match = re.search(r"\b(?:part|lot|batch|p/n|sn|serial)\s*[:#]?\s*([A-Za-z0-9\-_]+)\b", raw_text, re.IGNORECASE)
             if part_match:
-                extracted_part = part_match.group(1)
+                extracted_part = part_match.group(1).rstrip(" .,;:")
 
         # Extract detection point if missing
         if extracted_det is None:
@@ -414,36 +425,50 @@ def write_nonconformance(
                 "cell",
                 "audit",
             ):
-                det_match = re.search(r"\b" + re.escape(kw) + r"[A-Za-z0-9\s\-#_]*", raw_text, re.IGNORECASE)
+                det_match = re.search(
+                    r"\b" + re.escape(kw) + r"(?:\s+(?:at\s+)?(?:station|line|cell|gate|bay|area|#)?\s*[A-Za-z0-9\-_]+)?",
+                    raw_text,
+                    re.IGNORECASE,
+                )
                 if det_match:
-                    extracted_det = det_match.group(0).strip(" ,;.")
+                    extracted_det = det_match.group(0).rstrip(" .,;:")
                     break
 
         # Extract requirement/spec if missing
         if extracted_req is None:
-            spec_match = re.search(r"\b(?:spec|specification|requirement|drawing|nominal|target|standard)\b\s*[:=]?\s*([^,;\n]+)", raw_text, re.IGNORECASE)
+            spec_match = re.search(
+                r"\b(?:drawing\s+spec|spec|specification|requirement|drawing|nominal|target|standard)\b\s*[:=]?\s*"
+                + _FIELD_VALUE_PATTERN,
+                raw_text,
+                re.IGNORECASE,
+            )
             if spec_match:
-                extracted_req = spec_match.group(1).strip()
+                extracted_req = spec_match.group(1).rstrip(" .,;:")
 
         # Extract measured evidence if missing
         if extracted_meas is None:
-            meas_match = re.search(r"\b(?:measured|actual|found|reading|dimension|result)\b\s*[:=]?\s*([^,;\n]+)", raw_text, re.IGNORECASE)
+            meas_match = re.search(
+                r"\b(?:(?:measured|actual|reading|dimension|result)\b\s*[:=]?|found\s*[:=])\s*"
+                + _FIELD_VALUE_PATTERN,
+                raw_text,
+                re.IGNORECASE,
+            )
             if meas_match:
-                extracted_meas = meas_match.group(1).strip()
+                extracted_meas = meas_match.group(1).rstrip(" .,;:")
 
         # Extract what deviated if missing
         if extracted_what is None:
             sanitized_raw = _sanitize_blame_and_speculation(raw_text)
             if sanitized_raw:
-                extracted_what = sanitized_raw
+                extracted_what = sanitized_raw.rstrip(" .,;:")
 
     # Sanitize populated fields from blame
     if extracted_what:
         sanitized_what = _sanitize_blame_and_speculation(extracted_what)
-        extracted_what = sanitized_what if sanitized_what else None
+        extracted_what = sanitized_what.rstrip(" .,;:") if sanitized_what else None
     if extracted_meas:
         sanitized_meas = _sanitize_blame_and_speculation(extracted_meas)
-        extracted_meas = sanitized_meas if sanitized_meas else None
+        extracted_meas = sanitized_meas.rstrip(" .,;:") if sanitized_meas else None
 
     fields_populated: list[str] = []
     fields_missing: list[str] = []
@@ -473,17 +498,18 @@ def write_nonconformance(
 
     # Formulate objective statement
     parts: list[str] = []
-    target_item = f"Part/Lot {extracted_part}" if extracted_part else "Inspected material"
-    parts.append(f"Nonconformance on {target_item}: {extracted_what or '[Defect description missing]'}.")
+    target_item = f"Part/Lot {extracted_part.rstrip(' .,;:')}" if extracted_part else "Inspected material"
+    what_clean = extracted_what.rstrip(" .,;:") if extracted_what else "[Defect description missing]"
+    parts.append(f"Nonconformance on {target_item}: {what_clean}.")
 
     if extracted_req:
-        parts.append(f"Requirement violated: {extracted_req}.")
+        parts.append(f"Requirement violated: {extracted_req.rstrip(' .,;:')}.")
     if extracted_meas:
-        parts.append(f"Measured evidence: {extracted_meas}.")
+        parts.append(f"Measured evidence: {extracted_meas.rstrip(' .,;:')}.")
     if qty_int is not None:
-        parts.append(f"Quantity affected: {qty_int} {extracted_uom}.")
+        parts.append(f"Quantity affected: {qty_int} {extracted_uom.rstrip(' .,;:')}.")
     if extracted_det:
-        parts.append(f"Detected at: {extracted_det}.")
+        parts.append(f"Detected at: {extracted_det.rstrip(' .,;:')}.")
 
     statement = " ".join(parts)
 
@@ -497,13 +523,13 @@ def write_nonconformance(
     return NonconformanceWriteResult(
         valid=is_valid,
         statement=statement,
-        what_deviated=extracted_what,
-        requirement_violated=extracted_req,
-        measured_evidence=extracted_meas,
+        what_deviated=extracted_what.rstrip(" .,;:") if extracted_what else None,
+        requirement_violated=extracted_req.rstrip(" .,;:") if extracted_req else None,
+        measured_evidence=extracted_meas.rstrip(" .,;:") if extracted_meas else None,
         quantity_affected=qty_int,
-        detection_point=extracted_det,
-        part_lot_id=extracted_part,
-        unit_of_measure=extracted_uom,
+        detection_point=extracted_det.rstrip(" .,;:") if extracted_det else None,
+        part_lot_id=extracted_part.rstrip(" .,;:") if extracted_part else None,
+        unit_of_measure=extracted_uom.rstrip(" .,;:") if extracted_uom else "units",
         blame_phrases_detected=blame_detected,
         speculation_detected=speculation_detected,
         fields_populated=fields_populated,

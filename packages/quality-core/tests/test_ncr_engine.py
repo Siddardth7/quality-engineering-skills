@@ -73,7 +73,7 @@ def test_write_nonconformance_fully_specified() -> None:
 
 
 def test_write_nonconformance_raw_note_parsing() -> None:
-    """write_nonconformance extracts fields from unstructured raw defect text."""
+    """write_nonconformance extracts exact, clean, disjoint fields from unstructured raw defect text."""
     raw_note = (
         "During receiving inspection at station 1, found lot: LOT-9912 with 50 pcs. "
         "Spec: 12.00 +/- 0.05 mm. Measured: 12.15 mm oversized."
@@ -82,9 +82,12 @@ def test_write_nonconformance_raw_note_parsing() -> None:
     assert res.valid is True
     assert res.quantity_affected == 50
     assert res.part_lot_id == "LOT-9912"
-    assert res.requirement_violated is not None and "12.00" in res.requirement_violated
-    assert res.measured_evidence is not None and "12.15" in res.measured_evidence
-    assert res.detection_point is not None and "receiving inspection" in res.detection_point.lower()
+    assert res.requirement_violated == "12.00 +/- 0.05 mm"
+    assert res.measured_evidence == "12.15 mm oversized"
+    assert res.detection_point == "receiving inspection at station 1"
+    assert ".." not in res.statement
+    assert "Measured:" not in (res.requirement_violated or "")
+    assert "Spec:" not in (res.measured_evidence or "")
     assert res.to_dict()["valid"] is True
 
 
@@ -888,6 +891,298 @@ def test_detect_speculation_phrases_catalogue(phrase: str) -> None:
     """All static speculation phrases in _SPECULATION_PHRASES are detected by _detect_speculation."""
     detected = _detect_speculation(f"Defect observed {phrase} component defect.")
     assert phrase in detected
+
+
+# ==============================================================================
+# 3. Issue #132: Delimiter lookaheads, decimal preservation & sanitization
+# ==============================================================================
+
+
+@pytest.mark.parametrize(
+    ("raw_note", "expected_req", "expected_meas", "expected_part", "expected_qty", "expected_det"),
+    [
+        (
+            "During receiving inspection at station 1, found lot: LOT-9912 with 50 pcs. Spec: 12.00 +/- 0.05 mm. Measured: 12.15 mm oversized.",
+            "12.00 +/- 0.05 mm",
+            "12.15 mm oversized",
+            "LOT-9912",
+            50,
+            "receiving inspection at station 1",
+        ),
+        (
+            "Inspection at cell 3. Batch: B-402, 100 parts. Specification: 45.00 +/- 0.15 mm. Dimension: 45.35 mm.",
+            "45.00 +/- 0.15 mm",
+            "45.35 mm",
+            "B-402",
+            100,
+            "cell 3",
+        ),
+        (
+            "Final inspection at bay 2, SN: SN-8832 qty 5 ea. Drawing spec: 35.000 +0.005/-0.000 mm. Reading: 35.012 mm.",
+            "35.000 +0.005/-0.000 mm",
+            "35.012 mm",
+            "SN-8832",
+            5,
+            "Final inspection at bay 2",
+        ),
+        (
+            "Assembly line 4, part: P-771, 20 pcs. Target: 100.0 psi. Actual: 85.0 psi.",
+            "100.0 psi",
+            "85.0 psi",
+            "P-771",
+            20,
+            "Assembly line 4",
+        ),
+    ],
+)
+def test_write_nonconformance_multi_sentence_disjoint_extraction(
+    raw_note: str,
+    expected_req: str,
+    expected_meas: str,
+    expected_part: str,
+    expected_qty: int,
+    expected_det: str,
+) -> None:
+    """Multi-sentence raw notes produce clean, disjoint extracted fields without cross-field pollution."""
+    res = write_nonconformance(raw_defect_note=raw_note)
+    assert res.valid is True
+    assert res.requirement_violated == expected_req
+    assert res.measured_evidence == expected_meas
+    assert res.part_lot_id == expected_part
+    assert res.quantity_affected == expected_qty
+    assert res.detection_point == expected_det
+
+    # Disjointness checks: requirement and measurement must not overlap or contain each other
+    assert expected_meas not in (res.requirement_violated or "")
+    assert expected_req not in (res.measured_evidence or "")
+    assert "Spec:" not in (res.measured_evidence or "")
+    assert "Measured:" not in (res.requirement_violated or "")
+    assert ".." not in res.statement
+
+
+@pytest.mark.parametrize(
+    ("spec_val", "meas_val", "unit"),
+    [
+        ("12.45", "12.65", "mm"),
+        ("0.10", "0.25", "bar"),
+        ("0.005", "0.012", "mm"),
+        ("35.035", "35.080", "mm"),
+        ("0.0001", "0.0005", "in"),
+        ("100.0", "105.5", "psi"),
+        ("3.14159", "3.14280", "deg"),
+    ],
+)
+def test_write_nonconformance_decimal_preservation(
+    spec_val: str, meas_val: str, unit: str
+) -> None:
+    """Decimal values of varying precisions are preserved intact and not truncated at the decimal point."""
+    spec_str = f"{spec_val} {unit}"
+    meas_str = f"{meas_val} {unit}"
+    raw_note = (
+        f"At station 2, SN: SN-101 with 1 ea. "
+        f"Spec: {spec_str}. Measured: {meas_str}."
+    )
+    res = write_nonconformance(raw_defect_note=raw_note)
+    assert res.valid is True
+    assert res.requirement_violated == spec_str
+    assert res.measured_evidence == meas_str
+    assert ".." not in res.statement
+
+
+@pytest.mark.parametrize(
+    ("spec_expr", "meas_expr"),
+    [
+        ("12.00 +/- 0.05 mm", "12.15 mm"),
+        ("12.00 ± 0.10 mm", "12.25 mm"),
+        ("35.000 +0.005/-0.000 mm", "35.012 mm"),
+        ("25.0 +0.05/-0.02 mm", "25.10 mm"),
+        ("Max surface pore diameter <= 0.50 mm", "0.85 mm"),
+        ("Roundness <= 0.01 mm", "0.04 mm"),
+        ("Tensile strength >= 500 MPa", "450 MPa"),
+        ("Concentricity <= 0.02 mm", "0.05 mm"),
+        ("Torque >= 40.0 Nm", "32.5 Nm"),
+    ],
+)
+def test_write_nonconformance_tolerances_and_inequalities(
+    spec_expr: str, meas_expr: str
+) -> None:
+    """Bilateral, unilateral, and inequality tolerances are captured intact without truncating operators."""
+    raw_note = (
+        f"Incoming inspection at station 5, lot: LOT-TOL-1 with 10 pcs. "
+        f"Drawing: {spec_expr}. Result: {meas_expr}."
+    )
+    res = write_nonconformance(raw_defect_note=raw_note)
+    assert res.valid is True
+    assert res.requirement_violated == spec_expr
+    assert res.measured_evidence == meas_expr
+    assert ".." not in res.statement
+
+
+@pytest.mark.parametrize(
+    ("spec_str", "meas_str"),
+    [
+        ("100.0 psi", "115.0 psi"),
+        ("45.0 Nm", "20.0 Nm"),
+        ("150.0 °C", "175.5 °C"),
+        ("90.0 deg", "92.5 deg"),
+        ("50.0 sccm", "65.0 sccm"),
+        ("6.0 bar", "4.2 bar"),
+        ("250 N", "180 N"),
+        ("12.00 mm", "12.50 mm"),
+        ("101.3 kPa", "95.0 kPa"),
+    ],
+)
+def test_write_nonconformance_engineering_units(
+    spec_str: str, meas_str: str
+) -> None:
+    """Engineering units remain attached to numeric values in both requirement and measured evidence."""
+    raw_note = (
+        f"During in-process inspection at line 1, part: ENG-001 with 8 units. "
+        f"Standard: {spec_str}. Reading: {meas_str}."
+    )
+    res = write_nonconformance(raw_defect_note=raw_note)
+    assert res.valid is True
+    assert res.requirement_violated == spec_str
+    assert res.measured_evidence == meas_str
+    assert ".." not in res.statement
+
+
+@pytest.mark.parametrize(
+    ("narrative_note", "expected_meas", "expected_req"),
+    [
+        (
+            "Found 10 defective parts at station 1. Spec: 10.0 mm. Measured: 10.5 mm.",
+            "10.5 mm",
+            "10.0 mm",
+        ),
+        (
+            "During audit found lot: LOT-9912 at receiving with 50 pcs. Requirement: 25.0 mm. Actual: 25.8 mm.",
+            "25.8 mm",
+            "25.0 mm",
+        ),
+        (
+            "Technician found loose fasteners at assembly line 2. Nominal: 45 Nm. Result: 20 Nm.",
+            "20 Nm",
+            "45 Nm",
+        ),
+    ],
+)
+def test_write_nonconformance_narrative_found_isolation(
+    narrative_note: str, expected_meas: str, expected_req: str
+) -> None:
+    """Narrative occurrences of 'found' as a verb do not overwrite or corrupt measured evidence."""
+    res = write_nonconformance(raw_defect_note=narrative_note)
+    assert res.measured_evidence == expected_meas
+    assert res.requirement_violated == expected_req
+    assert "found" not in (res.measured_evidence or "").lower()
+
+
+@pytest.mark.parametrize(
+    ("raw_note", "expected_meas"),
+    [
+        (
+            "At station 1, part: P-01 with 5 pcs. Drawing: 10.0 mm. Found: 10.5 mm.",
+            "10.5 mm",
+        ),
+        (
+            "At station 1, part: P-02 with 5 pcs. Spec: 20.0 mm. Found = 20.8 mm.",
+            "20.8 mm",
+        ),
+        (
+            "Inspection at cell 4, part: P-03 with 2 pcs. Target: 5.0 bar. Found: 6.2 bar.",
+            "6.2 bar",
+        ),
+    ],
+)
+def test_write_nonconformance_quantitative_found_colon_prefix(
+    raw_note: str, expected_meas: str
+) -> None:
+    """Quantitative 'Found:' or 'Found =' prefix cleanly extracts measured evidence."""
+    res = write_nonconformance(raw_defect_note=raw_note)
+    assert res.measured_evidence == expected_meas
+    assert "Found" not in (res.measured_evidence or "")
+
+
+def test_write_nonconformance_doubled_period_elimination_explicit_fields() -> None:
+    """Trailing periods and punctuation on explicit input fields do not produce doubled periods ('..')."""
+    res = write_nonconformance(
+        what_deviated="Cast porosity on brake caliper flange.",
+        requirement_violated="DWG-BRK-004 Rev D: Max surface pore diameter <= 0.50 mm.",
+        measured_evidence="Measured surface pore diameter 0.85 mm.",
+        quantity_affected=45,
+        detection_point="Receiving Inspection at station 1.",
+        part_lot_id="LOT-BRK-8821.",
+        unit_of_measure="pcs.",
+    )
+    assert res.valid is True
+    assert ".." not in res.statement
+    assert not res.statement.endswith("..")
+    # All sentences end in single period followed by space or end
+    sentences = [s.strip() for s in res.statement.split(". ") if s.strip()]
+    for s in sentences:
+        assert not s.endswith("..")
+    # Extracted fields should be cleanly stripped of trailing punctuation
+    assert res.what_deviated == "Cast porosity on brake caliper flange"
+    assert res.requirement_violated == "DWG-BRK-004 Rev D: Max surface pore diameter <= 0.50 mm"
+    assert res.measured_evidence == "Measured surface pore diameter 0.85 mm"
+    assert res.detection_point == "Receiving Inspection at station 1"
+    assert res.part_lot_id == "LOT-BRK-8821"
+
+
+@pytest.mark.parametrize(
+    "trailing_punct",
+    [".", ",", ";", ":", "   ", ".,;:", ". "],
+)
+def test_write_nonconformance_trailing_punctuation_variations(trailing_punct: str) -> None:
+    """Various trailing punctuation characters on all fields are stripped without generating invalid punctuation."""
+    res = write_nonconformance(
+        what_deviated=f"Surface scratch on sealing face{trailing_punct}",
+        requirement_violated=f"Zero scratches allowed{trailing_punct}",
+        measured_evidence=f"0.15 mm scratch present{trailing_punct}",
+        quantity_affected=10,
+        detection_point=f"Station 4{trailing_punct}",
+        part_lot_id=f"LOT-PUNCT-1{trailing_punct}",
+        unit_of_measure=f"pcs{trailing_punct}",
+    )
+    assert res.valid is True
+    assert ".." not in res.statement
+    assert ",." not in res.statement
+    assert ";." not in res.statement
+    assert ":." not in res.statement
+    assert res.what_deviated == "Surface scratch on sealing face"
+    assert res.requirement_violated == "Zero scratches allowed"
+    assert res.measured_evidence == "0.15 mm scratch present"
+    assert res.detection_point == "Station 4"
+    assert res.part_lot_id == "LOT-PUNCT-1"
+
+
+def test_write_nonconformance_incomplete_and_missing_fields_negative_control() -> None:
+    """Missing mandatory fields result in valid=False, fields_missing populated, and ISO 9001 §8.7 warning."""
+    res = write_nonconformance(what_deviated="Loose fastener on subassembly")
+    assert res.valid is False
+    assert set(res.fields_missing) == {
+        "part_lot_id",
+        "requirement_violated",
+        "measured_evidence",
+        "quantity_affected",
+        "detection_point",
+    }
+    assert any("Incomplete nonconformance statement" in w for w in res.warnings)
+    assert any("ISO 9001 §8.7" in r for r in res.recommendations)
+
+
+def test_write_nonconformance_lookahead_regex_boundary_disjointness() -> None:
+    """Lookahead regex boundary correctly stops requirement extraction before subsequent keyword and period."""
+    raw_note = (
+        "Inspection at station 1. Spec: 12.00 mm. Measured: 12.50 mm. Part: P-100. Qty: 5 pcs."
+    )
+    res = write_nonconformance(raw_defect_note=raw_note)
+    assert res.valid is True
+    assert res.requirement_violated == "12.00 mm"
+    assert res.measured_evidence == "12.50 mm"
+    assert "Measured:" not in (res.requirement_violated or "")
+    assert "Part:" not in (res.measured_evidence or "")
+    assert ".." not in res.statement
 
 
 

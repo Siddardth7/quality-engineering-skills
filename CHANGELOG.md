@@ -8,6 +8,11 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 
 ## [Unreleased]
 
+### Added
+- Scoped Milestone 10 (`v1.0.0` · Production Hardening & Release) in `docs/milestones/v1.0.0.md`: pure hardening on the full 8-domain platform — live-formula Excel exporters (a shared `quality_core.io` core plus one exporter per domain), a full `ASSUMPTIONS_LOG.md`/`CITATIONS.tsv` audit across every module, an end-to-end skill regression, and the `1.0.0` release closeout — decomposed into 12 Epics (E0–E11) filed as GitHub issues #140–#151 on milestone #11, with v0.8.0/v0.9.0 flagged as hard prerequisites and desktop packaging / sha256 audit-hash / local-LLM support held to the v2 backlog (#151).
+- Linked `v1.0.0` in the `ROADMAP.md` Summary Release Matrix to `docs/milestones/v1.0.0.md` (#151).
+- Extended milestone governance test suite `tests/test_milestones_convention.py` with `v1.0.0` traceability assertions across all 12 task issues (#140–#151), release gate criteria, verification artifacts, ROADMAP link, and negative mutation controls (#151).
+
 ### Fixed
 - Unify operator blame and root-cause speculation detection with statement sanitization in `quality_core.ncr.nonconformance`, applying word-boundary and flexible whitespace regexes across the complete 143-combination human noun x blame verb cross-product to eliminate token-pair blame leakage in nonconformance statements (#131).
 - Delimit requirement and measured evidence extraction with lookahead boundaries in `quality_core.ncr.nonconformance.write_nonconformance` to preserve decimals, tolerances, and engineering units while eliminating duplicated statement periods and narrative keyword leakage (#132).

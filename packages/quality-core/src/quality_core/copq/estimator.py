@@ -88,7 +88,7 @@ def _validate_non_negative_float(name: str, val: Any) -> float | None:
 
 def estimate_copq(
     *,
-    items: Sequence[CostItem | dict[str, Any]] | list[Any] | COPQDataset | Any = None,
+    items: Sequence[CostItem | dict[str, Any]] | COPQDataset | None = None,
     scrap_qty: int | None = None,
     unit_cost: float | None = None,
     rework_hours: float | None = None,
@@ -115,7 +115,7 @@ def estimate_copq(
 
     Parameters
     ----------
-    items : list of CostItem or dict, or COPQDataset, optional
+    items : Sequence[CostItem | dict[str, Any]] | COPQDataset | None, optional
         Pre-itemized PAF cost entries.
     scrap_qty : int, optional
         Quantity of units scrapped.
@@ -169,12 +169,14 @@ def estimate_copq(
     Raises
     ------
     TypeError
-        If parameter types are invalid (e.g. booleans passed for numeric values).
+        If parameter types are invalid (e.g. booleans passed for numeric values, or non-string title).
     ValueError
         If numeric values are negative, infinite, NaN, or title is empty.
     """
-    if not isinstance(title, str) or not title.strip():
-        raise TypeError("title must be a non-empty string")
+    if not isinstance(title, str):
+        raise TypeError(f"title must be a string, got {type(title).__name__}: {title!r}")
+    if not title.strip():
+        raise ValueError("title must be a non-empty string")
     clean_title = title.strip()
 
     # Validate inputs
@@ -205,6 +207,18 @@ def estimate_copq(
 
     warnings: list[str] = []
     recommendations: list[str] = []
+
+    if v_w_cost1 is not None and v_w_cost2 is not None and v_w_cost1 != v_w_cost2:
+        warnings.append(
+            f"Conflicting values provided for warranty_cost_per_unit ({v_w_cost1}) and "
+            f"warranty_unit_cost ({v_w_cost2}); using warranty_cost_per_unit={v_w_cost1}."
+        )
+
+    if v_sort_hours is not None and v_containment_hours is not None and v_sort_hours != v_containment_hours:
+        warnings.append(
+            f"Conflicting values provided for sort_hours ({v_sort_hours}) and "
+            f"containment_hours ({v_containment_hours}); using sort_hours={v_sort_hours}."
+        )
 
     # 1. Direct Internal Failure Calculations
     calc_scrap_cost = 0.0
@@ -298,6 +312,8 @@ def estimate_copq(
     if items is not None:
         if isinstance(items, COPQDataset):
             item_list = items.items
+            if v_revenue_base is None and items.revenue_base is not None:
+                v_revenue_base = items.revenue_base
         elif isinstance(items, list):
             item_list = []
             for idx, itm in enumerate(items):
@@ -310,6 +326,8 @@ def estimate_copq(
         else:
             validated_dataset = validate_copq(items)
             item_list = validated_dataset.items
+            if v_revenue_base is None and validated_dataset.revenue_base is not None:
+                v_revenue_base = validated_dataset.revenue_base
 
         item_count = len(item_list)
         for cost_item in item_list:
@@ -335,8 +353,16 @@ def estimate_copq(
 
     # 6. COPQ % of Revenue
     copq_pct_revenue: float | None = None
-    if v_revenue_base is not None and v_revenue_base > 0.0:
-        copq_pct_revenue = round((total_copq / v_revenue_base) * 100.0, 4)
+    if v_revenue_base is not None:
+        if v_revenue_base > 0.0:
+            copq_pct_revenue = round((total_copq / v_revenue_base) * 100.0, 4)
+        else:
+            warnings.append(
+                "revenue_base must be greater than 0.0 to calculate COPQ as a percentage of revenue; received 0.0."
+            )
+            recommendations.append(
+                "Provide a positive revenue_base ($ > 0.0) to calculate COPQ as a percentage of product/organization sales."
+            )
     else:
         recommendations.append("Provide revenue_base ($) to calculate COPQ as a percentage of product/organization sales.")
 

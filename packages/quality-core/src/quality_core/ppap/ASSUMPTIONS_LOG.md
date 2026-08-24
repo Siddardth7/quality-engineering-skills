@@ -43,4 +43,25 @@
 
 ## RULE Entries
 
-<!-- RULE entries are introduced starting in Epic 1 (E1) through Epic 7 (E7) as each schema and calculation module lands. -->
+## RULE 1: Table 4.1 Submission Levels & Table 4.2 Retention/Submission Matrix
+
+**Decision:** Encode the 18-element Production Part Approval Process submission and retention requirements across all five submission levels (Levels 1–5) exactly per AIAG PPAP 4th Edition Section 4, Table 4.1 and Table 4.2. Default to Level 3 when no level is specified. Model requirement codes as `"S"` (Submit), `"R"` (Retain), `"*"`, and `"CUSTOMER_DEFINED"` (for Level 4 non-warrant items when customer requirements are not yet specified).
+
+**Source:**
+- AIAG *Production Part Approval Process (PPAP)* Reference Manual, 4th Edition (June 2006), Section 4 (Table 4.1 & Table 4.2), pp. 17–19:
+> "The organization shall submit the items and/or records specified in the level identified below in Table 4.1 :"
+> "Level 1: Warrant only (and for designated appearance items, an Appearance Approval Report) submitted to the customer."
+> "Level 2: Warrant with product samples and limited supporting data submitted to the customer."
+> "Level 3: Warrant with product samples and complete supporting data submitted to the customer."
+> "Level 4: Warrant and other requirements as defined by the customer."
+> "Level 5: Warrant with product samples and complete supporting data reviewed at the organization's manufacturing location."
+> "See Retention/Submission Requirements Table 4.2 for exact retention/submission requirements for each submission level."
+> "The organization shall use level 3 as the default level for all submissions unless otherwise specified by the authorized customer representative."
+> "Table 4.2 lists submission and retention requirements. Mandatory and applicable requirements for a PPAP record are defined in the PPAP manual and by the customer."
+> "S = The organization shall submit to the customer and retain a copy of records or documentation items at appropriate locations."
+> "R = The organization shall retain at appropriate locations and make available to the customer upon request."
+> "* = The organization shall retain at appropriate locations and submit to the customer upon request."
+
+**Rationale:** Table 4.1 defines the five standardized submission levels and their core scope. Table 4.2 specifies the exact 18-element retention vs. submission matrix. The standard explicitly states that Level 3 is the default submission level for all submissions unless otherwise agreed with the customer. Level 4 specifies that warrant is submitted and other requirements are defined by customer. Level 5 requires all records to be retained and reviewed at the organization's manufacturing location.
+
+**Applied In:** `packages/quality-core/src/quality_core/ppap/table_4_1.py` (`RequirementCode`, `REQUIREMENT_CODES`, `SUBMISSION_LEVELS`, `ELEMENT_IDS`, `TABLE_4_1_MATRIX`, `TABLE_4_1_LEGEND`, `SUBMISSION_LEVEL_DESCRIPTIONS`, `lookup_requirement`, `requirement_legend`, `elements_required_at_level`, `submission_level_description`).

@@ -2,9 +2,9 @@
 
 **Package:** `quality_core.copq`
 **Standard References:**
-- ASQ Certified Six Sigma Green Belt (CSSGB) Body of Knowledge & *The Certified Six Sigma Green Belt Handbook* (2nd Edition, ASQ Quality Press): `/Users/sid/Documents/Upskill/SixSigma/ASQ_six_sigma_green_belt_handb.pdf`, `/Users/sid/Documents/Upskill/SixSigma/_new/ASQ-CSSGB-BoK-2014.pdf`
-- Council for Six Sigma Certification (CSSC) *Lean Six Sigma Green Belt Certification Training Manual* (2018): `/Users/sid/Documents/Upskill/SixSigma/Lean-Six-Sigma-Green-Belt-Certification-Training-Manual-CSSC-2018-06b.pdf`
-- Lumafield Cost of Quality Report (2024, non-standard industry cross-reference benchmark): `/Users/sid/Documents/Upskill/SixSigma/TheLumafieldCostofQualityReportpdf.pdf`
+- ASQ Certified Six Sigma Green Belt (CSSGB) Body of Knowledge & *The Certified Six Sigma Green Belt Handbook* (2nd Edition, ASQ Quality Press): `/Users/sid/Documents/Upskill/SixSigma/COPQ/ASQ_six_sigma_green_belt_handb.pdf`, `/Users/sid/Documents/Upskill/SixSigma/COPQ/_new/ASQ-CSSGB-BoK-2014.pdf`
+- Council for Six Sigma Certification (CSSC) *Lean Six Sigma Green Belt Certification Training Manual* (2018): `/Users/sid/Documents/Upskill/SixSigma/COPQ/Lean-Six-Sigma-Green-Belt-Certification-Training-Manual-CSSC-2018-06b.pdf`
+- Lumafield Cost of Quality Report (2024, non-standard industry cross-reference benchmark): `/Users/sid/Documents/Upskill/SixSigma/COPQ/TheLumafieldCostofQualityReportpdf.pdf`
 
 This document records every non-obvious engineering decision, published taxonomy, and architectural constraint used in the Cost of Poor Quality (COPQ) Suite (`quality_core.copq`).
 

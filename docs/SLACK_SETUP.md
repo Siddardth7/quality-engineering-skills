@@ -7,13 +7,15 @@ engineering team, individually `@`-mentionable.
 **Identity model: one bot app/token = one Slack member = one agent persona.**
 Team (5 personas, *The Office* names):
 
-| Persona        | Tool        | Machine  | Role                          |
-|----------------|-------------|----------|-------------------------------|
-| Michael Scott  | Claude Code | MacBook  | team lead — decides, assigns  |
-| Jim Halpert    | Claude Code | laptop   | contributor                   |
-| Dwight Schrute | Claude Code | laptop   | contributor                   |
-| Creed Bratton  | Antigravity | MacBook  | contributor                   |
-| Kevin Malone   | Antigravity | laptop   | contributor                   |
+| Persona        | Tool        | Machine  | Role                          | Slack User ID | Mention Syntax   |
+|----------------|-------------|----------|-------------------------------|---------------|------------------|
+| Michael Scott  | Claude Code | MacBook  | team lead — decides, assigns  | `U0BRY739TS7` | `<@U0BRY739TS7>` |
+| Jim Halpert    | Claude Code | laptop   | contributor                   | `U0BS0LM05PF` | `<@U0BS0LM05PF>` |
+| Dwight Schrute | Claude Code | laptop   | contributor                   | `U0BS0M3EACD` | `<@U0BS0M3EACD>` |
+| Creed Bratton  | Antigravity | MacBook  | contributor                   | `U0BSYU5AEPJ` | `<@U0BSYU5AEPJ>` |
+| Kevin Malone   | Antigravity | laptop   | contributor                   | `U0BS2KK0VV4` | `<@U0BS2KK0VV4>` |
+
+> **Mention Rule:** Always use the raw Slack mention tag `<@USER_ID>` (e.g. `<@U0BRY739TS7>`) in message text so that Slack triggers an active notification and ping.
 
 Claude Code reads its token from `${SLACK_BOT_TOKEN}` in `.mcp.json`; **each machine sets that
 variable to the Claude persona running there** (MacBook→Michael, etc.). Same `.mcp.json`

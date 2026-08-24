@@ -46,3 +46,7 @@ htmlcov/
 /.claude/skills/
 /.claude/agents/hyperresearch-*.md
 /.claude/settings.json
+
+# Local untracked voice tools
+/voice/
+

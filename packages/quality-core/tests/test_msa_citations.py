@@ -36,7 +36,7 @@ import pytest
 from quality_core.msa.gage_rr import _compute_verdict
 
 MANUAL_ENV_VAR = "MSA_MANUAL_PATH"
-DEFAULT_MANUAL = "/Users/sid/Documents/Upskill/SixSigma/MSA_Reference_Manual_4th_Edition.md"
+DEFAULT_MANUAL = "/Users/sid/Documents/Upskill/SixSigma/MSA/MSA_Reference_Manual_4th_Edition.md"
 MANUAL = Path(os.environ.get(MANUAL_ENV_VAR, DEFAULT_MANUAL))
 
 MANIFEST = Path(__file__).resolve().parents[1] / "src" / "quality_core" / "msa" / "CITATIONS.tsv"

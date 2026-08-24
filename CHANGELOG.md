@@ -9,6 +9,7 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- Reference material procurement and citation scaffold for Milestone 8 PPAP suite (`packages/quality-core/src/quality_core/ppap/ASSUMPTIONS_LOG.md`, `ppap/CITATIONS.tsv`, `ppap/__init__.py`) and per-domain reference manual path mapping in `CLAUDE.md` under `## Standards fidelity` covering PPAP — AIAG PPAP Reference Manual 4th Edition and training deck inventory (#98).
 - Scoped Milestone 10 (`v1.0.0` · Production Hardening & Release) in `docs/milestones/v1.0.0.md`: pure hardening on the full 8-domain platform — live-formula Excel exporters (a shared `quality_core.io` core plus one exporter per domain), a full `ASSUMPTIONS_LOG.md`/`CITATIONS.tsv` audit across every module, an end-to-end skill regression, and the `1.0.0` release closeout — decomposed into 12 Epics (E0–E11) filed as GitHub issues #140–#151 on milestone #11, with v0.8.0/v0.9.0 flagged as hard prerequisites and desktop packaging / sha256 audit-hash / local-LLM support held to the v2 backlog (#151).
 - Linked `v1.0.0` in the `ROADMAP.md` Summary Release Matrix to `docs/milestones/v1.0.0.md` (#151).
 - Extended milestone governance test suite `tests/test_milestones_convention.py` with `v1.0.0` traceability assertions across all 12 task issues (#140–#151), release gate criteria, verification artifacts, ROADMAP link, and negative mutation controls (#151).

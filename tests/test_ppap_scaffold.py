@@ -1,21 +1,21 @@
-"""Test suite for SQE reference-material procurement and citation scaffolding (Issue #114).
+"""Test suite for PPAP reference-material procurement and citation scaffolding (Issue #98).
 
 Validates:
-1. Presence of packages/quality-core/src/quality_core/sqe/ (ASSUMPTIONS_LOG.md, CITATIONS.tsv, __init__.py)
-2. ASSUMPTIONS_LOG.md package metadata and the four standard-reference paths CLAUDE.md maps for this domain
-3. Zero RULE entries and zero CITATIONS.tsv data rows (E0 steady state), making the
+1. Presence of packages/quality-core/src/quality_core/ppap/ (ASSUMPTIONS_LOG.md, CITATIONS.tsv, __init__.py)
+2. ASSUMPTIONS_LOG.md package metadata and the standard-reference paths CLAUDE.md maps for PPAP
+3. Explicit inventory of what the training deck carries vs what it lacks (authoritative vs secondary)
+4. Zero RULE entries and zero CITATIONS.tsv data rows (E0 steady state), making the
    "no RULE entry without a matching CITATIONS.tsv row" invariant vacuously true
-4. The five no-standard-implied declarations recorded verbatim
-5. Presence, tab-delimiter, and canonical header of sqe/CITATIONS.tsv
-6. Per-domain reference manual mapping in CLAUDE.md under ## Standards fidelity for Supplier Quality
-7. CHANGELOG.md entry under [Unreleased] (#114)
-8. Negative controls: invalid TSV delimiters, malformed/permuted TSV headers, non-zero TSV data rows,
-   missing manual paths, missing declarations, missing CLAUDE.md mapping, missing changelog reference
+5. The five honesty, authority, and scoping declarations recorded in ASSUMPTIONS_LOG.md
+6. Presence, tab-delimiter, and canonical header of ppap/CITATIONS.tsv
+7. Per-domain reference manual mapping in CLAUDE.md under ## Standards fidelity for PPAP
+8. CHANGELOG.md entry under [Unreleased] (#98)
+9. Negative controls: invalid TSV delimiters, malformed/permuted TSV headers, non-zero TSV data rows,
+   uncited RULE entries, missing declarations, missing inventory items, missing CLAUDE.md mapping,
+   missing changelog reference, and missing manual detection.
 
-The two ISO/IATF §8.4 excerpt files are hand-produced by the SME and are not on-machine yet; their
-existence is deliberately NOT asserted here (see the HUMAN BLOCKER note on issue #114). Only the two
-already-on-machine manuals (AIAG CQI-20, Ford Global 8D) are existence-checked, and even those skip
-rather than fail, since licensed manuals are on-machine only and not committed to git.
+Licensed reference manuals are on-machine only and not committed to git; presence checks skip
+cleanly when files are absent on CI.
 """
 
 from __future__ import annotations
@@ -28,42 +28,54 @@ from pathlib import Path
 import pytest
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
-_SQE_DIR = _REPO_ROOT / "packages" / "quality-core" / "src" / "quality_core" / "sqe"
-_ASSUMPTIONS_LOG = _SQE_DIR / "ASSUMPTIONS_LOG.md"
-_CITATIONS_TSV = _SQE_DIR / "CITATIONS.tsv"
+_PPAP_DIR = _REPO_ROOT / "packages" / "quality-core" / "src" / "quality_core" / "ppap"
+_ASSUMPTIONS_LOG = _PPAP_DIR / "ASSUMPTIONS_LOG.md"
+_CITATIONS_TSV = _PPAP_DIR / "CITATIONS.tsv"
 _CLAUDE_MD = _REPO_ROOT / "CLAUDE.md"
 _CHANGELOG_MD = _REPO_ROOT / "CHANGELOG.md"
 
-# Marker substring used for the CLAUDE.md Supplier Quality bullet assertion.
-_CLAUDE_MD_SQE_MARKER = "**Supplier Quality (SCAR & Vendor Rating):**"
+# Marker substring used for the CLAUDE.md PPAP bullet assertion.
+_CLAUDE_MD_PPAP_MARKER = "**PPAP:**"
 
-# All four standard-reference paths CLAUDE.md maps for this domain. The first two are forward
-# references only — the excerpt files do not exist on-machine yet and must never be asserted to.
+# Standard reference paths for PPAP domain
 _REFERENCE_PATHS: tuple[str, ...] = (
-    "/Users/sid/Documents/Upskill/SixSigma/SQE/ISO_9001_2015_Section_8_4_and_10_2.md",
-    "/Users/sid/Documents/Upskill/SixSigma/SQE/IATF_16949_2016_Section_8_4.md",
-    "/Users/sid/Documents/Upskill/SixSigma/RCA/AIAG_CQI_20_Effective_Problem_Solving_2nd_Edition.md",
-    "/Users/sid/Documents/Upskill/SixSigma/RCA/Ford_Global_8D_Manual.md",
+    "/Users/sid/Documents/Upskill/SixSigma/PPAP/AIAG_PPAP_4th_Edition.md",
+    "/Users/sid/Documents/Upskill/SixSigma/PPAP/AIAG Production Part Approval Process (PPAP), 4th Edition (2006).pdf",
 )
 
-# Only the manuals that are already on-machine and load-bearing for E6.
+# On-machine manual definitions
 _ON_MACHINE_MANUALS: dict[str, dict[str, str]] = {
-    "AIAG CQI-20": {
-        "path": "/Users/sid/Documents/Upskill/SixSigma/RCA/AIAG_CQI_20_Effective_Problem_Solving_2nd_Edition.md",
-        "marker": "CQI-20",
+    "AIAG PPAP 4th Edition Reference Manual": {
+        "path": "/Users/sid/Documents/Upskill/SixSigma/PPAP/AIAG_PPAP_4th_Edition.md",
+        "marker": "PPAP",
     },
-    "Ford Global 8D": {
-        "path": "/Users/sid/Documents/Upskill/SixSigma/RCA/Ford_Global_8D_Manual.md",
-        "marker": "8D",
+    "AIAG PPAP 4th Edition Training Deck": {
+        "path": "/Users/sid/Documents/Upskill/SixSigma/PPAP/AIAG Production Part Approval Process (PPAP), 4th Edition (2006).pdf",
+        "marker": "PPAP",
     },
 }
 
+_TRAINING_DECK_INVENTORY_PRESENT: tuple[str, ...] = (
+    "18 canonical element names",
+    "Submission Level definitions",
+    "Part Submission Warrant field list",
+)
+
+_TRAINING_DECK_INVENTORY_MISSING: tuple[str, ...] = (
+    "Table 4.1",
+    "Section 5 Part Submission Status",
+    "Section 2.2.11 Initial Process Studies",
+    "Section 3 Customer Notification",
+    "Section 6 Record Retention",
+    "Appendix A",
+)
+
 _DECLARATIONS: tuple[str, ...] = (
-    "PPM acceptance thresholds have no published standard.",
-    "OTIF has no published standard.",
-    "Vendor scorecard weights and A/B/C rating-band boundaries have no published standard.",
-    "Escalation trigger levels have no published standard.",
-    "Any constant introduced later without a published source behind it is to be labelled an **engineering heuristic**, never implied to be a standard.",
+    "ISO 9001:2015 & IATF 16949:2016 Non-Citability Limitation",
+    "OEM Customer-Specific Requirements Out of Scope",
+    "Submission Level 4 Indeterminacy Gate",
+    "The Authority Invariant",
+    "Engineering Heuristics Declaration",
 )
 
 _RULE_HEADING_RE = re.compile(r"^## RULE \d+", re.MULTILINE)
@@ -90,24 +102,35 @@ def _extract_unreleased_changelog_section(content: str) -> str:
     return match.group(1)
 
 
-def test_sqe_dir_and_files_exist() -> None:
-    """Verify the sqe scaffold directory and its three files exist."""
-    assert _SQE_DIR.is_dir(), f"Missing SQE package directory: {_SQE_DIR}"
-    assert _ASSUMPTIONS_LOG.is_file(), f"Missing SQE ASSUMPTIONS_LOG: {_ASSUMPTIONS_LOG}"
-    assert _CITATIONS_TSV.is_file(), f"Missing SQE CITATIONS.tsv: {_CITATIONS_TSV}"
-    assert (_SQE_DIR / "__init__.py").is_file(), f"Missing SQE __init__.py in {_SQE_DIR}"
+def test_ppap_dir_and_files_exist() -> None:
+    """Verify the ppap scaffold directory and its three files exist."""
+    assert _PPAP_DIR.is_dir(), f"Missing PPAP package directory: {_PPAP_DIR}"
+    assert _ASSUMPTIONS_LOG.is_file(), f"Missing PPAP ASSUMPTIONS_LOG: {_ASSUMPTIONS_LOG}"
+    assert _CITATIONS_TSV.is_file(), f"Missing PPAP CITATIONS.tsv: {_CITATIONS_TSV}"
+    assert (_PPAP_DIR / "__init__.py").is_file(), f"Missing PPAP __init__.py in {_PPAP_DIR}"
 
 
 def test_assumptions_log_exists_and_metadata() -> None:
-    """Verify ASSUMPTIONS_LOG.md carries package metadata and every path CLAUDE.md maps for SQE."""
+    """Verify ASSUMPTIONS_LOG.md carries package metadata and every path CLAUDE.md maps for PPAP."""
     content = _ASSUMPTIONS_LOG.read_text(encoding="utf-8")
 
-    assert "# Engineering Assumptions Log — Supplier Quality Engineering (SQE) Suite" in content
-    assert "**Package:** `quality_core.sqe`" in content
-    assert "**Standard References:**" in content
+    assert "# Engineering Assumptions Log — Production Part Approval Process (PPAP) Core" in content
+    assert "**Package:** `quality_core.ppap`" in content
+    assert "## Standard References" in content
 
     for path in _REFERENCE_PATHS:
-        assert path in content, f"Missing standard reference path: {path}"
+        assert path in content, f"Missing standard reference path in assumptions log: {path}"
+
+
+def test_assumptions_log_training_deck_inventory() -> None:
+    """Verify ASSUMPTIONS_LOG.md carries the precise inventory of training deck capabilities and gaps."""
+    content = _ASSUMPTIONS_LOG.read_text(encoding="utf-8")
+
+    assert "Training Deck Inventory:" in content
+    for item in _TRAINING_DECK_INVENTORY_PRESENT:
+        assert item in content, f"Missing verified present training deck item: {item!r}"
+    for item in _TRAINING_DECK_INVENTORY_MISSING:
+        assert item in content, f"Missing non-authoritative training deck missing item: {item!r}"
 
 
 def test_assumptions_log_no_rule_entries_yet() -> None:
@@ -124,17 +147,17 @@ def test_assumptions_log_no_rule_entries_yet() -> None:
         assert heading.removeprefix("## ") in cited_sites, f"RULE without a CITATIONS.tsv row: {heading}"
 
 
-def test_assumptions_log_no_standard_implied_declarations() -> None:
-    """Verify all five no-standard-implied declarations are recorded verbatim."""
+def test_assumptions_log_scoping_and_honesty_declarations() -> None:
+    """Verify all honesty, authority, and scoping declarations are recorded in ASSUMPTIONS_LOG.md."""
     content = _ASSUMPTIONS_LOG.read_text(encoding="utf-8")
 
-    assert "## No-Standard-Implied Declarations" in content
+    assert "## Honesty & Scoping Declarations" in content
     for declaration in _DECLARATIONS:
-        assert declaration in content, f"Missing verbatim declaration: {declaration!r}"
+        assert declaration in content, f"Missing declaration: {declaration!r}"
 
 
 def test_citations_tsv_exists_and_header() -> None:
-    """Verify sqe/CITATIONS.tsv is tab-delimited with the exact canonical header row."""
+    """Verify ppap/CITATIONS.tsv is tab-delimited with the exact canonical header row."""
     raw_content = _CITATIONS_TSV.read_text(encoding="utf-8")
 
     first_line = raw_content.splitlines()[0] if raw_content.splitlines() else ""
@@ -147,21 +170,23 @@ def test_citations_tsv_exists_and_header() -> None:
 
 
 def test_citations_tsv_zero_data_rows() -> None:
-    """Verify sqe/CITATIONS.tsv is header-only — E0 introduces no citations."""
-    _, rows = _validate_citations_tsv_format(_CITATIONS_TSV.read_text(encoding="utf-8"))
-    assert len(rows) == 0, f"E0 scaffold TSV must have zero data rows, found {len(rows)}"
+    """Verify ppap/CITATIONS.tsv is header-only — E0 introduces no citations."""
+    raw_content = _CITATIONS_TSV.read_text(encoding="utf-8")
+    headers, rows = _validate_citations_tsv_format(raw_content)
+    assert headers == ["site", "src_line", "quote"]
+    assert len(rows) == 0, f"Expected 0 data rows in E0 scaffold, found {len(rows)}: {rows}"
 
 
 @pytest.mark.parametrize(
     ("name", "meta"),
     list(_ON_MACHINE_MANUALS.items()),
 )
-def test_on_machine_manuals_exist_and_non_empty(name: str, meta: dict[str, str]) -> None:
-    """Verify the two already-procured manuals exist, are non-empty, and carry authentic markers."""
+def test_on_machine_manuals_check(name: str, meta: dict[str, str]) -> None:
+    """Verify on-machine manual exists and is non-empty if present, skip if absent."""
     manual_path = Path(meta["path"])
     if not manual_path.is_file():
         pytest.skip(
-            f"On-machine reference manual for {name} not found at {manual_path}. "
+            f"On-machine reference file for {name} not found at {manual_path}. "
             "Licensed manuals are on-machine only and not committed to git."
         )
     stat = manual_path.stat()
@@ -174,29 +199,26 @@ def test_on_machine_manuals_exist_and_non_empty(name: str, meta: dict[str, str])
 
 
 def test_claude_md_standards_fidelity_mapping() -> None:
-    """Verify CLAUDE.md maps the Supplier Quality domain to all four reference paths."""
+    """Verify CLAUDE.md maps the PPAP domain to the reference manual path."""
     assert _CLAUDE_MD.is_file(), f"Missing CLAUDE.md: {_CLAUDE_MD}"
     content = _CLAUDE_MD.read_text(encoding="utf-8")
 
     assert "## Standards fidelity" in content
-    assert _CLAUDE_MD_SQE_MARKER in content
-    assert "/Users/sid/Documents/Upskill/SixSigma/SQE/ISO_9001_2015_Section_8_4_and_10_2.md" in content
-    assert "/Users/sid/Documents/Upskill/SixSigma/SQE/IATF_16949_2016_Section_8_4.md" in content
-    assert "AIAG CQI-20 (2nd Ed, 2018)" in content
-    assert "Ford Global 8D Manual" in content
-    assert "/Users/sid/Documents/Upskill/SixSigma/RCA/" in content
+    assert _CLAUDE_MD_PPAP_MARKER in content
+    assert "/Users/sid/Documents/Upskill/SixSigma/PPAP/AIAG_PPAP_4th_Edition.md" in content
+    assert "AIAG Production Part Approval Process (PPAP), 4th Edition (2006).pdf" in content
 
 
-def test_changelog_entry_unreleased_sqe_scaffold() -> None:
-    """Verify CHANGELOG.md documents the Issue #114 scaffold under [Unreleased]."""
+def test_changelog_entry_unreleased_ppap_scaffold() -> None:
+    """Verify CHANGELOG.md documents the Issue #98 scaffold under [Unreleased]."""
     assert _CHANGELOG_MD.is_file(), f"Missing CHANGELOG.md: {_CHANGELOG_MD}"
     content = _CHANGELOG_MD.read_text(encoding="utf-8")
     unreleased = _extract_unreleased_changelog_section(content)
 
     assert "## [Unreleased]" in content
-    assert "#114" in unreleased, "CHANGELOG.md [Unreleased] must reference issue #114"
-    assert "quality_core/sqe/ASSUMPTIONS_LOG.md" in unreleased
-    assert "sqe/CITATIONS.tsv" in unreleased
+    assert "#98" in unreleased, "CHANGELOG.md [Unreleased] must reference issue #98"
+    assert "quality_core/ppap/ASSUMPTIONS_LOG.md" in unreleased
+    assert "ppap/CITATIONS.tsv" in unreleased
     assert "CLAUDE.md" in unreleased
 
 
@@ -243,7 +265,7 @@ def test_negative_control_citations_tsv_unexpected_rows_rejected() -> None:
 
 def test_negative_control_uncited_rule_entry_detected() -> None:
     """Negative control: assert a RULE heading with no matching CITATIONS.tsv row is detectable."""
-    mutated_log = "## RULE Entries\n\n## RULE 1: PPM Denominator Basis\n\n**Decision:** something.\n"
+    mutated_log = "## RULE Entries\n\n## RULE 1: Initial Process Studies Band\n\n**Decision:** something.\n"
     rule_headings = _RULE_HEADING_RE.findall(mutated_log)
     assert rule_headings == ["## RULE 1"], "Mutated log must expose a RULE heading"
     assert rule_headings != [], "Zero-RULE assertion must fail on a log that carries a RULE entry"
@@ -254,25 +276,22 @@ def test_negative_control_uncited_rule_entry_detected() -> None:
 
 
 def test_negative_control_assumptions_missing_declaration_rejected() -> None:
-    """Negative control: assert an ASSUMPTIONS_LOG missing a declaration fails the presence check."""
+    """Negative control: assert an ASSUMPTIONS_LOG missing a declaration fails presence check."""
     mutated_content = (
-        "# Engineering Assumptions Log — Supplier Quality Engineering (SQE) Suite\n"
-        "**Package:** `quality_core.sqe`\n"
-        "**Standard References:**\n"
-        "## No-Standard-Implied Declarations\n"
-        "- **PPM acceptance thresholds have no published standard.**\n"
+        "# Engineering Assumptions Log — Production Part Approval Process (PPAP) Core\n"
+        "**Package:** `quality_core.ppap`\n"
+        "## Honesty & Scoping Declarations\n"
+        "- **Submission Level 4 Indeterminacy Gate**\n"
     )
-    assert "OTIF has no published standard." not in mutated_content, (
-        "Mutated log lacking the OTIF declaration must be detected"
-    )
-    assert "Escalation trigger levels have no published standard." not in mutated_content
+    assert "The Authority Invariant" not in mutated_content, "Mutated log lacking authority invariant must be detected"
+    assert "Engineering Heuristics Declaration" not in mutated_content
 
 
 def test_negative_control_assumptions_missing_reference_path_rejected() -> None:
     """Negative control: assert an ASSUMPTIONS_LOG missing a mapped reference path is detectable."""
     mutated_content = (
-        "# Engineering Assumptions Log — Supplier Quality Engineering (SQE) Suite\n"
-        "**Package:** `quality_core.sqe`\n"
+        "# Engineering Assumptions Log — Production Part Approval Process (PPAP) Core\n"
+        "**Package:** `quality_core.ppap`\n"
         "**Standard References:**\n"
         "- Some other standard\n"
     )
@@ -280,23 +299,31 @@ def test_negative_control_assumptions_missing_reference_path_rejected() -> None:
         assert path not in mutated_content, f"Mutated log must not contain reference path {path}"
 
 
+def test_negative_control_assumptions_missing_inventory_rejected() -> None:
+    """Negative control: assert missing training deck inventory item is detected."""
+    mutated_content = "Training Deck Inventory:\n- 18 canonical element names\n"
+    assert "Section 5 Part Submission Status" not in mutated_content, (
+        "Mutated content missing Section 5 inventory must be detected"
+    )
+
+
 def test_negative_control_claude_md_missing_domain_rejected() -> None:
-    """Negative control: assert CLAUDE.md without the Supplier Quality bullet fails validation."""
+    """Negative control: assert CLAUDE.md without the PPAP bullet fails validation."""
     mutated_content = "## Standards fidelity\n- **MSA:** AIAG MSA\n- **RCA:** AIAG CQI-20\n- **NCR:** ISO 9001\n"
-    assert _CLAUDE_MD_SQE_MARKER not in mutated_content
-    assert "/Users/sid/Documents/Upskill/SixSigma/IATF_16949_2016_Section_8_4.md" not in mutated_content
+    assert _CLAUDE_MD_PPAP_MARKER not in mutated_content
+    assert "/Users/sid/Documents/Upskill/SixSigma/PPAP/AIAG_PPAP_4th_Edition.md" not in mutated_content
 
 
 def test_negative_control_missing_manual_path_detection(tmp_path: Path) -> None:
     """Negative control: assert non-existent manual path is properly flagged as missing."""
-    non_existent = tmp_path / "Non_Existent_Manual.md"
+    non_existent = tmp_path / "Non_Existent_PPAP_Manual.md"
     assert not non_existent.exists(), "Non-existent path must evaluate to False"
     assert not non_existent.is_file(), "Non-existent path must not report as a file"
 
 
 def test_negative_control_missing_changelog_entry_detected() -> None:
-    """Negative control: assert a changelog without #114 under [Unreleased] fails validation."""
+    """Negative control: assert a changelog without #98 under [Unreleased] fails validation."""
     bogus_changelog = "## [Unreleased]\n\n### Added\n- Some other feature (#80)\n\n## [0.7.0] - 2026-08-22\n"
     unreleased = _extract_unreleased_changelog_section(bogus_changelog)
-    assert "#114" not in unreleased, "Bogus changelog without #114 must not pass #114 membership assertion"
-    assert "quality_core/sqe/ASSUMPTIONS_LOG.md" not in unreleased
+    assert "#98" not in unreleased, "Bogus changelog without #98 must not pass #98 membership assertion"
+    assert "quality_core/ppap/ASSUMPTIONS_LOG.md" not in unreleased

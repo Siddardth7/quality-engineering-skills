@@ -39,13 +39,13 @@ MANUAL_PATHS: dict[str, Path] = {
     "ISO_9001": Path(
         os.environ.get(
             "ISO_9001_MANUAL_PATH",
-            "/Users/sid/Documents/Upskill/SixSigma/ISO_9001_2015_Section_8_7.md",
+            "/Users/sid/Documents/Upskill/SixSigma/NCR/ISO_9001_2015_Section_8_7.md",
         )
     ),
     "IATF_16949": Path(
         os.environ.get(
             "IATF_16949_MANUAL_PATH",
-            "/Users/sid/Documents/Upskill/SixSigma/IATF_16949_2016_Section_8_7.md",
+            "/Users/sid/Documents/Upskill/SixSigma/NCR/IATF_16949_2016_Section_8_7.md",
         )
     ),
 }

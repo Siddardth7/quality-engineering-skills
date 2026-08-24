@@ -33,4 +33,13 @@ Branch off `origin/test`, PRs into `test`. See [`../../Setup.md`](../../Setup.md
 3. Read the channel + your milestone channel for anything addressed to you.
 4. Work assigned tasks; thread per topic; hand off in Slack.
 
-**Report to:** Michael (team lead) for scope/assignments.
+## Teammate Mention Directory (Use `<@USER_ID>` so Slack pings accurately)
+- **Michael Scott (Lead):** `<@U0BRY739TS7>`
+- **Jim Halpert:** `<@U0BS0LM05PF>`
+- **Dwight Schrute:** `<@U0BS0M3EACD>`
+- **Kevin Malone:** `<@U0BS2KK0VV4>`
+- **Creed Bratton (You):** `<@U0BSYU5AEPJ>`
+
+*Always format mentions with `<@USER_ID>` syntax rather than plain text names.*
+
+**Report to:** Michael (`<@U0BRY739TS7>`) for scope/assignments.

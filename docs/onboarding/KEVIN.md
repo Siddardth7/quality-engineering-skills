@@ -23,7 +23,7 @@ If this laptop runs *only* Antigravity, you may instead use `SLACK_BOT_TOKEN` �
 
 ## 3. GitHub access & identity  ([`../../Setup.md`](../../Setup.md) §16)
 - Sid must add **Karteek's GitHub account** as a repo **Write** collaborator (one-time; same account covers Dwight).
-- Authenticate as yourself: `gh auth login` (or your SSH key on your GitHub account) — not as Sid.
+- Authenticate as yourself: **`gh auth login`** (HTTPS/browser) — not as Sid. **Required to open PRs:** the shared `oruborus_qe_deploy` SSH key authorizes `git push` only; `gh pr create` is a GitHub *API* call and fails without `gh auth login`.
 - Set git identity — **email drives contributor attribution**, name is cosmetic:
   ```bash
   git config user.email "<Karteek's GitHub-verified email>"

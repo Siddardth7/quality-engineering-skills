@@ -86,11 +86,11 @@ jobs:
       # primitives), canvas (FMEA/SPC/MSA visual canvas architectures), msa (MSA Gage
       # R&R engine), controlplan (Control Plan engine & PFMEA linkage), rca (Root Cause
       # Analysis schema & engine), ncr (Nonconformance Reporting schema), copq (Cost of Poor
-      # Quality schema), and sqe (Supplier Quality Engineering schema — E1 scaffold) — must be
-      # fully covered by quality-core's OWN tests. One run
-      # over packages/quality-core covers all eleven; the combined --cov-fail-under=100 fails
-      # if any line in any of them is uncovered. branch coverage is inherited from
-      # [tool.coverage.run] branch=true in pyproject.
+      # Quality schema), sqe (Supplier Quality Engineering schema), and ppap (Production
+      # Part Approval Process schema, Table 4.1 matrix, and applicability engine) — must be
+      # fully covered by quality-core's OWN tests. One run over packages/quality-core covers
+      # all twelve; the combined --cov-fail-under=100 fails if any line in any of them is
+      # uncovered. branch coverage is inherited from [tool.coverage.run] branch=true in pyproject.
       - name: Core coverage gate
         run: >
           uv run pytest packages/quality-core
@@ -105,6 +105,7 @@ jobs:
           --cov=quality_core.ncr
           --cov=quality_core.copq
           --cov=quality_core.sqe
+          --cov=quality_core.ppap
           --cov-report=term-missing
           --cov-fail-under=100
 

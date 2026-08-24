@@ -50,3 +50,7 @@ htmlcov/
 # Local untracked voice tools
 /voice/
 
+
+# Local persona and agent rules
+/.agents/
+/docs/personas/

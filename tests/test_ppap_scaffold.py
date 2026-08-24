@@ -40,7 +40,7 @@ _CLAUDE_MD_PPAP_MARKER = "**PPAP:**"
 # Standard reference paths for PPAP domain
 _REFERENCE_PATHS: tuple[str, ...] = (
     "/Users/sid/Documents/Upskill/SixSigma/PPAP/AIAG_PPAP_4th_Edition.md",
-    "/Users/sid/Documents/Upskill/SixSigma/AIAG Production Part Approval Process (PPAP), 4th Edition (2006).pdf",
+    "/Users/sid/Documents/Upskill/SixSigma/PPAP/AIAG Production Part Approval Process (PPAP), 4th Edition (2006).pdf",
 )
 
 # On-machine manual definitions
@@ -50,7 +50,7 @@ _ON_MACHINE_MANUALS: dict[str, dict[str, str]] = {
         "marker": "PPAP",
     },
     "AIAG PPAP 4th Edition Training Deck": {
-        "path": "/Users/sid/Documents/Upskill/SixSigma/AIAG Production Part Approval Process (PPAP), 4th Edition (2006).pdf",
+        "path": "/Users/sid/Documents/Upskill/SixSigma/PPAP/AIAG Production Part Approval Process (PPAP), 4th Edition (2006).pdf",
         "marker": "PPAP",
     },
 }

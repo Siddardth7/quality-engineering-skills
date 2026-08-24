@@ -17,7 +17,7 @@ import pytest
 
 MANUAL_ENV_VAR = "FMEA_MANUAL_PATH"
 DEFAULT_MANUAL = (
-    "/Users/sid/Documents/Upskill/SixSigma/pdfcoffee.com_aiag-vda-fmea-handbook-1-version-juni-2019-englisch-pdf-free.md"
+    "/Users/sid/Documents/Upskill/SixSigma/FMEA/pdfcoffee.com_aiag-vda-fmea-handbook-1-version-juni-2019-englisch-pdf-free.md"
 )
 MANUAL = Path(os.environ.get(MANUAL_ENV_VAR, DEFAULT_MANUAL))
 

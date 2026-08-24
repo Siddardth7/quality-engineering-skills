@@ -40,8 +40,8 @@ _CLAUDE_MD_SQE_MARKER = "**Supplier Quality (SCAR & Vendor Rating):**"
 # All four standard-reference paths CLAUDE.md maps for this domain. The first two are forward
 # references only — the excerpt files do not exist on-machine yet and must never be asserted to.
 _REFERENCE_PATHS: tuple[str, ...] = (
-    "/Users/sid/Documents/Upskill/SixSigma/ISO_9001_2015_Section_8_4_and_10_2.md",
-    "/Users/sid/Documents/Upskill/SixSigma/IATF_16949_2016_Section_8_4.md",
+    "/Users/sid/Documents/Upskill/SixSigma/SQE/ISO_9001_2015_Section_8_4_and_10_2.md",
+    "/Users/sid/Documents/Upskill/SixSigma/SQE/IATF_16949_2016_Section_8_4.md",
     "/Users/sid/Documents/Upskill/SixSigma/RCA/AIAG_CQI_20_Effective_Problem_Solving_2nd_Edition.md",
     "/Users/sid/Documents/Upskill/SixSigma/RCA/Ford_Global_8D_Manual.md",
 )
@@ -180,8 +180,8 @@ def test_claude_md_standards_fidelity_mapping() -> None:
 
     assert "## Standards fidelity" in content
     assert _CLAUDE_MD_SQE_MARKER in content
-    assert "/Users/sid/Documents/Upskill/SixSigma/ISO_9001_2015_Section_8_4_and_10_2.md" in content
-    assert "/Users/sid/Documents/Upskill/SixSigma/IATF_16949_2016_Section_8_4.md" in content
+    assert "/Users/sid/Documents/Upskill/SixSigma/SQE/ISO_9001_2015_Section_8_4_and_10_2.md" in content
+    assert "/Users/sid/Documents/Upskill/SixSigma/SQE/IATF_16949_2016_Section_8_4.md" in content
     assert "AIAG CQI-20 (2nd Ed, 2018)" in content
     assert "Ford Global 8D Manual" in content
     assert "/Users/sid/Documents/Upskill/SixSigma/RCA/" in content

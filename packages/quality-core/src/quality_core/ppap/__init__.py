@@ -6,6 +6,14 @@ and cross-engine linkage.
 
 from __future__ import annotations
 
+from quality_core.ppap.applicability import (
+    APPLICABILITY_VERDICTS,
+    CONDITIONAL_ELEMENTS,
+    ApplicabilityResult,
+    ApplicabilityVerdict,
+    ElementApplicability,
+    assess_applicability,
+)
 from quality_core.ppap.schema import (
     EVIDENCE_STATUS_ALIASES,
     EVIDENCE_STATUS_VALUES,
@@ -31,8 +39,13 @@ from quality_core.ppap.schema import (
 )
 
 __all__ = [
+    "APPLICABILITY_VERDICTS",
+    "ApplicabilityResult",
+    "ApplicabilityVerdict",
+    "CONDITIONAL_ELEMENTS",
     "EVIDENCE_STATUS_ALIASES",
     "EVIDENCE_STATUS_VALUES",
+    "ElementApplicability",
     "EvidenceItem",
     "EvidenceStatus",
     "IngestError",
@@ -50,6 +63,7 @@ __all__ = [
     "SUBMISSION_LEVEL_ALIASES",
     "SUBMISSION_LEVEL_DESCRIPTIONS",
     "SubmissionLevel",
+    "assess_applicability",
     "load_ppap_csv",
     "validate_ppap",
 ]

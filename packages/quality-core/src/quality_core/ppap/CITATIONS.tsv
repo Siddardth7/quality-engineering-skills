@@ -23,3 +23,13 @@ RULE 2	480	Level 3 — Warrant with product samples and complete supporting data
 RULE 2	490	Level 4 — Warrant and other requirements as defined by customer.
 RULE 2	500	Level 5 — Warrant with product samples and complete supporting data reviewed at supplier's manufacturing location.
 RULE 3	720	REASON FOR SUBMISSION: Initial Submission, Engineering Change(s), Tooling: Transfer, Replacement, Refurbishment, or additional, Correction of Discrepancy, Tooling Inactive > than 1 year, Change to Optional Construction or Material, Sub-Supplier or Material Source Change, Change in Part Processing, Parts Produced at Additional Location, Other
+RULE 4	210	Where specified by the customer, the organization shall have evidence of customer engineering approval.
+RULE 4	230	The organization shall have a Design FMEA for parts or materials for which they are design-responsible.
+RULE 4	380	A separate Appearance Approval Report (AAR) shall be completed for each part or series of parts for which a submission is required if the product/part has appearance requirements on the design record.
+RULE 4	410	The organization shall retain a master sample for the same period as the production part approval records
+RULE 4	430	If requested by the customer, the organization shall submit with the PPAP submission any part-specific assembly or component checking aid.
+RULE 5	490	Level 4 — Warrant and other requirements as defined by customer.
+RULE 6	800	Bulk Material - Specific Requirements
+RULE 6	960	Tire Industry - Specific Requirements
+RULE 6	1060	Truck Industry - Specific Requirements
+RULE 7	560	Customer Notification and Submission Requirements

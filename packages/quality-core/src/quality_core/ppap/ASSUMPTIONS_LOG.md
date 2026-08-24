@@ -3,7 +3,7 @@
 **Package:** `quality_core.ppap`  
 **Domain:** Production Part Approval Process (PPAP) 18-Element Completeness Auditor, Table 4.1 Matrix, Applicability Rules, Initial Process Studies Gate, PSW Validator, and Cross-Engine Linkage.  
 **Release Target:** `v0.8.0`  
-**Tracking Issue:** [#98](https://github.com/Siddardth7/quality-engineering-skills/issues/98) (Epic 0) / [#99](https://github.com/Siddardth7/quality-engineering-skills/issues/99) (Epic 1)
+**Tracking Issue:** [#98](https://github.com/Siddardth7/quality-engineering-skills/issues/98) (Epic 0) / [#99](https://github.com/Siddardth7/quality-engineering-skills/issues/99) (Epic 1) / [#101](https://github.com/Siddardth7/quality-engineering-skills/issues/101) (Epic 3)
 
 ---
 
@@ -116,3 +116,76 @@
 **Rationale:** The Part Submission Warrant Field 18 identifies the engineering or commercial trigger initiating a PPAP submission. Standardizing this vocabulary ensures consistent linkage with change management and applicability rules.
 
 **Applied In:** `packages/quality-core/src/quality_core/ppap/schema.py` (`REASON_FOR_SUBMISSION_VALUES`, `REASON_FOR_SUBMISSION_ALIASES`, `PPAPPackage.reason_for_submission`).
+
+---
+
+## RULE 4: Conditional Element Applicability (§2.2.3, §2.2.4, §2.2.13, §2.2.15, §2.2.16)
+
+**Decision:** Formulate element-by-element applicability evaluation yielding `APPLICABLE`, `NOT_APPLICABLE`, or `INDETERMINATE` for the five conditional PPAP elements:
+1. **Design FMEA (§2.2.4):** `APPLICABLE` when the organization is design-responsible (`has_design_responsibility is True`). Resolves `NOT_APPLICABLE` when the customer is design-responsible (`has_design_responsibility is False`). Resolves `INDETERMINATE` when un-surveyed (`None`).
+2. **Appearance Approval Report (§2.2.13):** `APPLICABLE` only when the part has appearance requirements on the design record (`appearance_item is True`). Resolves `NOT_APPLICABLE` when `appearance_item is False`. Resolves `INDETERMINATE` when un-surveyed (`None`).
+3. **Checking Aids (§2.2.16):** `APPLICABLE` only when part-specific assembly or component checking aids exist (`has_checking_aid is True`). Resolves `NOT_APPLICABLE` when `has_checking_aid is False`. Resolves `INDETERMINATE` when un-surveyed (`None`).
+4. **Customer Engineering Approval (§2.2.3):** `APPLICABLE` where specified by customer contract or specification (`customer_engineering_approval_required is True`). Resolves `NOT_APPLICABLE` when not required (`customer_engineering_approval_required is False`). Resolves `INDETERMINATE` when un-surveyed (`None`).
+5. **Master Sample (§2.2.15):** `APPLICABLE` by default (`master_sample_waived is False`). Resolves `NOT_APPLICABLE` only upon documented customer waiver (`master_sample_waived is True`). Resolves `INDETERMINATE` when un-surveyed (`None`).
+
+All remaining 13 elements (§2.2.1, §2.2.2, §2.2.5–§2.2.12, §2.2.14, §2.2.17, §2.2.18) are unconditionally `APPLICABLE` for standard discrete-part submissions. When any element is `INDETERMINATE`, the package verdict resolves `INDETERMINATE`.
+
+**Source:** AIAG PPAP Reference Manual, 4th Edition (June 2006):
+- §2.2.4 (Line 230):
+> "The organization shall have a Design FMEA for parts or materials for which they are design-responsible."
+- §2.2.13 (Line 380):
+> "A separate Appearance Approval Report (AAR) shall be completed for each part or series of parts for which a submission is required if the product/part has appearance requirements on the design record."
+- §2.2.16 (Line 430):
+> "If requested by the customer, the organization shall submit with the PPAP submission any part-specific assembly or component checking aid."
+- §2.2.3 (Line 210):
+> "Where specified by the customer, the organization shall have evidence of customer engineering approval."
+- §2.2.15 (Line 410):
+> "The organization shall retain a master sample for the same period as the production part approval records"
+
+**Rationale:** The AIAG PPAP 4th Edition standard establishes that certain elements are strictly contingent on part characteristics or commercial assignment of responsibility. Forcing suppliers to submit DFMEAs when the customer owns design responsibility, or requiring AARs for non-appearance internal components, violates the AIAG standard. Evaluating applicability prior to evidence completeness audits prevents erroneous omission findings.
+
+**Applied In:** `packages/quality-core/src/quality_core/ppap/applicability.py` (`CONDITIONAL_ELEMENTS`, `ElementApplicability`, `assess_applicability`).
+
+---
+
+## RULE 5: Submission Level 4 Indeterminacy Gate (Section 4 & Table 4.1)
+
+**Decision:** When evaluating Submission Level 4 without an explicit customer requirement specification (`customer_level_4_requirements is None`), all 18 elements and the package verdict MUST resolve to `INDETERMINATE`.
+
+**Source:** AIAG PPAP Reference Manual, 4th Edition (June 2006), Section 4 (Line 490) & Table 4.1 (Line 540):
+> "Level 4 — Warrant and other requirements as defined by customer."
+> Table 4.1 footnote: "* = Organization shall retain at appropriate locations and submit to the customer upon request."
+
+**Rationale:** Under AIAG PPAP 4th Edition, Level 4 has no standard default matrix. Every OEM and customer defines their own bespoke subset of elements for Level 4 submissions. Defaulting to Level 3 requirements or guessing customer requirements is a non-conformance.
+
+**Applied In:** `packages/quality-core/src/quality_core/ppap/applicability.py` (`assess_applicability`).
+
+---
+
+## RULE 6: Scope Boundaries for Non-Discrete Commodities (Appendices F, G, H)
+
+**Decision:** Standard discrete-part applicability evaluation is strictly bounded. When processing submissions for commodities covered by specialized AIAG PPAP appendices, the engine emits `INDETERMINATE` with explicit scope boundary notifications directing users to the appropriate appendix:
+- **Appendix F (Bulk Materials):** Bulk Materials Requirements Checklist & Process FMEA/Control Plan exemptions.
+- **Appendix G (Tires):** Tire Industry PPAP requirements & specialized testing.
+- **Appendix H (Truck Industry):** Truck Industry specific requirements & modifications.
+
+**Source:** AIAG PPAP Reference Manual, 4th Edition (June 2006):
+- Appendix F (Bulk Material - Specific Requirements, Lines 800–950)
+- Appendix G (Tire Industry - Specific Requirements, Lines 960–1050)
+- Appendix H (Truck Industry - Specific Requirements, Lines 1060–1150)
+
+**Rationale:** Applying standard discrete manufacturing rules to bulk chemicals, polymers, tires, or heavy-duty truck components causes invalid findings. Flagging out-of-scope commodities as `INDETERMINATE` ensures strict standards honesty.
+
+**Applied In:** `packages/quality-core/src/quality_core/ppap/applicability.py` (`assess_applicability`, `is_bulk_material`, `is_tire`, `is_truck_industry`, `commodity_type`).
+
+---
+
+## RULE 7: Reason for Submission Non-Narrowing (Section 3 & Appendix A)
+
+**Decision:** All 10 AIAG canonical reasons for submission triggers are accepted as valid submission triggers without narrowing or suppressing any standard elements unless explicitly dictated by documented customer contract.
+
+**Source:** AIAG PPAP Reference Manual, 4th Edition (June 2006), Section 3 (Customer Notification and Submission Requirements, Lines 560–680) & Appendix A (Field 18).
+
+**Rationale:** Section 3 requires customer notification and submission for specified situations (e.g. tooling transfer, new supplier, engineering change). The reason for submission explains *why* PPAP is initiated; the submission level determines *what* is submitted vs retained. Inventing arbitrary element reductions based solely on submission reason without customer agreement violates Section 3.
+
+**Applied In:** `packages/quality-core/src/quality_core/ppap/applicability.py` (`assess_applicability`).

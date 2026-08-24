@@ -9,6 +9,7 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- Element-by-element applicability evaluation engine and Submission Level 4 indeterminacy gate per AIAG PPAP 4th Edition in `packages/quality-core/src/quality_core/ppap/applicability.py` and `packages/quality-core/src/quality_core/ppap/__init__.py` (#101).
 - Canonical AIAG PPAP 4th Edition 18-element domain model, Submission Levels 1–5, PSW Field 18 Reason for Submission vocabulary, evidence availability states with undecided sentinel, `EvidenceItem` and `PPAPPackage` models, `PPAP_PACKAGE_SCHEMA` `TableSchema`, and `load_ppap_csv` / `validate_ppap` trust-boundary ingest helpers with column aliasing in `packages/quality-core/src/quality_core/ppap/schema.py` and `packages/quality-core/src/quality_core/ppap/__init__.py` (#99).
 - Core coverage gate in `.github/workflows/ci.yml` extended with `--cov=quality_core.ppap` and verified at 100% line & branch coverage (#99).
 - Reference material procurement and citation scaffold for Milestone 8 PPAP suite (`packages/quality-core/src/quality_core/ppap/ASSUMPTIONS_LOG.md`, `ppap/CITATIONS.tsv`, `ppap/__init__.py`) and per-domain reference manual path mapping in `CLAUDE.md` under `## Standards fidelity` covering PPAP — AIAG PPAP Reference Manual 4th Edition and training deck inventory (#98).

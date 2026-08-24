@@ -3,7 +3,7 @@
 **Package:** `quality_core.ppap`  
 **Domain:** Production Part Approval Process (PPAP) 18-Element Completeness Auditor, Table 4.1 Matrix, Applicability Rules, Initial Process Studies Gate, PSW Validator, and Cross-Engine Linkage.  
 **Release Target:** `v0.8.0`  
-**Tracking Issue:** [#98](https://github.com/Siddardth7/quality-engineering-skills/issues/98) (Epic 0)
+**Tracking Issue:** [#98](https://github.com/Siddardth7/quality-engineering-skills/issues/98) (Epic 0) / [#99](https://github.com/Siddardth7/quality-engineering-skills/issues/99) (Epic 1)
 
 ---
 
@@ -43,4 +43,76 @@
 
 ## RULE Entries
 
-<!-- RULE entries are introduced starting in Epic 1 (E1) through Epic 7 (E7) as each schema and calculation module lands. -->
+## RULE 1: Canonical 18 PPAP Element Vocabulary, Numbering, and Ordering (§2.2.1–§2.2.18)
+
+**Decision:** Encode the 18 canonical AIAG PPAP elements strictly matching the Section 2.2 requirement section numbers (§2.2.1 through §2.2.18), official titles, and 1-indexed numbering:
+1. §2.2.1: Design Records
+2. §2.2.2: Authorized Engineering Change Documents
+3. §2.2.3: Customer Engineering Approval
+4. §2.2.4: Design Failure Mode and Effects Analysis (Design FMEA)
+5. §2.2.5: Process Flow Diagrams
+6. §2.2.6: Process Failure Mode and Effects Analysis (Process FMEA)
+7. §2.2.7: Control Plan
+8. §2.2.8: Measurement System Analysis Studies
+9. §2.2.9: Dimensional Results
+10. §2.2.10: Records of Material / Performance Test Results
+11. §2.2.11: Initial Process Studies
+12. §2.2.12: Qualified Laboratory Documentation
+13. §2.2.13: Appearance Approval Report (AAR)
+14. §2.2.14: Sample Production Parts
+15. §2.2.15: Master Sample
+16. §2.2.16: Checking Aids
+17. §2.2.17: Customer-Specific Requirements
+18. §2.2.18: Part Submission Warrant (PSW)
+
+**Source:** AIAG PPAP Reference Manual, 4th Edition (June 2006), Section 2.2 (Lines 100–450):
+> "2.2.1 Design Records ... 2.2.2 Authorized Engineering Change Documents ... 2.2.3 Customer Engineering Approval ... 2.2.4 Design Failure Mode and Effects Analysis ... 2.2.5 Process Flow Diagrams ... 2.2.6 Process Failure Mode and Effects Analysis ... 2.2.7 Control Plan ... 2.2.8 Measurement System Analysis Studies ... 2.2.9 Dimensional Results ... 2.2.10 Records of Material / Performance Test Results ... 2.2.11 Initial Process Studies ... 2.2.12 Qualified Laboratory Documentation ... 2.2.13 Appearance Approval Report (AAR) ... 2.2.14 Sample Production Parts ... 2.2.15 Master Sample ... 2.2.16 Checking Aids ... 2.2.17 Customer-Specific Requirements ... 2.2.18 Part Submission Warrant (PSW)"
+
+**Rationale:** The AIAG 4th Edition standard Section 2.2 defines the authoritative 18-element taxonomy for automotive production part approval. Exact numbering and nomenclature ensure cross-tier compatibility and standards compliance across all quality workflows.
+
+**Applied In:** `packages/quality-core/src/quality_core/ppap/schema.py` (`PPAP_ELEMENT_IDS`, `PPAP_ELEMENT_NAMES`, `PPAP_ELEMENT_NUMBERS`, `PPAP_ELEMENT_ALIASES`).
+
+---
+
+## RULE 2: Submission Levels 1–5 Verbatim Definitions (Section 4 & Table 4.1)
+
+**Decision:** Encode the 5 Submission Levels (`SubmissionLevel = Literal[1, 2, 3, 4, 5]`) with verbatim manual definitions:
+- **Level 1:** Warrant only (and for designated appearance items, an Appearance Approval Report) submitted to customer.
+- **Level 2:** Warrant with product samples and limited supporting data submitted to customer.
+- **Level 3:** Warrant with product samples and complete supporting data submitted to customer.
+- **Level 4:** Warrant and other requirements as defined by customer.
+- **Level 5:** Warrant with product samples and complete supporting data reviewed at supplier's manufacturing location.
+
+**Source:** AIAG PPAP Reference Manual, 4th Edition (June 2006), Section 4 (Submission Levels, Lines 460–500):
+> "Level 1 — Warrant only (and for designated appearance items, an Appearance Approval Report) submitted to customer.
+> Level 2 — Warrant with product samples and limited supporting data submitted to customer.
+> Level 3 — Warrant with product samples and complete supporting data submitted to customer.
+> Level 4 — Warrant and other requirements as defined by customer.
+> Level 5 — Warrant with product samples and complete supporting data reviewed at supplier's manufacturing location."
+
+**Rationale:** Submission levels govern the location and extent of evidence delivery vs retention at the manufacturing organization. Strict adherence to Table 4.1 level definitions prevents unauthorized assumptions about submission scope.
+
+**Applied In:** `packages/quality-core/src/quality_core/ppap/schema.py` (`SUBMISSION_LEVELS`, `SUBMISSION_LEVEL_DESCRIPTIONS`, `SUBMISSION_LEVEL_ALIASES`, `PPAPPackage.submission_level`).
+
+---
+
+## RULE 3: Part Submission Warrant (PSW) Field 18 Reason for Submission Vocabulary (Appendix A & Section 3)
+
+**Decision:** Encode the 10 canonical AIAG reasons for submission triggers without arbitrary alteration or narrowing:
+1. Initial Submission
+2. Engineering Change(s)
+3. Tooling: Transfer, Replacement, Refurbishment, or additional
+4. Correction of Discrepancy
+5. Tooling Inactive > than 1 year
+6. Change to Optional Construction or Material
+7. Sub-Supplier or Material Source Change
+8. Change in Part Processing
+9. Parts Produced at Additional Location
+10. Other
+
+**Source:** AIAG PPAP Reference Manual, 4th Edition (June 2006), Appendix A (Part Submission Warrant Field 18, Line 720) & Section 3:
+> "REASON FOR SUBMISSION: Initial Submission, Engineering Change(s), Tooling: Transfer, Replacement, Refurbishment, or additional, Correction of Discrepancy, Tooling Inactive > than 1 year, Change to Optional Construction or Material, Sub-Supplier or Material Source Change, Change in Part Processing, Parts Produced at Additional Location, Other"
+
+**Rationale:** The Part Submission Warrant Field 18 identifies the engineering or commercial trigger initiating a PPAP submission. Standardizing this vocabulary ensures consistent linkage with change management and applicability rules.
+
+**Applied In:** `packages/quality-core/src/quality_core/ppap/schema.py` (`REASON_FOR_SUBMISSION_VALUES`, `REASON_FOR_SUBMISSION_ALIASES`, `PPAPPackage.reason_for_submission`).

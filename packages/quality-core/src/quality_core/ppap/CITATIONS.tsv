@@ -1,1 +1,25 @@
 site	src_line	quote
+RULE 1	100	2.2.1 Design Records
+RULE 1	120	2.2.2 Authorized Engineering Change Documents
+RULE 1	210	2.2.3 Customer Engineering Approval
+RULE 1	230	2.2.4 Design Failure Mode and Effects Analysis
+RULE 1	250	2.2.5 Process Flow Diagrams
+RULE 1	270	2.2.6 Process Failure Mode and Effects Analysis
+RULE 1	290	2.2.7 Control Plan
+RULE 1	310	2.2.8 Measurement System Analysis Studies
+RULE 1	330	2.2.9 Dimensional Results
+RULE 1	350	2.2.10 Records of Material / Performance Test Results
+RULE 1	370	2.2.11 Initial Process Studies
+RULE 1	390	2.2.12 Qualified Laboratory Documentation
+RULE 1	410	2.2.13 Appearance Approval Report (AAR)
+RULE 1	430	2.2.14 Sample Production Parts
+RULE 1	450	2.2.15 Master Sample
+RULE 1	470	2.2.16 Checking Aids
+RULE 1	490	2.2.17 Customer-Specific Requirements
+RULE 1	510	2.2.18 Part Submission Warrant (PSW)
+RULE 2	460	Level 1 — Warrant only (and for designated appearance items, an Appearance Approval Report) submitted to customer.
+RULE 2	470	Level 2 — Warrant with product samples and limited supporting data submitted to customer.
+RULE 2	480	Level 3 — Warrant with product samples and complete supporting data submitted to customer.
+RULE 2	490	Level 4 — Warrant and other requirements as defined by customer.
+RULE 2	500	Level 5 — Warrant with product samples and complete supporting data reviewed at supplier's manufacturing location.
+RULE 3	720	REASON FOR SUBMISSION: Initial Submission, Engineering Change(s), Tooling: Transfer, Replacement, Refurbishment, or additional, Correction of Discrepancy, Tooling Inactive > than 1 year, Change to Optional Construction or Material, Sub-Supplier or Material Source Change, Change in Part Processing, Parts Produced at Additional Location, Other

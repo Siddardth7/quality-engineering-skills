@@ -103,6 +103,7 @@ jobs:
           --cov=quality_core.rca
           --cov=quality_core.ncr
           --cov=quality_core.copq
+          --cov=quality_core.ppap
           --cov-report=term-missing
           --cov-fail-under=100
 

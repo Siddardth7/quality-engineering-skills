@@ -6,6 +6,14 @@ Initial Process Studies capability gate, and cross-engine linkage.
 
 from __future__ import annotations
 
+from quality_core.ppap.linkage import (
+    LINKABLE_ELEMENTS,
+    LinkageElementResult,
+    LinkageReport,
+    LinkageVerdict,
+    validate_element_linkage,
+    validate_linked_evidence,
+)
 from quality_core.ppap.process_study import (
     ACCEPTANCE_THRESHOLD_CAPABLE,
     ACCEPTANCE_THRESHOLD_POTENTIALLY_CAPABLE,
@@ -35,9 +43,15 @@ __all__ = [
     "ACTION_UNSTABLE",
     "AcceptanceBand",
     "IndexType",
+    "LINKABLE_ELEMENTS",
+    "LinkageElementResult",
+    "LinkageReport",
+    "LinkageVerdict",
     "MINIMUM_INITIAL_STUDY_SAMPLES",
     "MINIMUM_INITIAL_STUDY_SUBGROUPS",
     "ProcessStudyResult",
     "StudyVerdict",
     "assess_initial_process_study",
+    "validate_element_linkage",
+    "validate_linked_evidence",
 ]

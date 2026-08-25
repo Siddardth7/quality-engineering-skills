@@ -131,9 +131,76 @@ the input themselves and see exactly what they excluded. No date is ever imputed
 
 ---
 
+## RULE-SQE-004: Supplier PPM / DPMO arithmetic has no published source (`ppm.py`, #116)
+
+**Decision.** `quality_core.sqe.ppm.calculate_supplier_ppm` computes
+`ppm = (total_defective / total_received) * 1_000_000` and, when every in-scope lot states
+`opportunities_per_unit`, `dpmo = (total_defective / total_opportunities) * 1_000_000` where
+`total_opportunities = sum(quantity_received * opportunities_per_unit)`.
+
+**Basis.** None. This is generic industry arithmetic. No AIAG, ISO, IATF, or CQI-20 clause defines
+a PPM formula or a DPMO opportunity model. ISO 9001:2015 §8.4/§10.2 and IATF 16949:2016 §8.4
+require that external providers be evaluated and monitored against criteria the organization
+determines; they establish *that* suppliers are evaluated, never any arithmetic. Those clauses are
+therefore **not** cited as the source of this formula, and `CITATIONS.tsv` gains no row for it —
+there is no standards quotation to check. The module docstring states the same thing.
+
+**Consequence.** PPM and DPMO are reported in separately named fields and are never substituted for
+one another: a DPMO figure quoted as PPM understates the rate by the opportunity multiplier.
+
+---
+
+## RULE-SQE-005: `sample_adequacy_minimum` default = 1000 received units (heuristic, `ppm.py`, #116)
+
+**Decision.** `PPMConfig.sample_adequacy_minimum` defaults to **1000 received units**. A period
+whose received total is below the minimum still returns its computed rate, flagged with a warning
+and a recommendation; the figure is never suppressed and the minimum never changes the verdict.
+
+**Basis.** **None — this is a declared engineering heuristic, not a standard.** There is no
+published PPM sample-size standard (see E0, #114). The rationale is arithmetic volatility, not
+authority: PPM is a per-million projection, so at low denominators a single defect swings it
+enormously (1 defect in 100 units reads as 10,000 PPM; the same defect in 10,000 units reads as
+100 PPM). 1000 units is the round order of magnitude at which one defect moves the figure by
+1000 PPM rather than by tens of thousands. Any customer-agreed sample basis outranks it.
+
+**Consequence.** The value is caller-overridable via `PPMConfig(sample_adequacy_minimum=...)`, and
+every result payload carries `sample_adequacy = {"minimum": ..., "meets_minimum": ...,
+"is_heuristic": True, "basis": "declared engineering default, no standards citation — see
+ASSUMPTIONS_LOG.md"}`. The `is_heuristic` flag and the `basis` string are part of the contract:
+relabelling either as a standards citation is a defect, not a wording change.
+
+---
+
+## RULE-SQE-006: INDETERMINATE trigger set for supplier PPM (`ppm.py`, #116)
+
+**Decision.** `calculate_supplier_ppm` returns `verdict="INDETERMINATE"` with `ppm=None` and
+`numerator=None` (never `0.0`, never a partial rate) when any of the following holds:
+
+1. No lot matches `period.supplier_id` inside the inclusive window — an empty period.
+2. The in-scope lots total zero received units — a zero denominator.
+3. Any in-scope lot carries `defect_count is None`, the undecided sentinel — the period is
+   INDETERMINATE as a whole and **no rate is computed over the decided remainder**.
+4. Any lot matching `period.supplier_id` carries `receipt_date is None` — it cannot be confirmed
+   inside the window, so it is held **in scope** and drives INDETERMINATE rather than being
+   silently excluded.
+
+**Basis.** The undecided-sentinel contract declared in `schema.py` ("downstream engines must
+resolve `None` to INDETERMINATE; they must never coerce it to `0`"), extended to `receipt_date` by
+the same reasoning. Trigger 4 is the non-obvious one: silently dropping an undated lot would be a
+confident verdict built on absent data — the precise failure this engine exists to prevent.
+
+**Consequence.** `0.0` PPM is emitted only from lots that were decided and decided clean. The
+INDETERMINATE result is built through the same dataclass constructor as the MEASURED result — same
+fields, `None` where unknown — and `denominator`/`lot_count` are still reported when knowable,
+because what was received remains knowable even when what was defective does not.
+
+---
+
 ## No-Standard-Implied Declarations
 
 - **PPM acceptance thresholds have no published standard.** Customer-specific PPM targets exist per OEM contract; none is a standard this repository may encode as authoritative.
+- **The PPM and DPMO formulas themselves have no published standard.** They are generic industry arithmetic, attributable to no AIAG/ISO/IATF/CQI-20 clause, and are cited to nothing (RULE-SQE-004).
+- **The PPM sample-adequacy minimum has no published standard.** `PPMConfig.sample_adequacy_minimum` defaults to **1000 received units** — a declared engineering heuristic justified by the volatility of a per-million rate at low denominators, caller-overridable, and labelled `is_heuristic: True` in every payload (RULE-SQE-005).
 - **OTIF has no published standard.** The on-time window, the in-full tolerance, and whether early delivery counts as on-time are all **engineering heuristics** and must be caller-configurable. As implemented in `quality_core.sqe.otif` (E3, #117), the five `OTIFConfig` defaults — `early_tolerance_days=0`, `late_tolerance_days=2`, `early_counts_as_on_time=False`, `in_full_tolerance_pct=0.0`, `over_delivery_counts_as_in_full=True` — are declared engineering defaults carrying **no citation**; each is labelled `is_heuristic: True` in every result payload and is documented in RULE-SQE-002 above. Neither the on-time/in-full/OTIF arithmetic itself (RULE-SQE-001) nor these values may be presented as a standards requirement by any engine, MCP tool, canvas, or skill layer.
 - **Vendor scorecard weights and A/B/C rating-band boundaries have no published standard.** They are declared defaults, labelled as heuristics in every payload.
 - **Escalation trigger levels have no published standard.** The escalation *ladder* is informed by CQI-20's problem-solving escalation discipline; the numeric triggers are not.

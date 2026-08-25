@@ -41,6 +41,16 @@ def test_matrix_dimensions_and_keys() -> None:
             assert TABLE_4_1_MATRIX[(elem, lvl)] in REQUIREMENT_CODES
 
 
+def test_matrix_keys_use_shared_ppap_schema_vocabulary() -> None:
+    """Verify all matrix keys strictly use shared schema vocabulary PPAP_ELEMENT_IDS and SUBMISSION_LEVELS."""
+    from quality_core.ppap.schema import PPAP_ELEMENT_IDS as SCHEMA_ELEMENT_IDS
+    from quality_core.ppap.schema import SUBMISSION_LEVELS as SCHEMA_SUBMISSION_LEVELS
+
+    assert ELEMENT_IDS == SCHEMA_ELEMENT_IDS
+    assert set(elem for elem, _ in TABLE_4_1_MATRIX.keys()) == set(SCHEMA_ELEMENT_IDS)
+    assert set(lvl for _, lvl in TABLE_4_1_MATRIX.keys()) == set(SCHEMA_SUBMISSION_LEVELS)
+
+
 def test_mappings_are_immutable() -> None:
     """Verify TABLE_4_1_MATRIX, TABLE_4_1_LEGEND, and SUBMISSION_LEVEL_DESCRIPTIONS are immutable."""
     with pytest.raises(TypeError):
@@ -119,13 +129,14 @@ def test_level_2_requirements() -> None:
 def test_level_3_requirements() -> None:
     """Level 3 (Default): Warrant with product samples and complete supporting data."""
     required_s = elements_required_at_level(3)
-    # Level 3 requires submit for 16 elements (all except Master Sample 2.2.15 and Checking Aids 2.2.16)
-    assert len(required_s) == 16
+    # Level 3 requires submit for 15 elements (all except 2.2.15, 2.2.16, and 2.2.17 which are R)
+    assert len(required_s) == 15
     assert "2.2.15" not in required_s
     assert "2.2.16" not in required_s
+    assert "2.2.17" not in required_s
 
     required_r = elements_required_at_level(3, code="R")
-    assert required_r == ("2.2.15", "2.2.16")
+    assert required_r == ("2.2.15", "2.2.16", "2.2.17")
 
     assert elements_required_at_level(3, code="*") == ()
 

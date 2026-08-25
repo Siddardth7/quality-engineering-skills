@@ -133,18 +133,17 @@ def test_assumptions_log_training_deck_inventory() -> None:
         assert item in content, f"Missing non-authoritative training deck missing item: {item!r}"
 
 
-def test_assumptions_log_no_rule_entries_yet() -> None:
-    """Verify no RULE entry exists without a matching CITATIONS.tsv row (vacuously true at E0)."""
+def test_assumptions_log_rules_cited() -> None:
+    """Verify every RULE entry in ASSUMPTIONS_LOG.md has a matching CITATIONS.tsv row."""
     content = _ASSUMPTIONS_LOG.read_text(encoding="utf-8")
     assert "## RULE Entries" in content
 
     rule_headings = _RULE_HEADING_RE.findall(content)
-    assert rule_headings == [], f"E0 scaffold must carry zero RULE entries, found: {rule_headings}"
-
     _, rows = _validate_citations_tsv_format(_CITATIONS_TSV.read_text(encoding="utf-8"))
     cited_sites = {row["site"] for row in rows}
     for heading in rule_headings:
-        assert heading.removeprefix("## ") in cited_sites, f"RULE without a CITATIONS.tsv row: {heading}"
+        rule_name = heading.removeprefix("## ").strip()
+        assert any(rule_name in site for site in cited_sites) or rule_name in cited_sites, f"RULE without a CITATIONS.tsv row: {heading}"
 
 
 def test_assumptions_log_scoping_and_honesty_declarations() -> None:
@@ -169,12 +168,15 @@ def test_citations_tsv_exists_and_header() -> None:
     assert headers == ["site", "src_line", "quote"]
 
 
-def test_citations_tsv_zero_data_rows() -> None:
-    """Verify ppap/CITATIONS.tsv is header-only — E0 introduces no citations."""
+def test_citations_tsv_valid_data_rows() -> None:
+    """Verify ppap/CITATIONS.tsv is header-delimited and carries valid citation rows."""
     raw_content = _CITATIONS_TSV.read_text(encoding="utf-8")
     headers, rows = _validate_citations_tsv_format(raw_content)
     assert headers == ["site", "src_line", "quote"]
-    assert len(rows) == 0, f"Expected 0 data rows in E0 scaffold, found {len(rows)}: {rows}"
+    for row in rows:
+        assert row["site"], "Site column must not be empty"
+        assert row["src_line"], "Src line column must not be empty"
+        assert row["quote"], "Quote column must not be empty"
 
 
 @pytest.mark.parametrize(

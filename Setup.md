@@ -10,8 +10,10 @@ session knowing who it is, with full tool/git/Slack access.
 > [`docs/onboarding/JIM.md`](docs/onboarding/JIM.md) ·
 > [`docs/onboarding/DWIGHT.md`](docs/onboarding/DWIGHT.md) ·
 > [`docs/onboarding/KEVIN.md`](docs/onboarding/KEVIN.md) ·
-> [`docs/onboarding/CREED.md`](docs/onboarding/CREED.md).
-> Michael (Claude Code) and Creed (Antigravity) are already fully set up on the main MacBook.
+> [`docs/onboarding/CREED.md`](docs/onboarding/CREED.md) ·
+> [`docs/onboarding/DARRYL.md`](docs/onboarding/DARRYL.md).
+> Michael (Claude Code) and Creed (Antigravity) are already fully set up on the main MacBook;
+> Darryl (Codex) is the newest teammate — start at [`DARRYL.md`](docs/onboarding/DARRYL.md).
 
 ---
 
@@ -256,7 +258,7 @@ All commands should exit with code `0` (all green).
 
 ## 10. Agent Identity & Roster
 
-The team is a 5-agent cast (*The Office* personas). **One Slack bot app/token = one member = one
+The team is a 6-agent cast (*The Office* personas). **One Slack bot app/token = one member = one
 persona.** Identity is per-persona, not per-machine.
 
 | Persona        | Tool        | Owner / account            | Machine         | Role                         |
@@ -266,6 +268,7 @@ persona.** Identity is per-persona, not per-machine.
 | Dwight Schrute | Claude Code | Karteek's Claude acct      | laptop (shared dev env) | contributor          |
 | Creed Bratton  | Antigravity | Sid                        | main MacBook    | contributor                  |
 | Kevin Malone   | Antigravity | Karteek's Antigravity acct | laptop          | contributor                  |
+| Darryl Philbin | Codex       | Sid's Codex subscription   | main MacBook (own `- Darryl` clone) | contributor  |
 
 Workspace: **Oruborus - QE Agent**, Team ID `T0BS2ESV32S`. Each machine declares its persona via
 `SLACK_IDENTITY` in `.env` (§11) so the agent self-identifies at session start (§14).
@@ -285,10 +288,11 @@ Variables:
 
 | Var | Meaning |
 |---|---|
-| `SLACK_IDENTITY` | your persona name — `Michael` \| `Jim` \| `Dwight` (Claude Code) |
+| `SLACK_IDENTITY` | your persona name — `Michael` \| `Jim` \| `Dwight` (Claude Code) \| `Darryl` (Codex) |
 | `SLACK_BOT_TOKEN` | the `xoxb-…` bot token for the **Claude Code** persona on this machine |
 | `SLACK_TEAM_ID` | `T0BS2ESV32S` (constant) |
 | `SLACK_BOT_TOKEN_AGY` | `xoxb-…` for a **co-located Antigravity** persona (Creed/Kevin), if any |
+| `SLACK_BOT_TOKEN_CDX` | `xoxb-…` for a **co-located Codex** persona (Darryl), if any |
 
 > **Sid provides your `xoxb-…` token privately** (password manager / direct message) — it is
 > *not* stored in the repo. Put it in `.env` only. Tokens are static (no rotation).
@@ -353,6 +357,7 @@ After the environment is built, each teammate follows their card:
 - [`docs/onboarding/DWIGHT.md`](docs/onboarding/DWIGHT.md) — Dwight Schrute (Claude Code)
 - [`docs/onboarding/KEVIN.md`](docs/onboarding/KEVIN.md) — Kevin Malone (Antigravity)
 - [`docs/onboarding/CREED.md`](docs/onboarding/CREED.md) — Creed Bratton (Antigravity)
+- [`docs/onboarding/DARRYL.md`](docs/onboarding/DARRYL.md) — Darryl Philbin (Codex)
 
 ---
 

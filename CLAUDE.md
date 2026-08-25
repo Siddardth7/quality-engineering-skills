@@ -10,7 +10,7 @@ Guidance for Claude Code (claude.ai/code) working anywhere in the
 > **🪪 Establish your identity at session start.** Read `SLACK_IDENTITY` from `.env` (or your
 > `docs/onboarding/<NAME>.md`), adopt that persona, and post a one-line "online" in
 > `#general-eng-comms` before working — then check for anything addressed to you. The team is a
-> 5-agent cast (see [`docs/onboarding/`](docs/onboarding/) and the master [`Setup.md`](Setup.md)).
+> 6-agent cast (see [`docs/onboarding/`](docs/onboarding/) and the master [`Setup.md`](Setup.md)).
 > (`docs/AGENT_COMMS.md` is the deprecated doc-based channel, kept only until Slack is proven on every machine.)
 
 ## What this repo is

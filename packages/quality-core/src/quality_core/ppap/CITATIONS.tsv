@@ -1,1 +1,16 @@
 site	src_line	quote
+RULE 1	313	The level of initial process capability or performance shall be determined to be acceptable prior to submission
+RULE 1	319	The initial process study is focused on variables not attribute data
+RULE 1	319	Unless approved by the authorized customer representative, attribute data are not acceptable for PPAP submissions.
+RULE 1	325	a short-term study should be based on a minimum of 25 subgroups containing at least 100 readings
+RULE 1	335	Cpk - The capability index for a stable process
+RULE 1	337	Ppk - The performance index
+RULE 1	339	When historical data are available or enough initial data exist to plot a control chart
+RULE 1	339	When not enough data are available (< 100 samples) or there are unknown sources of variation, contact the authorized customer representative
+RULE 1	351	Index>1.67 The process currently meets the acceptance criteria.
+RULE 1	352	1.33_5_Index_5_1.67 The process may be acceptable. Contact the authorized customer representative for a review of the study results.
+RULE 1	353	Index<1.3 3 The process does not currently meet the acceptance criteria. Contact the authorized customer representative for a review of the study results.
+RULE 1	363	The organization shall notify the authorized customer representative of any unstable processes that exist and shall submit a corrective action plan
+RULE 1	369	The organization shall determine with the authorized customer representative alternative acceptance criteria for processes with one-sided specifications or non-normal distributions.
+RULE 1	371	The above mentioned acceptance criteria (2.2.1 1.3) assume normality and a two-sided specification
+RULE 1	375	The organization shall submit to the authorized customer representative for approval a corrective action plan and a modified Control Plan normally providing for 100% inspection.

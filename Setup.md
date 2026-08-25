@@ -375,7 +375,7 @@ Add each teammate's GitHub account as a **Write** collaborator so they can push 
 Teammates accept the emailed invite.
 
 ### Per machine — each teammate
-1. Authenticate to GitHub **as yourself** (not as Sid): `gh auth login`, or add your SSH key to your GitHub account.
+1. Authenticate to GitHub **as yourself** (not as Sid): `gh auth login` (HTTPS/browser). **This is required to open PRs** — the shared `oruborus_qe_deploy` SSH key authorizes `git push` only; `gh pr create` is a GitHub *API* call and fails without `gh auth login`. (A personal SSH key on your own GitHub account also enables push, but still not the API.)
 2. Set git identity — **attribution is by email**, so the commit email must be a verified email on
    *your* GitHub account. The name is cosmetic (use your persona if you like the theme):
    ```bash

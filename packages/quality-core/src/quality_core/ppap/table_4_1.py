@@ -8,7 +8,8 @@ the verbatim AIAG standard legend and submission level definitions.
 
 from __future__ import annotations
 
-from typing import Literal
+from types import MappingProxyType
+from typing import Literal, Mapping
 
 RequirementCode = Literal["S", "R", "*", "CUSTOMER_DEFINED"]
 
@@ -37,23 +38,23 @@ ELEMENT_IDS: tuple[str, ...] = (
     "2.2.18",
 )
 
-TABLE_4_1_LEGEND: dict[RequirementCode, str] = {
+TABLE_4_1_LEGEND: Mapping[RequirementCode, str] = MappingProxyType({
     "S": "The organization shall submit to the customer and retain a copy of records or documentation items at appropriate locations.",
     "R": "The organization shall retain at appropriate locations and make available to the customer upon request.",
     "*": "The organization shall retain at appropriate locations and submit to the customer upon request.",
     "CUSTOMER_DEFINED": "Warrant and other requirements as defined by the customer.",
-}
+})
 
-SUBMISSION_LEVEL_DESCRIPTIONS: dict[int, str] = {
+SUBMISSION_LEVEL_DESCRIPTIONS: Mapping[int, str] = MappingProxyType({
     1: "Warrant only (and for designated appearance items, an Appearance Approval Report) submitted to the customer.",
     2: "Warrant with product samples and limited supporting data submitted to the customer.",
     3: "Warrant with product samples and complete supporting data submitted to the customer.",
     4: "Warrant and other requirements as defined by the customer.",
     5: "Warrant with product samples and complete supporting data reviewed at the organization's manufacturing location.",
-}
+})
 
 # Table 4.2 Retention / Submission Requirements Matrix (18 elements × 5 levels = 90 cells)
-TABLE_4_1_MATRIX: dict[tuple[str, int], RequirementCode] = {
+TABLE_4_1_MATRIX: Mapping[tuple[str, int], RequirementCode] = MappingProxyType({
     # 2.2.1 Design Record (for all other components/details)
     ("2.2.1", 1): "R",
     ("2.2.1", 2): "S",
@@ -162,7 +163,7 @@ TABLE_4_1_MATRIX: dict[tuple[str, int], RequirementCode] = {
     ("2.2.18", 3): "S",
     ("2.2.18", 4): "S",
     ("2.2.18", 5): "R",
-}
+})
 
 
 def lookup_requirement(element_id: str, level: int) -> RequirementCode:

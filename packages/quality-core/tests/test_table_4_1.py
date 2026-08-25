@@ -41,6 +41,18 @@ def test_matrix_dimensions_and_keys() -> None:
             assert TABLE_4_1_MATRIX[(elem, lvl)] in REQUIREMENT_CODES
 
 
+def test_mappings_are_immutable() -> None:
+    """Verify TABLE_4_1_MATRIX, TABLE_4_1_LEGEND, and SUBMISSION_LEVEL_DESCRIPTIONS are immutable."""
+    with pytest.raises(TypeError):
+        TABLE_4_1_MATRIX[("2.2.1", 1)] = "S"  # type: ignore[index]
+
+    with pytest.raises(TypeError):
+        TABLE_4_1_LEGEND["S"] = "Mutated legend text"  # type: ignore[index]
+
+    with pytest.raises(TypeError):
+        SUBMISSION_LEVEL_DESCRIPTIONS[1] = "Mutated level text"  # type: ignore[index]
+
+
 def test_element_ids_ordering() -> None:
     """Verify ELEMENT_IDS contains the canonical 18 AIAG PPAP elements in order."""
     expected = (

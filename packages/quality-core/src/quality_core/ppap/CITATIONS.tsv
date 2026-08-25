@@ -8,6 +8,24 @@ RULE 1	491	Warrant with product samples and complete supporting data reviewed at
 RULE 1	495	Requirements Table 4.2 for exact
 RULE 1	497	The organization shall use level 3 as the default level for all
 RULE 1	509	record are defined in the
+RULE 1	515	Design Record R S S
+RULE 1	518	Engineering Change Documents if any R S S
+RULE 1	519	Customer Engineering approval if required R R S R
+RULE 1	520	Design FMEA R R S
+RULE 1	521	Process Flow Diagrams R R S
+RULE 1	522	Process FMEA R R S
+RULE 1	523	Control Plan R R S
+RULE 1	524	Measurement System Analysis Studies R R S
+RULE 1	525	Dimensional Results R S S
+RULE 1	526	Material Performance Test Results R S S
+RULE 1	527	Initial Process Studies R R S
+RULE 1	528	Qualified Laboratory Documentation R S S
+RULE 1	529	Appearance Approval Report AAR if applicable S S S
+RULE 1	530	Sample Product R S
+RULE 1	531	Master Sample R R
+RULE 1	532	Checlung Aids R R
+RULE 1	533	Records of Compliance R R
+RULE 1	535	Part Submission Warrant PSW S S
 RULE 1	540	S = The organization shall submit to the customer and retain a copy of records or
 RULE 1	542	R = The organization shall retain at appropriate locations and make available to the customer upon request.
 RULE 1	544	* = The organization shall retain at appropriate locations and submit to the customer upon request.

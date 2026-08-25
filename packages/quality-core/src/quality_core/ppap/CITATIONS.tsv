@@ -33,3 +33,7 @@ RULE 6	800	Bulk Material - Specific Requirements
 RULE 6	960	Tire Industry - Specific Requirements
 RULE 6	1060	Truck Industry - Specific Requirements
 RULE 7	560	Customer Notification and Submission Requirements
+RULE 8	700	Part Submission Warrant Completion Instructions
+RULE 8	580	Customer PPAP approval shall be obtained prior to shipping production parts
+RULE 9	330	Actual results are required... Blanket statements of conformance are unacceptable.
+RULE 9	350	Blanket statements of conformance are unacceptable for any test results.

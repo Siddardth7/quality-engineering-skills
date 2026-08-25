@@ -240,6 +240,18 @@ class ReceiptLot(pydantic.BaseModel):
     def parse_dates_lenient(cls, v: object) -> object:
         return _parse_date_lenient(v)
 
+    @pydantic.model_validator(mode="after")
+    def reject_defects_exceeding_received(self) -> "ReceiptLot":
+        # A counted lot cannot have more defectives than it received. The undecided
+        # sentinel (defect_count is None) is exempt: it is "not yet counted", not a
+        # quantity, and must survive ingestion rather than be rejected here.
+        if self.defect_count is not None and self.defect_count > self.quantity_received:
+            raise ValueError(
+                f"defect_count ({self.defect_count}) cannot exceed quantity_received "
+                f"({self.quantity_received})"
+            )
+        return self
+
 
 class ReceiptLotDataset(pydantic.BaseModel):
     """Collection of supplier receipt lots representing one ingested receipt dataset."""
@@ -305,6 +317,21 @@ class DeliveryRecord(pydantic.BaseModel):
     @classmethod
     def parse_dates_lenient(cls, v: object) -> object:
         return _parse_date_lenient(v)
+
+    @pydantic.model_validator(mode="after")
+    def reject_delivered_exceeding_ordered(self) -> "DeliveryRecord":
+        # A shipment cannot deliver more than was ordered. The undecided sentinel
+        # (quantity_delivered is None) is exempt: it is "not yet counted", not a
+        # quantity, and must survive ingestion for OTIF to resolve INDETERMINATE.
+        if (
+            self.quantity_delivered is not None
+            and self.quantity_delivered > self.quantity_ordered
+        ):
+            raise ValueError(
+                f"quantity_delivered ({self.quantity_delivered}) cannot exceed "
+                f"quantity_ordered ({self.quantity_ordered})"
+            )
+        return self
 
 
 class DeliveryRecordDataset(pydantic.BaseModel):

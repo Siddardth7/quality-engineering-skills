@@ -309,6 +309,29 @@ def test_receipt_lot_opportunities_per_unit_rejects_below_one() -> None:
         ReceiptLot(**_valid_receipt(opportunities_per_unit=0))
 
 
+def test_receipt_lot_defect_count_exceeding_received_rejected() -> None:
+    # Quantity-sanity control (#115): a counted lot cannot have more defectives
+    # than it received, and the error must name the field.
+    with pytest.raises(
+        pydantic.ValidationError,
+        match=r"defect_count \(11\) cannot exceed quantity_received \(10\)",
+    ):
+        ReceiptLot(**_valid_receipt(quantity_received=10, defect_count=11))
+
+
+def test_receipt_lot_defect_count_equal_received_allowed() -> None:
+    # Boundary: all received units defective is a legitimate (if grim) lot.
+    r = ReceiptLot(**_valid_receipt(quantity_received=10, defect_count=10))
+    assert r.defect_count == r.quantity_received == 10
+
+
+def test_receipt_lot_undecided_defect_count_exempt_from_sanity_check() -> None:
+    # The undecided sentinel is "not yet counted", not a quantity — it must survive
+    # the cross-field check rather than be rejected.
+    r = ReceiptLot(**_valid_receipt(quantity_received=10, defect_count=None))
+    assert r.defect_count is None
+
+
 # ==============================================================================
 # 3a. Undecided sentinel — MANDATORY negative control (ReceiptLot.defect_count)
 # ==============================================================================
@@ -384,6 +407,26 @@ def test_delivery_record_required_fields_stripped(field_name: str) -> None:
 def test_delivery_record_quantity_ordered_rejects_non_positive(qty: int) -> None:
     with pytest.raises(pydantic.ValidationError):
         DeliveryRecord(**_valid_delivery(quantity_ordered=qty))
+
+
+def test_delivery_quantity_delivered_exceeding_ordered_rejected() -> None:
+    # Quantity-sanity control (#115): a shipment cannot deliver more than ordered,
+    # and the error must name the field.
+    with pytest.raises(
+        pydantic.ValidationError,
+        match=r"quantity_delivered \(11\) cannot exceed quantity_ordered \(10\)",
+    ):
+        DeliveryRecord(**_valid_delivery(quantity_ordered=10, quantity_delivered=11))
+
+
+def test_delivery_quantity_delivered_equal_ordered_allowed() -> None:
+    d = DeliveryRecord(**_valid_delivery(quantity_ordered=10, quantity_delivered=10))
+    assert d.quantity_delivered == d.quantity_ordered == 10
+
+
+def test_delivery_undecided_quantity_delivered_exempt_from_sanity_check() -> None:
+    d = DeliveryRecord(**_valid_delivery(quantity_ordered=10, quantity_delivered=None))
+    assert d.quantity_delivered is None
 
 
 def test_delivery_record_quantity_delivered_zero_allowed_negative_rejected() -> None:
@@ -690,6 +733,25 @@ def test_load_receipt_csv_malformed_row() -> None:
     rows = [_valid_receipt(quantity_received=0)]  # ge=1 violation
     with pytest.raises(IngestError, match="Row 2, column 'quantity_received'"):
         load_sqe_receipt_csv(_csv_buf(rows))
+
+
+def test_load_receipt_csv_defect_exceeds_received_raises() -> None:
+    # Quantity-sanity control at the load boundary: the cross-field error surfaces
+    # as an IngestError naming the field, not a raw traceback.
+    rows = [_valid_receipt(quantity_received=10, defect_count=11)]
+    with pytest.raises(
+        IngestError, match=r"defect_count \(11\) cannot exceed quantity_received \(10\)"
+    ):
+        load_sqe_receipt_csv(_csv_buf(rows))
+
+
+def test_load_delivery_csv_delivered_exceeds_ordered_raises() -> None:
+    rows = [_valid_delivery(quantity_ordered=10, quantity_delivered=11)]
+    with pytest.raises(
+        IngestError,
+        match=r"quantity_delivered \(11\) cannot exceed quantity_ordered \(10\)",
+    ):
+        load_sqe_delivery_csv(_csv_buf(rows))
 
 
 def test_load_receipt_csv_narrows_extra_columns() -> None:

@@ -1,0 +1,6 @@
+[mcp_servers.quality-mcp]
+command = "uv"
+args = [
+    "run",
+    "quality-mcp",
+]

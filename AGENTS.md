@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-Guidance for Claude Code (claude.ai/code) working anywhere in the
+Guidance for Codex working anywhere in the
 `quality-engineering-skills` repository. Read this file first.
 
 > **📮 Team comms live in Slack** — workspace *Oruborus - QE Agent*. Post status, hand-offs,
@@ -99,7 +99,7 @@ feature -> test -> main
 ## The agent pipeline
 
 `/ship` runs research -> coder -> tester -> reviewer on a fresh feature branch and opens a
-PR into `test`. Definitions live in `.claude/agents/*.md`; commands in `.claude/commands/`
+PR into `test`. Definitions live in `.codex/agents/*.toml`; commands in `.codex/commands/`
 (`ship`, `audit`, `release`).
 
 - The **reviewer is read-only by tool restriction** (`Read`, `Grep`, `Glob`, `Bash` — no
@@ -173,7 +173,7 @@ Each package has a `tests/test_version.py` pinning `__version__` to its own
 
 | Doc | What it is |
 |---|---|
-| `docs/AGENT_COMMS.md` | **async Claude ⇄ Antigravity channel — read every session** |
+| `docs/AGENT_COMMS.md` | **deprecated async agent-to-agent channel — Slack is the live channel** |
 | `docs/ENGINEERING_SYSTEM_PLAYBOOK.md` | the working system — issues, review loop, CI, releases |
 | `docs/DEFINITION_OF_DONE.md` | the contract (#43) — read before claiming done |
 | `docs/milestones/` | per-release milestone index + specs |
@@ -190,7 +190,7 @@ This project uses hyperresearch as an agent-driven research knowledge base. The 
 
 ### How to do research
 
-**Run a research session with `/hyperresearch <query>`.** This invokes the V8 16-step pipeline. The entry skill at `.claude/skills/hyperresearch/SKILL.md` is a thin ROUTER. The step procedures live in their own skills (`hyperresearch-1-decompose` through `hyperresearch-16-readability-audit`, plus half-steps `1-5-chapter-partition` and `14-5-cite-check`) and are loaded fresh into context via the `Skill` tool when each step runs. This solves V7's context-compaction problem: each step's procedure lands in context only when needed. Read the entry skill before you start a research session; it explains the chain mechanics.
+**Run a research session with `/hyperresearch <query>`.** This invokes the V8 16-step pipeline. The entry skill at `.codex/skills/hyperresearch/SKILL.md` is a thin ROUTER. The step procedures live in their own skills (`hyperresearch-1-decompose` through `hyperresearch-16-readability-audit`, plus half-steps `1-5-chapter-partition` and `14-5-cite-check`) and are loaded fresh into context via the `Skill` tool when each step runs. This solves V7's context-compaction problem: each step's procedure lands in context only when needed. Read the entry skill before you start a research session; it explains the chain mechanics.
 
 Step 1 classifies the query into a tier (`light` or `full`; `dissertation` is opt-in per run, never auto-classified) and the rest of the pipeline scales accordingly — short bounded queries skip the depth investigations, critics, and patcher (~30-40 min); argumentative deep-research queries run all 16 steps with adversarial review; dissertation runs loop steps 2-10 per chapter. Orthogonal to tiers, the installed **scale gear** (`full` ~55-80 sources, or `premier` ~100-130 sources with doubled depth budget) sets the numbers rendered into the step skills — the user switches it with `/opt/homebrew/bin/hyperresearch profile use <full|premier>`; inspect with `/opt/homebrew/bin/hyperresearch profile list -j`.
 

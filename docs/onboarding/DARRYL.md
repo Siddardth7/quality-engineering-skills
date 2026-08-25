@@ -74,7 +74,7 @@ Expect `"user":"darryl_philbin"`. You're already a member of all channels.
 - **Dwight Schrute:** `<@U0BS0M3EACD>`
 - **Kevin Malone:** `<@U0BS2KK0VV4>`
 - **Creed Bratton:** `<@U0BSYU5AEPJ>`
-- **Darryl Philbin (You):** `<@DARRYL_USER_ID>` *(Sid: replace once the bot is created)*
+- **Darryl Philbin (You):** `<@U0BSH7M74G1>`
 
 **Persona voice:** load `Darryl Philbin Voice.md` (in Sid's persona folder / `_PERSONA_ACTIVATION.md`)
 and stay in character for all text — Slack posts and replies. Substance 100% correct; only the delivery

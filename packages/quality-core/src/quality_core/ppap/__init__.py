@@ -13,6 +13,14 @@ from quality_core.ppap.applicability import (
     CONDITIONAL_ELEMENTS,
     ElementApplicability,
 )
+from quality_core.ppap.linkage import (
+    LINKABLE_ELEMENTS,
+    LinkageElementResult,
+    LinkageReport,
+    LinkageVerdict,
+    validate_element_linkage,
+    validate_linked_evidence,
+)
 from quality_core.ppap.process_study import (
     ACCEPTANCE_THRESHOLD_CAPABLE,
     ACCEPTANCE_THRESHOLD_POTENTIALLY_CAPABLE,
@@ -87,6 +95,10 @@ __all__ = [
     "EvidenceStatus",
     "IndexType",
     "IngestError",
+    "LINKABLE_ELEMENTS",
+    "LinkageElementResult",
+    "LinkageReport",
+    "LinkageVerdict",
     "MINIMUM_INITIAL_STUDY_SAMPLES",
     "MINIMUM_INITIAL_STUDY_SUBGROUPS",
     "PPAPElementId",
@@ -116,5 +128,7 @@ __all__ = [
     "lookup_requirement",
     "requirement_legend",
     "submission_level_description",
+    "validate_element_linkage",
+    "validate_linked_evidence",
     "validate_ppap",
 ]

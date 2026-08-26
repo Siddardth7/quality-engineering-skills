@@ -39,6 +39,14 @@
 5. **Engineering Heuristics Declaration:**  
    Any threshold, default, or validation rule introduced without an explicit published standard behind it is declared and labeled an **engineering heuristic**, never implied to be an industry standard.
 
+6. **Cross-Edition Engine Composition Honesty Declaration:**  
+   Milestone 8 PPAP integrates with sibling engines developed to different vintages of AIAG standards:
+   - §2.2.6 PFMEA links to `quality_core.scoring` (AIAG-VDA FMEA Handbook 1st Edition 2019 Action Priority).
+   - §2.2.7 Control Plan links to `quality_core.controlplan` (AIAG APQP 2nd Edition / Control Plan reference manual).
+   - §2.2.8 MSA links to `quality_core.msa` (AIAG MSA 4th Edition 2010).
+   - §2.2.11 Initial Process Studies links to `quality_core.ppap.process_study` (AIAG PPAP 4th Edition 2006 / SPC 2nd Edition 2005).
+   These cross-edition compositions are engineering design choices reflecting modern industry practice, not a claim that PPAP 4th Edition 2006 retroactively endorses newer handbook revisions.
+
 ---
 
 ## RULE Entries

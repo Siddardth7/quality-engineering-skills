@@ -197,12 +197,78 @@ because what was received remains knowable even when what was defective does not
 
 ---
 
+## RULE-SQE-007: Vendor-scorecard weights are configurable engineering heuristics (`scorecard.py`, #118)
+
+**Decision.** `ScorecardConfig` defaults to quality / delivery / cost weights of **0.60 / 0.40 /
+0.0**. The three finite, non-boolean weights must each lie in `[0, 1]` and must total 1.0 within a
+tight floating-point tolerance. The engine raises for a non-summing configuration; it never
+normalizes or redistributes weights.
+
+**Basis.** **None — these values are SME-approved engineering heuristics with no standards
+citation.** ISO 9001:2015 §8.4 and IATF 16949:2016 §8.4 require supplier evaluation against
+organization-determined criteria but define no dimension weight.
+
+**Consequence.** The top-level heuristic-configuration payload labels the weight object and each
+individual weight with `is_heuristic: True` and a basis containing `no standards citation`.
+
+---
+
+## RULE-SQE-008: Linear score curves and A/B/C bands are configurable engineering heuristics (`scorecard.py`, #118)
+
+**Decision.** The default PPM curve maps **0 PPM to 100** and **10,000 PPM to 0**. The default
+delivery curve maps **100% strict-conjunction OTIF to 100** and **0% OTIF to 0**. Both interpolate
+linearly and clamp beyond their endpoints. Bands default to **A at 90.0 or above**, **B at 75.0
+through below 90.0**, and **C below 75.0**. Band assignment uses the unrounded composite.
+
+**Basis.** **None — every endpoint and boundary is an engineering heuristic with no standards
+citation.** The defaults provide an explicit, testable starting contract approved for #118; a
+supplier agreement or organization-specific calibration outranks each one.
+
+**Consequence.** Curves and bands are caller-configurable. Every serialized endpoint and boundary,
+plus its containing object, carries `is_heuristic: True` and `no standards citation` basis text.
+
+---
+
+## RULE-SQE-009: A weighted undecided dimension suppresses the whole scorecard (`scorecard.py`, #118)
+
+**Decision.** Every positively weighted dimension must have measured source evidence. An
+`INDETERMINATE` PPM or OTIF result, or unusable weighted COPQ evidence, makes the scorecard
+`INDETERMINATE` with `composite_score=None` and `band=None`. Source evidence and blocker reasons
+remain in the dimension payload. A zero-weight dimension is omitted; its weight is not reassigned.
+
+**Basis.** This is the no-imputation policy already used by the PPM and OTIF engines, applied to
+their composite. A rating built by dropping an undecided weighted input would overstate confidence.
+It is an engineering decision, not a numeric standards criterion.
+
+**Consequence.** No source metric is replaced with zero or a perfect score, no band is emitted for
+partial evidence, and omitted dimensions are stated explicitly.
+
+---
+
+## RULE-SQE-010: COPQ is optional and has no default score curve (`scorecard.py`, #118)
+
+**Decision.** Cost defaults to zero weight and is omitted without changing the 0.60 / 0.40 quality
+and delivery weights. Supplied COPQ evidence is not scored at zero cost weight. A positive cost
+weight requires an explicit `LinearScoringCurve`, cost items, and usable revenue evidence; the
+engine delegates the arithmetic to `estimate_copq` and scores only
+`copq_percentage_of_revenue`. Missing or unusable weighted cost evidence makes the scorecard
+`INDETERMINATE`; its weight is never redistributed.
+
+**Basis.** COPQ arithmetic is owned by `quality_core.copq`. There is no defensible universal COPQ
+percentage-of-revenue threshold, so a default cost curve would imply authority that does not exist.
+This scorecard policy is an engineering heuristic with no standards citation.
+
+**Consequence.** Callers that elect to weight cost must provide their own defensible curve and
+revenue basis. `scorecard.py` contains no COPQ arithmetic.
+
+---
+
 ## No-Standard-Implied Declarations
 
 - **PPM acceptance thresholds have no published standard.** Customer-specific PPM targets exist per OEM contract; none is a standard this repository may encode as authoritative.
 - **The PPM and DPMO formulas themselves have no published standard.** They are generic industry arithmetic, attributable to no AIAG/ISO/IATF/CQI-20 clause, and are cited to nothing (RULE-SQE-004).
 - **The PPM sample-adequacy minimum has no published standard.** `PPMConfig.sample_adequacy_minimum` defaults to **1000 received units** — a declared engineering heuristic justified by the volatility of a per-million rate at low denominators, caller-overridable, and labelled `is_heuristic: True` in every payload (RULE-SQE-005).
 - **OTIF has no published standard.** The on-time window, the in-full tolerance, and whether early delivery counts as on-time are all **engineering heuristics** and must be caller-configurable. As implemented in `quality_core.sqe.otif` (E3, #117), the five `OTIFConfig` defaults — `early_tolerance_days=0`, `late_tolerance_days=2`, `early_counts_as_on_time=False`, `in_full_tolerance_pct=0.0`, `over_delivery_counts_as_in_full=True` — are declared engineering defaults carrying **no citation**; each is labelled `is_heuristic: True` in every result payload and is documented in RULE-SQE-002 above. Neither the on-time/in-full/OTIF arithmetic itself (RULE-SQE-001) nor these values may be presented as a standards requirement by any engine, MCP tool, canvas, or skill layer.
-- **Vendor scorecard weights and A/B/C rating-band boundaries have no published standard.** They are declared defaults, labelled as heuristics in every payload.
+- **Vendor scorecard weights, curves, and A/B/C rating-band boundaries have no published standard.** The 0.60 / 0.40 / 0.0 weights, 0-to-10,000 PPM and 100%-to-0% OTIF curves, and 90 / 75 band boundaries are declared caller-configurable engineering heuristics labelled individually in every payload (RULE-SQE-007/008). Weighted undecided evidence suppresses the composite and band (RULE-SQE-009); COPQ remains omitted at zero weight and requires an explicit curve when weighted (RULE-SQE-010).
 - **Escalation trigger levels have no published standard.** The escalation *ladder* is informed by CQI-20's problem-solving escalation discipline; the numeric triggers are not.
 - Any constant introduced later without a published source behind it is to be labelled an **engineering heuristic**, never implied to be a standard.

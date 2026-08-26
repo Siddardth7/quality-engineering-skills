@@ -1,16 +1,16 @@
-"""Test suite for SQE reference-material procurement and citation scaffolding (Issue #114).
+"""Test suite for SQE reference-material procurement and citation scaffolding (Issue #114, #162).
 
 Validates:
 1. Presence of packages/quality-core/src/quality_core/sqe/ (ASSUMPTIONS_LOG.md, CITATIONS.tsv, __init__.py)
 2. ASSUMPTIONS_LOG.md package metadata and the four standard-reference paths CLAUDE.md maps for this domain
-3. Zero RULE entries and zero CITATIONS.tsv data rows (E0 steady state), making the
-   "no RULE entry without a matching CITATIONS.tsv row" invariant vacuously true
+3. RULE entries in ASSUMPTIONS_LOG.md are verified against CITATIONS.tsv rows or explicit heuristic/honesty declarations
 4. The five no-standard-implied declarations recorded verbatim
 5. Presence, tab-delimiter, and canonical header of sqe/CITATIONS.tsv
 6. Per-domain reference manual mapping in CLAUDE.md under ## Standards fidelity for Supplier Quality
-7. CHANGELOG.md entry under [Unreleased] (#114)
+7. CHANGELOG.md entry under [Unreleased] (#114, #162)
 8. Negative controls: invalid TSV delimiters, malformed/permuted TSV headers, non-zero TSV data rows,
-   missing manual paths, missing declarations, missing CLAUDE.md mapping, missing changelog reference
+   missing manual paths, missing declarations, missing CLAUDE.md mapping, missing changelog reference,
+   uncited standard-backed rules rejected
 
 The two ISO/IATF §8.4 excerpt files are hand-produced by the SME and are not on-machine yet; their
 existence is deliberately NOT asserted here (see the HUMAN BLOCKER note on issue #114). Only the two
@@ -66,7 +66,62 @@ _DECLARATIONS: tuple[str, ...] = (
     "Any constant introduced later without a published source behind it is to be labelled an **engineering heuristic**, never implied to be a standard.",
 )
 
-_RULE_HEADING_RE = re.compile(r"^## RULE \d+", re.MULTILINE)
+_RULE_HEADING_RE = re.compile(r"^##\s+RULE(?:-SQE)?[-:\s]+\d+.*", re.MULTILINE)
+
+
+def _extract_rule_blocks(content: str) -> list[tuple[str, str]]:
+    """Extract (heading, body) tuples for each RULE section in the assumptions log."""
+    matches = list(_RULE_HEADING_RE.finditer(content))
+    blocks: list[tuple[str, str]] = []
+    for i, match in enumerate(matches):
+        heading = match.group(0).strip()
+        start = match.end()
+        if i + 1 < len(matches):
+            end = matches[i + 1].start()
+        else:
+            next_section = re.search(r"\n##\s+(?!RULE)", content[start:])
+            end = start + next_section.start() if next_section else len(content)
+        body = content[start:end].strip()
+        blocks.append((heading, body))
+    return blocks
+
+
+_NO_STANDARD_HEURISTIC_RE = re.compile(
+    r"\b(?:engineering heuristic|heuristic|data-honesty|data honesty|no published standard|no published source|no standards citation|no citation|no `?citations?\.tsv`? row|gains no row|source[:\s*]+none|basis[:\s*]+none|undecided-sentinel|unstandardized)\b",
+    re.IGNORECASE,
+)
+
+
+def _is_declared_heuristic_or_unstandardized(heading: str, block: str) -> bool:
+    """Check whether a rule heading or block explicitly declares a heuristic, data-honesty, or no-standard basis."""
+    combined = f"{heading}\n{block}"
+    if _NO_STANDARD_HEURISTIC_RE.search(combined):
+        return True
+    lower = combined.lower()
+    indicators = (
+        "engineering heuristic",
+        "data-honesty",
+        "data honesty",
+        "no published standard",
+        "no published source",
+        "no standards citation",
+        "no citation",
+        "source:** none",
+        "basis:** none",
+        "source: none",
+        "basis: none",
+        "no citations.tsv row",
+        "gains no row",
+    )
+    return any(indicator in lower for indicator in indicators)
+
+
+def _is_rule_valid(heading: str, block: str, cited_sites: set[str]) -> bool:
+    """Check if a rule is cited in CITATIONS.tsv or declares a heuristic/honesty basis."""
+    rule_id_match = re.search(r"RULE(?:-SQE)?[-:\s]+\d+", heading)
+    rule_id = rule_id_match.group(0) if rule_id_match else heading.removeprefix("## ").strip()
+    is_cited = any(rule_id in site for site in cited_sites) or any(site in heading for site in cited_sites)
+    return is_cited or _is_declared_heuristic_or_unstandardized(heading, block)
 
 
 def _validate_citations_tsv_format(content: str) -> tuple[list[str], list[dict[str, str]]]:
@@ -110,18 +165,20 @@ def test_assumptions_log_exists_and_metadata() -> None:
         assert path in content, f"Missing standard reference path: {path}"
 
 
-def test_assumptions_log_no_rule_entries_yet() -> None:
-    """Verify no RULE entry exists without a matching CITATIONS.tsv row (vacuously true at E0)."""
+def test_assumptions_log_rules_cited() -> None:
+    """Verify every RULE entry in ASSUMPTIONS_LOG.md has a matching CITATIONS.tsv row or heuristic declaration."""
     content = _ASSUMPTIONS_LOG.read_text(encoding="utf-8")
     assert "## RULE Entries" in content
 
-    rule_headings = _RULE_HEADING_RE.findall(content)
-    assert rule_headings == [], f"E0 scaffold must carry zero RULE entries, found: {rule_headings}"
+    rule_blocks = _extract_rule_blocks(content)
+    assert len(rule_blocks) == 6, f"Expected 6 RULE entries in SQE assumptions log, found {len(rule_blocks)}"
 
     _, rows = _validate_citations_tsv_format(_CITATIONS_TSV.read_text(encoding="utf-8"))
     cited_sites = {row["site"] for row in rows}
-    for heading in rule_headings:
-        assert heading.removeprefix("## ") in cited_sites, f"RULE without a CITATIONS.tsv row: {heading}"
+    for heading, block in rule_blocks:
+        assert _is_rule_valid(heading, block, cited_sites), (
+            f"RULE entry without a CITATIONS.tsv row or explicit heuristic/honesty declaration: {heading}"
+        )
 
 
 def test_assumptions_log_no_standard_implied_declarations() -> None:
@@ -188,13 +245,14 @@ def test_claude_md_standards_fidelity_mapping() -> None:
 
 
 def test_changelog_entry_unreleased_sqe_scaffold() -> None:
-    """Verify CHANGELOG.md documents the Issue #114 scaffold under [Unreleased]."""
+    """Verify CHANGELOG.md documents the Issue #114 scaffold and Issue #162 guard under [Unreleased]."""
     assert _CHANGELOG_MD.is_file(), f"Missing CHANGELOG.md: {_CHANGELOG_MD}"
     content = _CHANGELOG_MD.read_text(encoding="utf-8")
     unreleased = _extract_unreleased_changelog_section(content)
 
     assert "## [Unreleased]" in content
     assert "#114" in unreleased, "CHANGELOG.md [Unreleased] must reference issue #114"
+    assert "#162" in unreleased, "CHANGELOG.md [Unreleased] must reference issue #162"
     assert "quality_core/sqe/ASSUMPTIONS_LOG.md" in unreleased
     assert "sqe/CITATIONS.tsv" in unreleased
     assert "CLAUDE.md" in unreleased
@@ -242,15 +300,43 @@ def test_negative_control_citations_tsv_unexpected_rows_rejected() -> None:
 
 
 def test_negative_control_uncited_rule_entry_detected() -> None:
-    """Negative control: assert a RULE heading with no matching CITATIONS.tsv row is detectable."""
-    mutated_log = "## RULE Entries\n\n## RULE 1: PPM Denominator Basis\n\n**Decision:** something.\n"
-    rule_headings = _RULE_HEADING_RE.findall(mutated_log)
-    assert rule_headings == ["## RULE 1"], "Mutated log must expose a RULE heading"
-    assert rule_headings != [], "Zero-RULE assertion must fail on a log that carries a RULE entry"
+    """Negative control: assert regex captures both RULE 1 and RULE-SQE-001 style headings."""
+    log_rule_num = "## RULE Entries\n\n## RULE 1: PPM Denominator Basis\n\n**Decision:** something.\n"
+    headings_num = _RULE_HEADING_RE.findall(log_rule_num)
+    assert len(headings_num) == 1, "Mutated log must expose a numeric RULE heading"
+    assert "RULE 1" in headings_num[0]
+
+    log_rule_sqe = "## RULE Entries\n\n## RULE-SQE-001: On-time Arithmetic\n\n**Decision:** something.\n"
+    headings_sqe = _RULE_HEADING_RE.findall(log_rule_sqe)
+    assert len(headings_sqe) == 1, "Mutated log must expose a RULE-SQE heading"
+    assert "RULE-SQE-001" in headings_sqe[0]
+
+
+def test_negative_control_uncited_standard_rule_rejected() -> None:
+    """Negative control: assert a rule claiming a standard source without citation or heuristic declaration fails verification."""
+    simulated_log = (
+        "## RULE Entries\n\n"
+        "## RULE-SQE-099: Mandatory Standard Inspection Window\n\n"
+        "**Decision:** All lots must undergo 100% inspection within 24 hours.\n\n"
+        "**Source:** ISO 9001:2015 Clause 8.4.2 statutory requirement.\n\n"
+        "**Rationale:** Mandatory standard compliance.\n\n"
+        "## No-Standard-Implied Declarations\n"
+    )
+    rule_blocks = _extract_rule_blocks(simulated_log)
+    assert len(rule_blocks) == 1
+    heading, block = rule_blocks[0]
+    assert "RULE-SQE-099" in heading
+
+    assert not _is_declared_heuristic_or_unstandardized(heading, block), (
+        "Simulated standard-backed rule must not match heuristic/honesty keywords"
+    )
 
     _, rows = _validate_citations_tsv_format("site\tsrc_line\tquote\n")
     cited_sites = {row["site"] for row in rows}
-    assert "RULE 1" not in cited_sites, "Uncited RULE entry must be detected against an empty TSV"
+
+    assert not _is_rule_valid(heading, block, cited_sites), (
+        "Simulated uncited standard-backed rule must fail validation"
+    )
 
 
 def test_negative_control_assumptions_missing_declaration_rejected() -> None:

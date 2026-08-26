@@ -133,37 +133,37 @@ the input themselves and see exactly what they excluded. No date is ever imputed
 
 ## RULE-SQE-004: Supplier PPM / DPMO arithmetic has no published source (`ppm.py`, #116)
 
-**Decision.** `quality_core.sqe.ppm.calculate_supplier_ppm` computes
+**Decision:** `quality_core.sqe.ppm.calculate_supplier_ppm` computes
 `ppm = (total_defective / total_received) * 1_000_000` and, when every in-scope lot states
 `opportunities_per_unit`, `dpmo = (total_defective / total_opportunities) * 1_000_000` where
 `total_opportunities = sum(quantity_received * opportunities_per_unit)`.
 
-**Basis.** None. This is generic industry arithmetic. No AIAG, ISO, IATF, or CQI-20 clause defines
+**Basis:** None. This is generic industry arithmetic. No AIAG, ISO, IATF, or CQI-20 clause defines
 a PPM formula or a DPMO opportunity model. ISO 9001:2015 §8.4/§10.2 and IATF 16949:2016 §8.4
 require that external providers be evaluated and monitored against criteria the organization
 determines; they establish *that* suppliers are evaluated, never any arithmetic. Those clauses are
 therefore **not** cited as the source of this formula, and `CITATIONS.tsv` gains no row for it —
 there is no standards quotation to check. The module docstring states the same thing.
 
-**Consequence.** PPM and DPMO are reported in separately named fields and are never substituted for
+**Consequence:** PPM and DPMO are reported in separately named fields and are never substituted for
 one another: a DPMO figure quoted as PPM understates the rate by the opportunity multiplier.
 
 ---
 
 ## RULE-SQE-005: `sample_adequacy_minimum` default = 1000 received units (heuristic, `ppm.py`, #116)
 
-**Decision.** `PPMConfig.sample_adequacy_minimum` defaults to **1000 received units**. A period
+**Decision:** `PPMConfig.sample_adequacy_minimum` defaults to **1000 received units**. A period
 whose received total is below the minimum still returns its computed rate, flagged with a warning
 and a recommendation; the figure is never suppressed and the minimum never changes the verdict.
 
-**Basis.** **None — this is a declared engineering heuristic, not a standard.** There is no
+**Basis:** None — this is a declared engineering heuristic, not a standard. There is no
 published PPM sample-size standard (see E0, #114). The rationale is arithmetic volatility, not
 authority: PPM is a per-million projection, so at low denominators a single defect swings it
 enormously (1 defect in 100 units reads as 10,000 PPM; the same defect in 10,000 units reads as
 100 PPM). 1000 units is the round order of magnitude at which one defect moves the figure by
 1000 PPM rather than by tens of thousands. Any customer-agreed sample basis outranks it.
 
-**Consequence.** The value is caller-overridable via `PPMConfig(sample_adequacy_minimum=...)`, and
+**Consequence:** The value is caller-overridable via `PPMConfig(sample_adequacy_minimum=...)`, and
 every result payload carries `sample_adequacy = {"minimum": ..., "meets_minimum": ...,
 "is_heuristic": True, "basis": "declared engineering default, no standards citation — see
 ASSUMPTIONS_LOG.md"}`. The `is_heuristic` flag and the `basis` string are part of the contract:
@@ -173,7 +173,7 @@ relabelling either as a standards citation is a defect, not a wording change.
 
 ## RULE-SQE-006: INDETERMINATE trigger set for supplier PPM (`ppm.py`, #116)
 
-**Decision.** `calculate_supplier_ppm` returns `verdict="INDETERMINATE"` with `ppm=None` and
+**Decision:** `calculate_supplier_ppm` returns `verdict="INDETERMINATE"` with `ppm=None` and
 `numerator=None` (never `0.0`, never a partial rate) when any of the following holds:
 
 1. No lot matches `period.supplier_id` inside the inclusive window — an empty period.
@@ -184,12 +184,13 @@ relabelling either as a standards citation is a defect, not a wording change.
    inside the window, so it is held **in scope** and drives INDETERMINATE rather than being
    silently excluded.
 
-**Basis.** The undecided-sentinel contract declared in `schema.py` ("downstream engines must
-resolve `None` to INDETERMINATE; they must never coerce it to `0`"), extended to `receipt_date` by
-the same reasoning. Trigger 4 is the non-obvious one: silently dropping an undated lot would be a
-confident verdict built on absent data — the precise failure this engine exists to prevent.
+**Basis:** None — undecided-sentinel software contract / data-honesty rule declared in `schema.py`
+("downstream engines must resolve `None` to INDETERMINATE; they must never coerce it to `0`"),
+extended to `receipt_date` by the same reasoning. Trigger 4 is the non-obvious one: silently dropping
+an undated lot would be a confident verdict built on absent data — the precise failure this engine
+exists to prevent.
 
-**Consequence.** `0.0` PPM is emitted only from lots that were decided and decided clean. The
+**Consequence:** `0.0` PPM is emitted only from lots that were decided and decided clean. The
 INDETERMINATE result is built through the same dataclass constructor as the MEASURED result — same
 fields, `None` where unknown — and `denominator`/`lot_count` are still reported when knowable,
 because what was received remains knowable even when what was defective does not.

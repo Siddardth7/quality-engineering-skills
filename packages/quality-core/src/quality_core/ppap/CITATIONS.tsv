@@ -1,25 +1,84 @@
 site	src_line	quote
-RULE 1	100	2.2.1 Design Records
-RULE 1	120	2.2.2 Authorized Engineering Change Documents
-RULE 1	210	2.2.3 Customer Engineering Approval
-RULE 1	230	2.2.4 Design Failure Mode and Effects Analysis
-RULE 1	250	2.2.5 Process Flow Diagrams
-RULE 1	270	2.2.6 Process Failure Mode and Effects Analysis
-RULE 1	290	2.2.7 Control Plan
-RULE 1	310	2.2.8 Measurement System Analysis Studies
-RULE 1	330	2.2.9 Dimensional Results
-RULE 1	350	2.2.10 Records of Material / Performance Test Results
-RULE 1	370	2.2.11 Initial Process Studies
-RULE 1	390	2.2.12 Qualified Laboratory Documentation
-RULE 1	410	2.2.13 Appearance Approval Report (AAR)
-RULE 1	430	2.2.14 Sample Production Parts
-RULE 1	450	2.2.15 Master Sample
-RULE 1	470	2.2.16 Checking Aids
-RULE 1	490	2.2.17 Customer-Specific Requirements
-RULE 1	510	2.2.18 Part Submission Warrant (PSW)
-RULE 2	460	Level 1 — Warrant only (and for designated appearance items, an Appearance Approval Report) submitted to customer.
-RULE 2	470	Level 2 — Warrant with product samples and limited supporting data submitted to customer.
-RULE 2	480	Level 3 — Warrant with product samples and complete supporting data submitted to customer.
-RULE 2	490	Level 4 — Warrant and other requirements as defined by customer.
-RULE 2	500	Level 5 — Warrant with product samples and complete supporting data reviewed at supplier's manufacturing location.
-RULE 3	720	REASON FOR SUBMISSION: Initial Submission, Engineering Change(s), Tooling: Transfer, Replacement, Refurbishment, or additional, Correction of Discrepancy, Tooling Inactive > than 1 year, Change to Optional Construction or Material, Sub-Supplier or Material Source Change, Change in Part Processing, Parts Produced at Additional Location, Other
+RULE 1	181	2.2.1 Design Records
+RULE 1	75	2.2.2 Authorized Engineering Change Documents
+RULE 1	76	2.2.3 Customer Engineering Approval
+RULE 1	77	2.2.4 Design Failure Mode and Effects Analysis
+RULE 1	227	2.2.5 Process Flow Diagrams
+RULE 1	79	2.2.6 Process Failure Mode and Effects Analysis
+RULE 1	80	2.2.7 Control Plan
+RULE 1	81	2.2.8 Measurement System Analysis Studies
+RULE 1	82	2.2.9 Dimensional Results
+RULE 1	83	2.2.10 Records of Material / Performance Test Results
+RULE 1	343	2.2.11 Initial Process Studies
+RULE 1	85	2.2.12 Qualified Laboratory Documentation
+RULE 1	86	2.2.13 Appearance Approval Report (AAR)
+RULE 1	395	2.2.14 Sample Production Parts
+RULE 1	399	2.2.15 Master Sample
+RULE 1	405	2.2.16 Checking Aids
+RULE 1	417	2.2.17 Customer-Specific Requirements
+RULE 1	421	2.2.18 Part Submission Warrant (PSW)
+RULE 2	632	Level 1 — Warrant only (and for designated appearance items, an Appearance Approval Report) submitted to customer.
+RULE 2	632	Level 2 — Warrant with product samples and limited supporting data submitted to customer.
+RULE 2	632	Level 3 — Warrant with product samples and complete supporting data submitted to customer.
+RULE 2	632	Level 4 — Warrant and other requirements as defined by customer.
+RULE 2	1380	Level 5 — Warrant with product samples and complete supporting data reviewed at supplier's manufacturing location.
+RULE 3	1378	REASON FOR SUBMISSION: Initial Submission, Engineering Change(s), Tooling: Transfer, Replacement, Refurbishment, or additional, Correction of Discrepancy, Tooling Inactive > than 1 year, Change to Optional Construction or Material, Sub-Supplier or Material Source Change, Change in Part Processing, Parts Produced at Additional Location, Other
+RULE 10	484	The organization shall submit the items and/or records specified in the level identified below in Table 4.1 :
+RULE 10	486	Warrant only (and for designated appearance items, an Appearance Approval Report) submitted to the customer.
+RULE 10	488	with product samples and limited supporting data submitted to the customer.
+RULE 10	489	Warrant with product samples and complete
+RULE 10	490	Level4 Warrant and other requirements as defined by the customer.
+RULE 10	491	Warrant with product samples and complete supporting data reviewed at the organization's manufacturing location.
+RULE 10	495	Requirements Table 4.2 for exact
+RULE 10	497	The organization shall use level 3 as the default level for all
+RULE 10	509	record are defined in the
+RULE 10	515	Design Record R S S
+RULE 10	518	Engineering Change Documents if any R S S
+RULE 10	519	Customer Engineering approval if required R R S R
+RULE 10	520	Design FMEA R R S
+RULE 10	521	Process Flow Diagrams R R S
+RULE 10	522	Process FMEA R R S
+RULE 10	523	Control Plan R R S
+RULE 10	524	Measurement System Analysis Studies R R S
+RULE 10	525	Dimensional Results R S S
+RULE 10	526	Material Performance Test Results R S S
+RULE 10	527	Initial Process Studies R R S
+RULE 10	528	Qualified Laboratory Documentation R S S
+RULE 10	529	Appearance Approval Report AAR if applicable S S S
+RULE 10	530	Sample Product R S
+RULE 10	531	Master Sample R R
+RULE 10	532	Checlung Aids R R
+RULE 10	533	Records of Compliance R R
+RULE 10	535	Part Submission Warrant PSW S S
+RULE 10	540	S = The organization shall submit to the customer and retain a copy of records or
+RULE 10	542	R = The organization shall retain at appropriate locations and make available to the customer upon request.
+RULE 10	544	* = The organization shall retain at appropriate locations and submit to the customer upon request.
+RULE 4	215	Where specified by the customer, the organization shall have evidence of customer engineering approval.
+RULE 4	230	The organization shall have a Design FMEA for parts or materials for which they are design-responsible.
+RULE 4	380	A separate Appearance Approval Report (AAR) shall be completed for each part or series of parts for which a submission is required if the product/part has appearance requirements on the design record.
+RULE 4	403	The organization shall retain a master sample for the same period as the production part approval records
+RULE 4	430	If requested by the customer, the organization shall submit with the PPAP submission any part-specific assembly or component checking aid.
+RULE 5	632	Level 4 — Warrant and other requirements as defined by customer.
+RULE 6	117	Bulk Material - Specific Requirements
+RULE 6	960	Tire Industry - Specific Requirements
+RULE 6	119	Truck Industry - Specific Requirements
+RULE 7	92	Customer Notification and Submission Requirements
+RULE 11	313	The level of initial process capability or performance shall be determined to be acceptable prior to submission
+RULE 11	319	The initial process study is focused on variables not attribute data
+RULE 11	319	Unless approved by the authorized customer representative, attribute data are not acceptable for PPAP submissions.
+RULE 11	325	a short-term study should be based on a minimum of 25 subgroups containing at least 100 readings
+RULE 11	335	Cpk - The capability index for a stable process
+RULE 11	337	Ppk - The performance index
+RULE 11	339	When historical data are available or enough initial data exist to plot a control chart
+RULE 11	339	When not enough data are available (< 100 samples) or there are unknown sources of variation, contact the authorized customer representative
+RULE 11	351	Index>1.67 The process currently meets the acceptance criteria.
+RULE 11	352	1.33_5_Index_5_1.67 The process may be acceptable. Contact the authorized customer representative for a review of the study results.
+RULE 11	353	Index<1.3 3 The process does not currently meet the acceptance criteria. Contact the authorized customer representative for a review of the study results.
+RULE 11	363	The organization shall notify the authorized customer representative of any unstable processes that exist and shall submit a corrective action plan
+RULE 11	369	The organization shall determine with the authorized customer representative alternative acceptance criteria for processes with one-sided specifications or non-normal distributions.
+RULE 11	371	The above mentioned acceptance criteria (2.2.1 1.3) assume normality and a two-sided specification
+RULE 11	375	The organization shall submit to the authorized customer representative for approval a corrective action plan and a modified Control Plan normally providing for 100% inspection.
+RULE 8	700	Part Submission Warrant Completion Instructions
+RULE 8	580	Customer PPAP approval shall be obtained prior to shipping production parts
+RULE 9	330	Actual results are required... Blanket statements of conformance are unacceptable.
+RULE 9	740	Blanket statements of conformance are unacceptable for any test results.

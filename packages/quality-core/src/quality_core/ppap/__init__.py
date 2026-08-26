@@ -5,13 +5,14 @@ Initial Process Studies capability gate, and cross-engine linkage.
 """
 
 from __future__ import annotations
+
 from quality_core.ppap.applicability import (
     APPLICABILITY_VERDICTS,
+    CONDITIONAL_ELEMENTS,
     ApplicabilityResult,
     ApplicabilityVerdict,
-    assess_applicability,
-    CONDITIONAL_ELEMENTS,
     ElementApplicability,
+    assess_applicability,
 )
 from quality_core.ppap.linkage import (
     LINKABLE_ELEMENTS,
@@ -24,64 +25,64 @@ from quality_core.ppap.linkage import (
 from quality_core.ppap.process_study import (
     ACCEPTANCE_THRESHOLD_CAPABLE,
     ACCEPTANCE_THRESHOLD_POTENTIALLY_CAPABLE,
-    AcceptanceBand,
     ACTION_ATTRIBUTE_DATA,
     ACTION_BETWEEN_1_33_AND_1_67,
     ACTION_GREATER_THAN_1_67,
     ACTION_INSUFFICIENT_SAMPLE,
     ACTION_LESS_THAN_1_33,
     ACTION_UNSTABLE,
-    assess_initial_process_study,
-    IndexType,
     MINIMUM_INITIAL_STUDY_SAMPLES,
     MINIMUM_INITIAL_STUDY_SUBGROUPS,
+    AcceptanceBand,
+    IndexType,
     ProcessStudyResult,
     StudyVerdict,
+    assess_initial_process_study,
 )
 from quality_core.ppap.psw import (
     BLANKET_STATEMENT_PATTERNS,
-    find_blanket_statements,
-    PartSubmissionWarrant,
     PSW_FIELD_NAMES,
+    PartSubmissionWarrant,
     PSWFieldStatus,
     PSWFieldVerdict,
     PSWValidationResult,
     PSWValidationVerdict,
+    find_blanket_statements,
     validate_psw,
 )
 from quality_core.ppap.schema import (
     EVIDENCE_STATUS_ALIASES,
     EVIDENCE_STATUS_VALUES,
-    EvidenceItem,
-    EvidenceStatus,
-    IngestError,
-    load_ppap_csv,
     PPAP_ELEMENT_ALIASES,
     PPAP_ELEMENT_IDS,
     PPAP_ELEMENT_NAMES,
     PPAP_ELEMENT_NUMBERS,
     PPAP_PACKAGE_SCHEMA,
-    PPAPElementId,
-    PPAPPackage,
     REASON_FOR_SUBMISSION_ALIASES,
     REASON_FOR_SUBMISSION_VALUES,
-    ReasonForSubmission,
     SUBMISSION_LEVEL_ALIASES,
     SUBMISSION_LEVEL_DESCRIPTIONS,
     SUBMISSION_LEVELS,
+    EvidenceItem,
+    EvidenceStatus,
+    IngestError,
+    PPAPElementId,
+    PPAPPackage,
+    ReasonForSubmission,
     SubmissionLevel,
+    load_ppap_csv,
     validate_ppap,
 )
 from quality_core.ppap.table_4_1 import (
     ELEMENT_IDS,
-    elements_required_at_level,
-    lookup_requirement,
     REQUIREMENT_CODES,
-    requirement_legend,
-    RequirementCode,
-    submission_level_description,
     TABLE_4_1_LEGEND,
     TABLE_4_1_MATRIX,
+    RequirementCode,
+    elements_required_at_level,
+    lookup_requirement,
+    requirement_legend,
+    submission_level_description,
 )
 
 __all__ = [

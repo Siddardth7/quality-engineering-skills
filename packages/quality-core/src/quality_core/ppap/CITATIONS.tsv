@@ -78,3 +78,7 @@ RULE 11	363	The organization shall notify the authorized customer representative
 RULE 11	369	The organization shall determine with the authorized customer representative alternative acceptance criteria for processes with one-sided specifications or non-normal distributions.
 RULE 11	371	The above mentioned acceptance criteria (2.2.1 1.3) assume normality and a two-sided specification
 RULE 11	375	The organization shall submit to the authorized customer representative for approval a corrective action plan and a modified Control Plan normally providing for 100% inspection.
+RULE 8	700	Part Submission Warrant Completion Instructions
+RULE 8	580	Customer PPAP approval shall be obtained prior to shipping production parts
+RULE 9	330	Actual results are required... Blanket statements of conformance are unacceptable.
+RULE 9	740	Blanket statements of conformance are unacceptable for any test results.

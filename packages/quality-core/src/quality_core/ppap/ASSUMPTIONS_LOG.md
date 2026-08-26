@@ -3,7 +3,7 @@
 **Package:** `quality_core.ppap`  
 **Domain:** Production Part Approval Process (PPAP) 18-Element Completeness Auditor, Table 4.1 Matrix, Applicability Rules, Initial Process Studies Gate, PSW Validator, and Cross-Engine Linkage.  
 **Release Target:** `v0.8.0`  
-**Tracking Issue:** [#98](https://github.com/Siddardth7/quality-engineering-skills/issues/98) (Epic 0) / [#99](https://github.com/Siddardth7/quality-engineering-skills/issues/99) (Epic 1) / [#101](https://github.com/Siddardth7/quality-engineering-skills/issues/101) (Epic 3)
+**Tracking Issue:** [#98](https://github.com/Siddardth7/quality-engineering-skills/issues/98) (Epic 0) / [#99](https://github.com/Siddardth7/quality-engineering-skills/issues/99) (Epic 1) / [#101](https://github.com/Siddardth7/quality-engineering-skills/issues/101) (Epic 3) / [#104](https://github.com/Siddardth7/quality-engineering-skills/issues/104) (Epic 6)
 
 ---
 
@@ -197,6 +197,33 @@ All remaining 13 elements (§2.2.1, §2.2.2, §2.2.5–§2.2.12, §2.2.14, §2.2
 **Rationale:** Section 3 requires customer notification and submission for specified situations (e.g. tooling transfer, new supplier, engineering change). The reason for submission explains *why* PPAP is initiated; the submission level determines *what* is submitted vs retained. Inventing arbitrary element reductions based solely on submission reason without customer agreement violates Section 3.
 
 **Applied In:** `packages/quality-core/src/quality_core/ppap/applicability.py` (`assess_applicability`).
+## RULE 8: Part Submission Warrant (PSW) 27-Field Form Completeness & Authority Invariant (Appendix A & Section 5)
+
+**Decision:** Formulate 27-field PSW form completeness validation yielding `COMPLETE`, `INCOMPLETE`, or `INDETERMINATE`. Field 27 (Customer Disposition) is reserved exclusively for the customer; the engine validates supplier completion (Fields 1–26) and strictly refuses to emit or populate customer disposition statuses (`Approved`, `Interim Approval`, `Rejected`).
+
+**Source:** AIAG PPAP Reference Manual, 4th Edition (June 2006):
+- Appendix A (Part Submission Warrant Completion Instructions, Lines 700–780)
+- Section 5 (Part Submission Status, Lines 580–620):
+> "Customer PPAP approval shall be obtained prior to shipping production parts... Dispositions: Approved, Interim Approval, Rejected."
+
+**Rationale:** The PSW is the core legal declaration of production part conformance. Enforcing all 27 Appendix-A fields, conditional rules, and customer authority boundary prevents erroneous supplier submissions.
+
+**Applied In:** `packages/quality-core/src/quality_core/ppap/psw.py` (`PartSubmissionWarrant`, `validate_psw`, `PSW_FIELD_NAMES`).
+
+---
+
+## RULE 9: Prohibition on Blanket Statements of Conformance (§2.2.9, §2.2.10, Appendix A)
+
+**Decision:** Formulate word-boundary scanning heuristic detecting prohibited blanket conformance statements ("meets all specs", "all dimensions conform", "100% conforming") in test results and explanation fields, marking them `INVALID`.
+
+**Source:** AIAG PPAP Reference Manual, 4th Edition (June 2006):
+- §2.2.9 (Line 330): "Actual results are required... Blanket statements of conformance are unacceptable."
+- §2.2.10 (Line 350): "Blanket statements of conformance are unacceptable for any test results."
+- Appendix A (Field 20 & Field 21 Instructions).
+
+**Rationale:** Suppliers frequently attempt to submit generic conformance statements instead of quantitative dimension/material data. Prohibiting blanket assertions enforces compliance with automotive OEM quality standards.
+
+**Applied In:** `packages/quality-core/src/quality_core/ppap/psw.py` (`find_blanket_statements`, `BLANKET_STATEMENT_PATTERNS`, `validate_psw`).
 ## RULE 10: Table 4.1 Submission Levels & Table 4.2 Retention/Submission Matrix
 
 **Decision:** Encode the 18-element Production Part Approval Process submission and retention requirements across all five submission levels (Levels 1–5) exactly per AIAG PPAP 4th Edition Section 4, Table 4.1 and Table 4.2. Default to Level 3 when no level is specified. Model requirement codes as `"S"` (Submit), `"R"` (Retain), `"*"`, and `"CUSTOMER_DEFINED"` (for Level 4 non-warrant items when customer requirements are not yet specified).
@@ -270,3 +297,6 @@ All remaining 13 elements (§2.2.1, §2.2.2, §2.2.5–§2.2.12, §2.2.14, §2.2
 **Rationale:** Initial process studies evaluate process variation and statistical capability against published acceptance thresholds. Reusing `quality_core.spc` guarantees that capability formulas ($C_p, C_{pk}, P_p, P_{pk}$) and Western Electric stability gates are applied deterministically without math duplication.
 
 **Applied In:** `packages/quality-core/src/quality_core/ppap/process_study.py` (`StudyVerdict`, `AcceptanceBand`, `IndexType`, `ProcessStudyResult`, `assess_initial_process_study`, `MINIMUM_INITIAL_STUDY_SAMPLES`, `MINIMUM_INITIAL_STUDY_SUBGROUPS`, `ACCEPTANCE_THRESHOLD_CAPABLE`, `ACCEPTANCE_THRESHOLD_POTENTIALLY_CAPABLE`).
+
+---
+

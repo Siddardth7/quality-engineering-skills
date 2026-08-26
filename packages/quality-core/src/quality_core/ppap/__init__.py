@@ -38,6 +38,17 @@ from quality_core.ppap.process_study import (
     ProcessStudyResult,
     StudyVerdict,
 )
+from quality_core.ppap.psw import (
+    BLANKET_STATEMENT_PATTERNS,
+    find_blanket_statements,
+    PartSubmissionWarrant,
+    PSW_FIELD_NAMES,
+    PSWFieldStatus,
+    PSWFieldVerdict,
+    PSWValidationResult,
+    PSWValidationVerdict,
+    validate_psw,
+)
 from quality_core.ppap.schema import (
     EVIDENCE_STATUS_ALIASES,
     EVIDENCE_STATUS_VALUES,
@@ -86,6 +97,7 @@ __all__ = [
     "AcceptanceBand",
     "ApplicabilityResult",
     "ApplicabilityVerdict",
+    "BLANKET_STATEMENT_PATTERNS",
     "CONDITIONAL_ELEMENTS",
     "ELEMENT_IDS",
     "EVIDENCE_STATUS_ALIASES",
@@ -108,6 +120,12 @@ __all__ = [
     "PPAP_ELEMENT_NAMES",
     "PPAP_ELEMENT_NUMBERS",
     "PPAP_PACKAGE_SCHEMA",
+    "PSWFieldStatus",
+    "PSWFieldVerdict",
+    "PSWValidationResult",
+    "PSWValidationVerdict",
+    "PSW_FIELD_NAMES",
+    "PartSubmissionWarrant",
     "ProcessStudyResult",
     "REASON_FOR_SUBMISSION_ALIASES",
     "REASON_FOR_SUBMISSION_VALUES",
@@ -124,6 +142,7 @@ __all__ = [
     "assess_applicability",
     "assess_initial_process_study",
     "elements_required_at_level",
+    "find_blanket_statements",
     "load_ppap_csv",
     "lookup_requirement",
     "requirement_legend",
@@ -131,4 +150,5 @@ __all__ = [
     "validate_element_linkage",
     "validate_linked_evidence",
     "validate_ppap",
+    "validate_psw",
 ]

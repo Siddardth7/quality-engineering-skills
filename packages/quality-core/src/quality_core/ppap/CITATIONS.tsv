@@ -10,7 +10,7 @@ RULE 1	81	2.2.8 Measurement System Analysis Studies
 RULE 1	82	2.2.9 Dimensional Results
 RULE 1	83	2.2.10 Records of Material / Performance Test Results
 RULE 1	343	2.2.11 Initial Process Studies
-RULE 1	85	2.2.12 Qualified Laboratory Documentation
+RULE 1	528	Qualified Laboratory Documentation
 RULE 1	86	2.2.13 Appearance Approval Report (AAR)
 RULE 1	395	2.2.14 Sample Production Parts
 RULE 1	399	2.2.15 Master Sample
@@ -54,13 +54,13 @@ RULE 10	540	S = The organization shall submit to the customer and retain a copy 
 RULE 10	542	R = The organization shall retain at appropriate locations and make available to the customer upon request.
 RULE 10	544	* = The organization shall retain at appropriate locations and submit to the customer upon request.
 RULE 4	215	Where specified by the customer, the organization shall have evidence of customer engineering approval.
-RULE 4	230	The organization shall have a Design FMEA for parts or materials for which they are design-responsible.
-RULE 4	380	A separate Appearance Approval Report (AAR) shall be completed for each part or series of parts for which a submission is required if the product/part has appearance requirements on the design record.
-RULE 4	403	The organization shall retain a master sample for the same period as the production part approval records
-RULE 4	430	If requested by the customer, the organization shall submit with the PPAP submission any part-specific assembly or component checking aid.
+RULE 4	221	The product design-responsible organization shall develop a Design FMEA in accordance with, and compliant to, customer-specified requirements
+RULE 4	387	A separate Appearance Approval Report (AAR) shall be completed for each part or series of parts if the productipart has appearance requirements on the design record.
+RULE 4	401	The organization shall retain a master sainple for the same period as the production part approval records
+RULE 4	409	The organization shall certify that all aspects of the checking aid agree with part dimensional
 RULE 5	632	Level 4 — Warrant and other requirements as defined by customer.
 RULE 6	117	Bulk Material - Specific Requirements
-RULE 6	960	Tire Industry - Specific Requirements
+RULE 6	118	TIRES - SPECIFIC REQUIREMENTS
 RULE 6	119	Truck Industry - Specific Requirements
 RULE 7	92	Customer Notification and Submission Requirements
 RULE 11	313	The level of initial process capability or performance shall be determined to be acceptable prior to submission
@@ -78,7 +78,10 @@ RULE 11	363	The organization shall notify the authorized customer representative
 RULE 11	369	The organization shall determine with the authorized customer representative alternative acceptance criteria for processes with one-sided specifications or non-normal distributions.
 RULE 11	371	The above mentioned acceptance criteria (2.2.1 1.3) assume normality and a two-sided specification
 RULE 11	375	The organization shall submit to the authorized customer representative for approval a corrective action plan and a modified Control Plan normally providing for 100% inspection.
-RULE 8	700	Part Submission Warrant Completion Instructions
-RULE 8	580	Customer PPAP approval shall be obtained prior to shipping production parts
-RULE 9	330	Actual results are required... Blanket statements of conformance are unacceptable.
+RULE 8	423	Upon completion of all PPAP requirements, the organization shall complete the Part Submission Warrant (PSW).
+RULE 8	468	The organization shall submit for PPAP approval prior to the first production shipment
+RULE 9	255	The organization shall record, with the actual results: all dimensions
 RULE 9	740	Blanket statements of conformance are unacceptable for any test results.
+RULE 12	554	Approved indicates that the part or material, including all sub-components, meets all customer requirements.
+RULE 12	558	Interim Approval permits shipment of material for production requirements on a limited time or piece quantity basis.
+RULE 12	574	Rejected means that the PPAP submission does not meet customer requirements, based on the production lot from which it was taken and/or accompanying documentation.

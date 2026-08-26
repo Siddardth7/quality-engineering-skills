@@ -146,6 +146,22 @@ def test_assumptions_log_rules_cited() -> None:
         assert any(rule_name in site for site in cited_sites) or rule_name in cited_sites, f"RULE without a CITATIONS.tsv row: {heading}"
 
 
+def test_assumptions_log_rule_entries() -> None:
+    """Verify RULE entries exist in ASSUMPTIONS_LOG.md and each has matching CITATIONS.tsv row(s)."""
+    content = _ASSUMPTIONS_LOG.read_text(encoding="utf-8")
+    assert "## RULE Entries" in content
+    assert "## RULE 10: Table 4.1 Submission Levels & Table 4.2 Retention/Submission Matrix" in content
+
+    rule_headings = _RULE_HEADING_RE.findall(content)
+    assert len(rule_headings) >= 1, f"Expected at least 1 RULE entry, found: {rule_headings}"
+
+    _, rows = _validate_citations_tsv_format(_CITATIONS_TSV.read_text(encoding="utf-8"))
+    cited_sites = {row["site"] for row in rows}
+    for heading in rule_headings:
+        site_name = heading.removeprefix("## ").split(":")[0].strip()
+        assert site_name in cited_sites, f"RULE without a CITATIONS.tsv row: {heading}"
+
+
 def test_assumptions_log_scoping_and_honesty_declarations() -> None:
     """Verify all honesty, authority, and scoping declarations are recorded in ASSUMPTIONS_LOG.md."""
     content = _ASSUMPTIONS_LOG.read_text(encoding="utf-8")
@@ -177,6 +193,12 @@ def test_citations_tsv_valid_data_rows() -> None:
         assert row["site"], "Site column must not be empty"
         assert row["src_line"], "Src line column must not be empty"
         assert row["quote"], "Quote column must not be empty"
+def test_citations_tsv_populated_data_rows() -> None:
+    """Verify ppap/CITATIONS.tsv has populated data rows for active RULE entries."""
+    raw_content = _CITATIONS_TSV.read_text(encoding="utf-8")
+    headers, rows = _validate_citations_tsv_format(raw_content)
+    assert headers == ["site", "src_line", "quote"]
+    assert len(rows) > 0, f"Expected non-zero data rows in CITATIONS.tsv, found {len(rows)}"
 
 
 @pytest.mark.parametrize(
@@ -257,24 +279,22 @@ def test_negative_control_invalid_tsv_header_rejected() -> None:
 
 
 def test_negative_control_citations_tsv_unexpected_rows_rejected() -> None:
-    """Negative control: assert a citations TSV with data rows fails the zero-data-row assertion."""
-    tsv_with_row = "site\tsrc_line\tquote\nRULE 1\t100\tExample quote\n"
-    headers, rows = _validate_citations_tsv_format(tsv_with_row)
+    """Negative control: assert an empty citations TSV fails the non-zero data row assertion."""
+    tsv_empty = "site\tsrc_line\tquote\n"
+    headers, rows = _validate_citations_tsv_format(tsv_empty)
     assert headers == ["site", "src_line", "quote"]
-    assert len(rows) == 1
-    assert len(rows) != 0, "Non-zero data rows in scaffold TSV must fail scaffold check"
+    assert len(rows) == 0, "Empty TSV must have 0 rows"
 
 
 def test_negative_control_uncited_rule_entry_detected() -> None:
     """Negative control: assert a RULE heading with no matching CITATIONS.tsv row is detectable."""
-    mutated_log = "## RULE Entries\n\n## RULE 1: Initial Process Studies Band\n\n**Decision:** something.\n"
+    mutated_log = "## RULE Entries\n\n## RULE 99: Bogus Rule\n\n**Decision:** something.\n"
     rule_headings = _RULE_HEADING_RE.findall(mutated_log)
-    assert rule_headings == ["## RULE 1"], "Mutated log must expose a RULE heading"
-    assert rule_headings != [], "Zero-RULE assertion must fail on a log that carries a RULE entry"
+    assert rule_headings == ["## RULE 99"], "Mutated log must expose a RULE heading"
 
-    _, rows = _validate_citations_tsv_format("site\tsrc_line\tquote\n")
+    _, rows = _validate_citations_tsv_format("site\tsrc_line\tquote\nRULE 1\t100\tExample quote\n")
     cited_sites = {row["site"] for row in rows}
-    assert "RULE 1" not in cited_sites, "Uncited RULE entry must be detected against an empty TSV"
+    assert "RULE 99" not in cited_sites, "Uncited RULE entry must be detected against an empty TSV"
 
 
 def test_negative_control_assumptions_missing_declaration_rejected() -> None:

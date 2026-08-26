@@ -29,8 +29,20 @@ from quality_core.ppap.schema import (
     load_ppap_csv,
     validate_ppap,
 )
+from quality_core.ppap.table_4_1 import (
+    ELEMENT_IDS,
+    REQUIREMENT_CODES,
+    TABLE_4_1_LEGEND,
+    TABLE_4_1_MATRIX,
+    RequirementCode,
+    elements_required_at_level,
+    lookup_requirement,
+    requirement_legend,
+    submission_level_description,
+)
 
 __all__ = [
+    "ELEMENT_IDS",
     "EVIDENCE_STATUS_ALIASES",
     "EVIDENCE_STATUS_VALUES",
     "EvidenceItem",
@@ -45,11 +57,19 @@ __all__ = [
     "PPAP_PACKAGE_SCHEMA",
     "REASON_FOR_SUBMISSION_ALIASES",
     "REASON_FOR_SUBMISSION_VALUES",
+    "REQUIREMENT_CODES",
     "ReasonForSubmission",
+    "RequirementCode",
     "SUBMISSION_LEVELS",
     "SUBMISSION_LEVEL_ALIASES",
     "SUBMISSION_LEVEL_DESCRIPTIONS",
     "SubmissionLevel",
+    "TABLE_4_1_LEGEND",
+    "TABLE_4_1_MATRIX",
+    "elements_required_at_level",
     "load_ppap_csv",
+    "lookup_requirement",
+    "requirement_legend",
+    "submission_level_description",
     "validate_ppap",
 ]

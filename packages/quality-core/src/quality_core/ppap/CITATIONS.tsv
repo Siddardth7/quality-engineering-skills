@@ -53,3 +53,13 @@ RULE 10	535	Part Submission Warrant PSW S S
 RULE 10	540	S = The organization shall submit to the customer and retain a copy of records or
 RULE 10	542	R = The organization shall retain at appropriate locations and make available to the customer upon request.
 RULE 10	544	* = The organization shall retain at appropriate locations and submit to the customer upon request.
+RULE 4	215	Where specified by the customer, the organization shall have evidence of customer engineering approval.
+RULE 4	230	The organization shall have a Design FMEA for parts or materials for which they are design-responsible.
+RULE 4	380	A separate Appearance Approval Report (AAR) shall be completed for each part or series of parts for which a submission is required if the product/part has appearance requirements on the design record.
+RULE 4	403	The organization shall retain a master sample for the same period as the production part approval records
+RULE 4	430	If requested by the customer, the organization shall submit with the PPAP submission any part-specific assembly or component checking aid.
+RULE 5	632	Level 4 — Warrant and other requirements as defined by customer.
+RULE 6	117	Bulk Material - Specific Requirements
+RULE 6	960	Tire Industry - Specific Requirements
+RULE 6	119	Truck Industry - Specific Requirements
+RULE 7	92	Customer Notification and Submission Requirements

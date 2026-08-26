@@ -30,7 +30,7 @@ MANUAL = Path(os.environ.get(MANUAL_ENV_VAR, DEFAULT_MANUAL))
 
 LINE_TOLERANCE = 2
 
-_HTML_TAG = re.compile(r"<[^>]+>")
+_HTML_TAG = re.compile(r"<[a-zA-Z/][^>]*>")
 _NON_ALNUM = re.compile(r"[^0-9a-z]+")
 
 
@@ -38,6 +38,10 @@ def _normalise(text: str) -> str:
     """Reduce text to lowercase alphanumeric words separated by single spaces."""
     text = unicodedata.normalize("NFKC", text)
     text = text.replace("­", "").replace("​", "")
+    # Strip <br> first, then only real tags (`<` followed by a letter or `/`). A blanket
+    # `<[^>]+>` swallows manual text such as `Index<1.3 3|...<br>` and produces a false
+    # "fabricated citation" verdict (E5, #103).
+    text = re.sub(r"<\s*br\s*/?>", " ", text, flags=re.IGNORECASE)
     text = _HTML_TAG.sub(" ", text)
     text = re.sub(r"([a-zA-Z])([0-9])", r"\1 \2", text)
     text = re.sub(r"([0-9])([a-zA-Z])", r"\1 \2", text)

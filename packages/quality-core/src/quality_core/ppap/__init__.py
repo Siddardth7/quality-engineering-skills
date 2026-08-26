@@ -1,7 +1,7 @@
 """
 Production Part Approval Process (PPAP) Core Engine — deterministic 18-element auditor,
 Table 4.1 submission/retention matrix, applicability rules, PSW field validator,
-and cross-engine linkage.
+Initial Process Studies capability gate, and cross-engine linkage.
 """
 
 from __future__ import annotations
@@ -12,6 +12,23 @@ from quality_core.ppap.applicability import (
     assess_applicability,
     CONDITIONAL_ELEMENTS,
     ElementApplicability,
+)
+from quality_core.ppap.process_study import (
+    ACCEPTANCE_THRESHOLD_CAPABLE,
+    ACCEPTANCE_THRESHOLD_POTENTIALLY_CAPABLE,
+    AcceptanceBand,
+    ACTION_ATTRIBUTE_DATA,
+    ACTION_BETWEEN_1_33_AND_1_67,
+    ACTION_GREATER_THAN_1_67,
+    ACTION_INSUFFICIENT_SAMPLE,
+    ACTION_LESS_THAN_1_33,
+    ACTION_UNSTABLE,
+    assess_initial_process_study,
+    IndexType,
+    MINIMUM_INITIAL_STUDY_SAMPLES,
+    MINIMUM_INITIAL_STUDY_SUBGROUPS,
+    ProcessStudyResult,
+    StudyVerdict,
 )
 from quality_core.ppap.schema import (
     EVIDENCE_STATUS_ALIASES,
@@ -49,7 +66,16 @@ from quality_core.ppap.table_4_1 import (
 )
 
 __all__ = [
+    "ACCEPTANCE_THRESHOLD_CAPABLE",
+    "ACCEPTANCE_THRESHOLD_POTENTIALLY_CAPABLE",
+    "ACTION_ATTRIBUTE_DATA",
+    "ACTION_BETWEEN_1_33_AND_1_67",
+    "ACTION_GREATER_THAN_1_67",
+    "ACTION_INSUFFICIENT_SAMPLE",
+    "ACTION_LESS_THAN_1_33",
+    "ACTION_UNSTABLE",
     "APPLICABILITY_VERDICTS",
+    "AcceptanceBand",
     "ApplicabilityResult",
     "ApplicabilityVerdict",
     "CONDITIONAL_ELEMENTS",
@@ -59,7 +85,10 @@ __all__ = [
     "ElementApplicability",
     "EvidenceItem",
     "EvidenceStatus",
+    "IndexType",
     "IngestError",
+    "MINIMUM_INITIAL_STUDY_SAMPLES",
+    "MINIMUM_INITIAL_STUDY_SUBGROUPS",
     "PPAPElementId",
     "PPAPPackage",
     "PPAP_ELEMENT_ALIASES",
@@ -67,6 +96,7 @@ __all__ = [
     "PPAP_ELEMENT_NAMES",
     "PPAP_ELEMENT_NUMBERS",
     "PPAP_PACKAGE_SCHEMA",
+    "ProcessStudyResult",
     "REASON_FOR_SUBMISSION_ALIASES",
     "REASON_FOR_SUBMISSION_VALUES",
     "REQUIREMENT_CODES",
@@ -75,10 +105,12 @@ __all__ = [
     "SUBMISSION_LEVELS",
     "SUBMISSION_LEVEL_ALIASES",
     "SUBMISSION_LEVEL_DESCRIPTIONS",
+    "StudyVerdict",
     "SubmissionLevel",
     "TABLE_4_1_LEGEND",
     "TABLE_4_1_MATRIX",
     "assess_applicability",
+    "assess_initial_process_study",
     "elements_required_at_level",
     "load_ppap_csv",
     "lookup_requirement",

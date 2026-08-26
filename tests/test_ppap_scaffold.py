@@ -217,9 +217,10 @@ def test_on_machine_manuals_check(name: str, meta: dict[str, str]) -> None:
     assert stat.st_size > 0, f"Manual file is empty for {name}: {manual_path} (size={stat.st_size})"
 
     sample = manual_path.read_text(encoding="utf-8", errors="replace")[:5000]
-    assert meta["marker"].lower() in sample.lower() or meta["marker"].lower() in manual_path.name.lower(), (
-        f"Marker {meta['marker']!r} not found in sample of {manual_path}"
-    )
+    assert (
+        meta["marker"].lower() in sample.lower()
+        or meta["marker"].lower() in manual_path.name.lower()
+    ), f"Marker {meta['marker']!r} not found in sample of {manual_path}"
 
 
 def test_claude_md_standards_fidelity_mapping() -> None:
@@ -255,27 +256,39 @@ def test_negative_control_tsv_delimiter_detection() -> None:
     """Negative control: assert non-tab delimiters (comma, semicolon, space) are detected."""
     comma_delimited = "site,src_line,quote\nmod.py,10,some quote\n"
     headers_comma, _ = _validate_citations_tsv_format(comma_delimited)
-    assert headers_comma != ["site", "src_line", "quote"], "Comma-separated content must not parse as valid TSV columns"
-    assert len(headers_comma) == 1, "Comma-separated content parsed with tab delimiter should produce 1 combined column"
+    assert headers_comma != ["site", "src_line", "quote"], (
+        "Comma-separated content must not parse as valid TSV columns"
+    )
+    assert len(headers_comma) == 1, (
+        "Comma-separated content parsed with tab delimiter should produce 1 combined column"
+    )
 
     semicolon_delimited = "site;src_line;quote\nmod.py;10;some quote\n"
     headers_semi, _ = _validate_citations_tsv_format(semicolon_delimited)
-    assert headers_semi != ["site", "src_line", "quote"], "Semicolon-separated content must not parse as valid TSV columns"
+    assert headers_semi != ["site", "src_line", "quote"], (
+        "Semicolon-separated content must not parse as valid TSV columns"
+    )
 
     space_delimited = "site src_line quote\nmod.py 10 quote\n"
     headers_space, _ = _validate_citations_tsv_format(space_delimited)
-    assert headers_space != ["site", "src_line", "quote"], "Space-separated content must not parse as valid TSV columns"
+    assert headers_space != ["site", "src_line", "quote"], (
+        "Space-separated content must not parse as valid TSV columns"
+    )
 
 
 def test_negative_control_invalid_tsv_header_rejected() -> None:
     """Negative control: assert wrong column names or orders are identified as invalid."""
     wrong_headers = "source\tline_number\ttext\n"
     headers, _ = _validate_citations_tsv_format(wrong_headers)
-    assert headers != ["site", "src_line", "quote"], "Wrong headers must not match canonical header specification"
+    assert headers != ["site", "src_line", "quote"], (
+        "Wrong headers must not match canonical header specification"
+    )
 
     permuted_headers = "quote\tsite\tsrc_line\n"
     headers_perm, _ = _validate_citations_tsv_format(permuted_headers)
-    assert headers_perm != ["site", "src_line", "quote"], "Permuted headers must not match canonical header specification"
+    assert headers_perm != ["site", "src_line", "quote"], (
+        "Permuted headers must not match canonical header specification"
+    )
 
 
 def test_negative_control_citations_tsv_unexpected_rows_rejected() -> None:
@@ -305,7 +318,9 @@ def test_negative_control_assumptions_missing_declaration_rejected() -> None:
         "## Honesty & Scoping Declarations\n"
         "- **Submission Level 4 Indeterminacy Gate**\n"
     )
-    assert "The Authority Invariant" not in mutated_content, "Mutated log lacking authority invariant must be detected"
+    assert "The Authority Invariant" not in mutated_content, (
+        "Mutated log lacking authority invariant must be detected"
+    )
     assert "Engineering Heuristics Declaration" not in mutated_content
 
 
@@ -331,9 +346,13 @@ def test_negative_control_assumptions_missing_inventory_rejected() -> None:
 
 def test_negative_control_claude_md_missing_domain_rejected() -> None:
     """Negative control: assert CLAUDE.md without the PPAP bullet fails validation."""
-    mutated_content = "## Standards fidelity\n- **MSA:** AIAG MSA\n- **RCA:** AIAG CQI-20\n- **NCR:** ISO 9001\n"
+    mutated_content = (
+        "## Standards fidelity\n- **MSA:** AIAG MSA\n- **RCA:** AIAG CQI-20\n- **NCR:** ISO 9001\n"
+    )
     assert _CLAUDE_MD_PPAP_MARKER not in mutated_content
-    assert "/Users/sid/Documents/Upskill/SixSigma/PPAP/AIAG_PPAP_4th_Edition.md" not in mutated_content
+    assert (
+        "/Users/sid/Documents/Upskill/SixSigma/PPAP/AIAG_PPAP_4th_Edition.md" not in mutated_content
+    )
 
 
 def test_negative_control_missing_manual_path_detection(tmp_path: Path) -> None:
@@ -345,7 +364,11 @@ def test_negative_control_missing_manual_path_detection(tmp_path: Path) -> None:
 
 def test_negative_control_missing_changelog_entry_detected() -> None:
     """Negative control: assert a changelog without #98 under [Unreleased] fails validation."""
-    bogus_changelog = "## [Unreleased]\n\n### Added\n- Some other feature (#80)\n\n## [0.7.0] - 2026-08-22\n"
+    bogus_changelog = (
+        "## [Unreleased]\n\n### Added\n- Some other feature (#80)\n\n## [0.7.0] - 2026-08-22\n"
+    )
     unreleased = _extract_unreleased_changelog_section(bogus_changelog)
-    assert "#98" not in unreleased, "Bogus changelog without #98 must not pass #98 membership assertion"
+    assert "#98" not in unreleased, (
+        "Bogus changelog without #98 must not pass #98 membership assertion"
+    )
     assert "quality_core/ppap/ASSUMPTIONS_LOG.md" not in unreleased

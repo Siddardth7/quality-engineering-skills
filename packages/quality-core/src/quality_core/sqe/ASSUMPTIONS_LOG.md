@@ -41,6 +41,24 @@ will ever carry.
 
 ## RULE Entries
 
+## RULE-SQE-011: Escalation tiers are evidence recommendations, not commercial decisions (`escalation.py`, #119)
+
+**Decision:** `evaluate_escalation` recommends only one quality-engineering tier: `NONE`,
+`MONITOR`, `SCAR_REQUIRED`, `CONTAINMENT_REQUIRED`, or `EXECUTIVE_REVIEW`. It retains every
+evaluated score and optional recurrence trigger, selects the highest fired tier, and returns
+`INDETERMINATE` for an unrated scorecard. The tier-ladder structure is informed by AIAG CQI-20's
+corrective-action escalation discipline; all numeric thresholds are caller-configurable engineering
+heuristics with no standards citation.
+
+**Basis:** AIAG CQI-20 supports disciplined corrective-action escalation, but it supplies no
+numeric supplier score or recurrence threshold. ISO 9001 §8.4 / §10.2 and IATF 16949 §8.4 require
+organization-determined supplier controls; they do not authorize this engine to make commercial
+decisions.
+
+**Consequence:** The engine never recommends a commercial action. Any commercial response remains
+the decision of an authorized business owner. An indeterminate supplier is neither cleared nor
+escalated.
+
 ## RULE-SQE-001: On-time / in-full / OTIF arithmetic has no published source
 
 **Decision:** `quality_core.sqe.otif` reports three separate figures over one shared denominator

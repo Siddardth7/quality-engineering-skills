@@ -775,6 +775,18 @@ class TestPPAPCanvasDomainInteroperabilityAndAudit:
         assert canvas_l4.get_element("2.2.3").validation_status == "undecided"  # type: ignore[union-attr]
         assert canvas_l4.get_element("2.2.13").validation_status == "undecided"  # type: ignore[union-attr]
 
+        # Test Level 4 with explicit customer requirements so 2.2.13 evaluates to NOT_APPLICABLE
+        canvas_l4_cust = PPAPCanvas(
+            submission_level=4,
+            customer_level_4_requirements=["2.2.1", "2.2.2"],
+            designated_appearance_item=False,
+        )
+        canvas_l4_cust.update_element("2.2.1", status="submitted")
+        canvas_l4_cust.update_element("2.2.2", status="retained")
+        canvas_l4_cust.update_element("2.2.13", status="not_applicable")
+        canvas_l4_cust.sync_audit()
+        assert canvas_l4_cust.get_element("2.2.13").validation_status == "valid"  # type: ignore[union-attr]
+
         # Test Level 5 requirement paths (all R except 2.2.18 S)
         canvas_l5 = load_sample_ppap_canvas()
         canvas_l5.submission_level = 5

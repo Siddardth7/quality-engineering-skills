@@ -508,6 +508,7 @@ class PPAPCanvas:
         has_design_responsibility: bool = True,
         designated_appearance_item: bool = False,
         has_checking_aid: bool = True,
+        customer_level_4_requirements: list[str] | None = None,
         title: str = "AIAG PPAP 4th Edition Checklist Canvas",
         description: str = "Interactive single-writer visual PPAP canvas with Table 4.1 matrix and submission readiness.",
     ) -> None:
@@ -622,6 +623,7 @@ class PPAPCanvas:
         self._has_checking_aid = has_checking_aid
 
         self._elements: dict[PPAPElementId, PPAPCanvasElement] = {}
+        self._customer_requirement_set: set[PPAPElementId] | list[PPAPElementId] | list[str] | None = None
 
         # Ingest from package if provided
         pkg_target = package if package is not None else (elements if isinstance(elements, PPAPPackage) else None)
@@ -640,6 +642,7 @@ class PPAPCanvas:
             self._has_design_responsibility = pkg.has_design_responsibility
             self._designated_appearance_item = pkg.designated_appearance_item or pkg.appearance_item
             self._has_checking_aid = pkg.has_checking_aid
+            self._customer_requirement_set = pkg.customer_requirement_set
 
             for pkg_item in pkg.full_elements():
                 elem = PPAPCanvasElement(
@@ -655,11 +658,13 @@ class PPAPCanvas:
                 )
                 self._elements[elem.element_id] = elem
 
-        elif elements is not None:
-            if not isinstance(elements, list):
-                raise TypeError(f"elements must be a list, got {type(elements).__name__}")
-            for el_item in elements:
-                self.add_element(el_item)
+        else:
+            self._customer_requirement_set = customer_level_4_requirements
+            if elements is not None:
+                if not isinstance(elements, list):
+                    raise TypeError(f"elements must be a list, got {type(elements).__name__}")
+                for el_item in elements:
+                    self.add_element(el_item)
 
         # Ensure all 18 canonical elements are populated with undecided default if not explicitly provided
         for elem_id in PPAP_ELEMENT_IDS:
@@ -1128,18 +1133,18 @@ class PPAPCanvas:
             designated_appearance_item=self._designated_appearance_item,
             appearance_item=self._designated_appearance_item,
             has_checking_aid=self._has_checking_aid,
+            customer_requirement_set=cast(Any, self._customer_requirement_set),
             elements=evidence_items,
         )
 
     def sync_audit(self) -> dict[str, Any]:
         """Synchronize element applicability, Table 4.1 requirements, and audit findings."""
         pkg = self.to_package()
-        app_res = assess_applicability(pkg)
+        app_res = assess_applicability(pkg, customer_level_4_requirements=cast(Any, self._customer_requirement_set))
 
         for elem in self.elements:
             elem_app = app_res.elements.get(elem.element_id)
-            if elem_app is not None:
-                elem.applicability_verdict = elem_app.verdict
+            elem.applicability_verdict = elem_app.verdict if elem_app is not None else None
 
             req_code = TABLE_4_1_MATRIX.get((elem.element_id, self._submission_level), "R")
             if req_code == "S":

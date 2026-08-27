@@ -30,8 +30,8 @@ Standards basis
 ---------------
 Only the three rendered section headings trace to a published source, each through its own
 ``ASSUMPTIONS_LOG.md`` entry and ``CITATIONS.tsv`` row: **Root-Cause Requirement**
-(RULE-SQE-007), **Corrective-Action Requirement** (RULE-SQE-008), and **Prevention /
-Read-Across** (RULE-SQE-009), reusing sources already verified for the RCA milestone.
+(RULE-SQE-011), **Corrective-Action Requirement** (RULE-SQE-012), and **Prevention /
+Read-Across** (RULE-SQE-013), reusing sources already verified for the RCA milestone.
 
 Headings for problem definition (Ford 8D D2), containment (D3), and verification of effectiveness
 (D6) are **deliberately withheld**: no verified quotation for them exists in this repository, and
@@ -116,7 +116,7 @@ _ENGINE_COPQ: str = "quality_core.copq"
 
 _STANDARDS_BASIS: str = (
     "AIAG CQI-20 Effective Problem Solving (2nd Edition, 2018) and the Ford Global 8D Manual back "
-    "the three rendered section headings only (ASSUMPTIONS_LOG.md RULE-SQE-007/008/009). The "
+    "the three rendered section headings only (ASSUMPTIONS_LOG.md RULE-SQE-011/008/009). The "
     "status state machine, the linkage dispatch, and SCARConfig assert no published standard: "
     "ISO 9001:2015 §8.4/§10.2 and IATF 16949:2016 §8.4 require corrective action but supply no "
     "status vocabulary and no closure criteria."
@@ -484,32 +484,32 @@ def _build_sections(request: SCARRequest) -> list[SCARSection]:
     return [
         SCARSection(
             heading="Root-Cause Requirement",
-            rule_id="RULE-SQE-007",
+            rule_id="RULE-SQE-011",
             content=(
                 "State the systemic root cause of this nonconformity. Keep asking why past any "
                 "individual- or task-level explanation until the procedure, policy, or practice "
                 "that allowed the problem to occur and to escape is established, and state that "
                 "cause explicitly (AIAG CQI-20 / Ford Global 8D — ASSUMPTIONS_LOG.md "
-                "RULE-SQE-007). " + _ROOT_CAUSE_AUTHORITY
+                "RULE-SQE-011). " + _ROOT_CAUSE_AUTHORITY
             ),
         ),
         SCARSection(
             heading="Corrective-Action Requirement",
-            rule_id="RULE-SQE-008",
+            rule_id="RULE-SQE-012",
             content=(
                 "Define and implement the permanent corrective action(s) that resolve the "
                 "established systemic root cause. Changing only the affected product is not a "
                 "corrective action: the system that allowed the problem must itself be changed "
-                "(Ford Global 8D — ASSUMPTIONS_LOG.md RULE-SQE-008)."
+                "(Ford Global 8D — ASSUMPTIONS_LOG.md RULE-SQE-012)."
             ),
         ),
         SCARSection(
             heading="Prevention / Read-Across",
-            rule_id="RULE-SQE-009",
+            rule_id="RULE-SQE-013",
             content=(
                 "Identify every other part, product, line, and process to which the same systemic "
                 "root cause applies, and extend the corrective action to them so a similar "
-                "problem cannot arise there (Ford Global 8D — ASSUMPTIONS_LOG.md RULE-SQE-009)."
+                "problem cannot arise there (Ford Global 8D — ASSUMPTIONS_LOG.md RULE-SQE-013)."
             ),
         ),
     ]

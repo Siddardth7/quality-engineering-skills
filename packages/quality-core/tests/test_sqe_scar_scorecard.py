@@ -8,8 +8,8 @@ then flips exactly one input and asserts the OPPOSITE verdict — the negative-c
 
 Standards references for the benchmark chains (per the citation trail the module carries):
 - Systemic root-cause requirement: AIAG CQI-20 Effective Problem Solving (2nd Ed, 2018) D4 /
-  Ford Global 8D D4 ("root of the root cause") — RULE-SQE-007.
-- Corrective action on the system, not the part: Ford Global 8D D5 — RULE-SQE-008.
+  Ford Global 8D D4 ("root of the root cause") — RULE-SQE-011.
+- Corrective action on the system, not the part: Ford Global 8D D5 — RULE-SQE-012.
 - Blame-terminal / operator-error rejection: ASQ Quality Toolbox & Ford Global 8D, enforced by
   quality_core.rca.five_why (BLAME_TERMINAL_OPERATOR_ERROR).
 """

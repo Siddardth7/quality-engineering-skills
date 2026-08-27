@@ -133,37 +133,37 @@ the input themselves and see exactly what they excluded. No date is ever imputed
 
 ## RULE-SQE-004: Supplier PPM / DPMO arithmetic has no published source (`ppm.py`, #116)
 
-**Decision.** `quality_core.sqe.ppm.calculate_supplier_ppm` computes
+**Decision:** `quality_core.sqe.ppm.calculate_supplier_ppm` computes
 `ppm = (total_defective / total_received) * 1_000_000` and, when every in-scope lot states
 `opportunities_per_unit`, `dpmo = (total_defective / total_opportunities) * 1_000_000` where
 `total_opportunities = sum(quantity_received * opportunities_per_unit)`.
 
-**Basis.** None. This is generic industry arithmetic. No AIAG, ISO, IATF, or CQI-20 clause defines
+**Basis:** None. This is generic industry arithmetic. No AIAG, ISO, IATF, or CQI-20 clause defines
 a PPM formula or a DPMO opportunity model. ISO 9001:2015 §8.4/§10.2 and IATF 16949:2016 §8.4
 require that external providers be evaluated and monitored against criteria the organization
 determines; they establish *that* suppliers are evaluated, never any arithmetic. Those clauses are
 therefore **not** cited as the source of this formula, and `CITATIONS.tsv` gains no row for it —
 there is no standards quotation to check. The module docstring states the same thing.
 
-**Consequence.** PPM and DPMO are reported in separately named fields and are never substituted for
+**Consequence:** PPM and DPMO are reported in separately named fields and are never substituted for
 one another: a DPMO figure quoted as PPM understates the rate by the opportunity multiplier.
 
 ---
 
 ## RULE-SQE-005: `sample_adequacy_minimum` default = 1000 received units (heuristic, `ppm.py`, #116)
 
-**Decision.** `PPMConfig.sample_adequacy_minimum` defaults to **1000 received units**. A period
+**Decision:** `PPMConfig.sample_adequacy_minimum` defaults to **1000 received units**. A period
 whose received total is below the minimum still returns its computed rate, flagged with a warning
 and a recommendation; the figure is never suppressed and the minimum never changes the verdict.
 
-**Basis.** **None — this is a declared engineering heuristic, not a standard.** There is no
+**Basis:** None — this is a declared engineering heuristic, not a standard. There is no
 published PPM sample-size standard (see E0, #114). The rationale is arithmetic volatility, not
 authority: PPM is a per-million projection, so at low denominators a single defect swings it
 enormously (1 defect in 100 units reads as 10,000 PPM; the same defect in 10,000 units reads as
 100 PPM). 1000 units is the round order of magnitude at which one defect moves the figure by
 1000 PPM rather than by tens of thousands. Any customer-agreed sample basis outranks it.
 
-**Consequence.** The value is caller-overridable via `PPMConfig(sample_adequacy_minimum=...)`, and
+**Consequence:** The value is caller-overridable via `PPMConfig(sample_adequacy_minimum=...)`, and
 every result payload carries `sample_adequacy = {"minimum": ..., "meets_minimum": ...,
 "is_heuristic": True, "basis": "declared engineering default, no standards citation — see
 ASSUMPTIONS_LOG.md"}`. The `is_heuristic` flag and the `basis` string are part of the contract:
@@ -173,7 +173,7 @@ relabelling either as a standards citation is a defect, not a wording change.
 
 ## RULE-SQE-006: INDETERMINATE trigger set for supplier PPM (`ppm.py`, #116)
 
-**Decision.** `calculate_supplier_ppm` returns `verdict="INDETERMINATE"` with `ppm=None` and
+**Decision:** `calculate_supplier_ppm` returns `verdict="INDETERMINATE"` with `ppm=None` and
 `numerator=None` (never `0.0`, never a partial rate) when any of the following holds:
 
 1. No lot matches `period.supplier_id` inside the inclusive window — an empty period.
@@ -184,19 +184,87 @@ relabelling either as a standards citation is a defect, not a wording change.
    inside the window, so it is held **in scope** and drives INDETERMINATE rather than being
    silently excluded.
 
-**Basis.** The undecided-sentinel contract declared in `schema.py` ("downstream engines must
-resolve `None` to INDETERMINATE; they must never coerce it to `0`"), extended to `receipt_date` by
-the same reasoning. Trigger 4 is the non-obvious one: silently dropping an undated lot would be a
-confident verdict built on absent data — the precise failure this engine exists to prevent.
+**Basis:** None — undecided-sentinel software contract / data-honesty rule declared in `schema.py`
+("downstream engines must resolve `None` to INDETERMINATE; they must never coerce it to `0`"),
+extended to `receipt_date` by the same reasoning. Trigger 4 is the non-obvious one: silently dropping
+an undated lot would be a confident verdict built on absent data — the precise failure this engine
+exists to prevent.
 
-**Consequence.** `0.0` PPM is emitted only from lots that were decided and decided clean. The
+**Consequence:** `0.0` PPM is emitted only from lots that were decided and decided clean. The
 INDETERMINATE result is built through the same dataclass constructor as the MEASURED result — same
 fields, `None` where unknown — and `denominator`/`lot_count` are still reported when knowable,
 because what was received remains knowable even when what was defective does not.
 
 ---
 
-## RULE-SQE-007: SCAR "Root-Cause Requirement" section heading (`scar.py`, #120)
+
+## RULE-SQE-007: Vendor-scorecard weights are configurable engineering heuristics (`scorecard.py`, #118)
+
+**Decision:** `ScorecardConfig` defaults to quality / delivery / cost weights of **0.60 / 0.40 /
+0.0**. The three finite, non-boolean weights must each lie in `[0, 1]` and must total 1.0 within a
+tight floating-point tolerance. The engine raises for a non-summing configuration; it never
+normalizes or redistributes weights.
+
+**Basis:** **None — these values are SME-approved engineering heuristics with no standards
+citation.** ISO 9001:2015 §8.4 and IATF 16949:2016 §8.4 require supplier evaluation against
+organization-determined criteria but define no dimension weight.
+
+**Consequence:** The top-level heuristic-configuration payload labels the weight object and each
+individual weight with `is_heuristic: True` and a basis containing `no standards citation`.
+
+---
+
+## RULE-SQE-008: Linear score curves and A/B/C bands are configurable engineering heuristics (`scorecard.py`, #118)
+
+**Decision:** The default PPM curve maps **0 PPM to 100** and **10,000 PPM to 0**. The default
+delivery curve maps **100% strict-conjunction OTIF to 100** and **0% OTIF to 0**. Both interpolate
+linearly and clamp beyond their endpoints. Bands default to **A at 90.0 or above**, **B at 75.0
+through below 90.0**, and **C below 75.0**. Band assignment uses the unrounded composite.
+
+**Basis:** **None — every endpoint and boundary is an engineering heuristic with no standards
+citation.** The defaults provide an explicit, testable starting contract approved for #118; a
+supplier agreement or organization-specific calibration outranks each one.
+
+**Consequence:** Curves and bands are caller-configurable. Every serialized endpoint and boundary,
+plus its containing object, carries `is_heuristic: True` and `no standards citation` basis text.
+
+---
+
+## RULE-SQE-009: A weighted undecided dimension suppresses the whole scorecard (`scorecard.py`, #118)
+
+**Decision:** Every positively weighted dimension must have measured source evidence. An
+`INDETERMINATE` PPM or OTIF result, or unusable weighted COPQ evidence, makes the scorecard
+`INDETERMINATE` with `composite_score=None` and `band=None`. Source evidence and blocker reasons
+remain in the dimension payload. A zero-weight dimension is omitted; its weight is not reassigned.
+
+**Basis:** This is the no-imputation policy already used by the PPM and OTIF engines, applied to
+their composite. A rating built by dropping an undecided weighted input would overstate confidence.
+It is a data-honesty rule with no standards citation, not a numeric standards criterion.
+
+**Consequence:** No source metric is replaced with zero or a perfect score, no band is emitted for
+partial evidence, and omitted dimensions are stated explicitly.
+
+---
+
+## RULE-SQE-010: COPQ is optional and has no default score curve (`scorecard.py`, #118)
+
+**Decision:** Cost defaults to zero weight and is omitted without changing the 0.60 / 0.40 quality
+and delivery weights. Supplied COPQ evidence is not scored at zero cost weight. A positive cost
+weight requires an explicit `LinearScoringCurve`, cost items, and usable revenue evidence; the
+engine delegates the arithmetic to `estimate_copq` and scores only
+`copq_percentage_of_revenue`. Missing or unusable weighted cost evidence makes the scorecard
+`INDETERMINATE`; its weight is never redistributed.
+
+**Basis:** COPQ arithmetic is owned by `quality_core.copq`. There is no defensible universal COPQ
+percentage-of-revenue threshold, so a default cost curve would imply authority that does not exist.
+This scorecard policy is an engineering heuristic with no standards citation.
+
+**Consequence:** Callers that elect to weight cost must provide their own defensible curve and
+revenue basis. `scorecard.py` contains no COPQ arithmetic.
+
+---
+
+## RULE-SQE-011: SCAR "Root-Cause Requirement" section heading (`scar.py`, #120)
 
 **Decision.** The generated SCAR carries a **Root-Cause Requirement** section stating that the
 supplier must establish and state the *systemic* root cause — continuing to ask why past any
@@ -216,12 +284,12 @@ validator's own logic):
 > The systemic root cause(s) addresses, "Why did the system or planning process fail to identify the cause of the problem and the non-discovery?" The systemic root cause typically is understood last and diligence is required to address thoroughly.
 
 **Applied In:** `packages/quality-core/src/quality_core/sqe/scar.py`
-(`_build_sections`, `SCARSection(rule_id="RULE-SQE-007")`). Manifest rows: `CITATIONS.tsv`
-`RULE-SQE-007` at Ford Global 8D src_line 2003 / 2004 and AIAG CQI-20 src_line 1685.
+(`_build_sections`, `SCARSection(rule_id="RULE-SQE-011")`). Manifest rows: `CITATIONS.tsv`
+`RULE-SQE-011` at Ford Global 8D src_line 2003 / 2004 and AIAG CQI-20 src_line 1685.
 
 ---
 
-## RULE-SQE-008: SCAR "Corrective-Action Requirement" section heading (`scar.py`, #120)
+## RULE-SQE-012: SCAR "Corrective-Action Requirement" section heading (`scar.py`, #120)
 
 **Decision.** The generated SCAR carries a **Corrective-Action Requirement** section stating that
 the supplier must define and implement the permanent corrective action(s) that resolve the
@@ -235,19 +303,19 @@ manual, same lines):
 > These systemic problems need to be fixed. The goal is to change the system that allowed the problem to occur in the first place and prevent problems from arising similar.
 
 **Applied In:** `packages/quality-core/src/quality_core/sqe/scar.py`
-(`_build_sections`, `SCARSection(rule_id="RULE-SQE-008")`). Manifest rows: `CITATIONS.tsv`
-`RULE-SQE-008` at Ford Global 8D src_line 1991 / 2026.
+(`_build_sections`, `SCARSection(rule_id="RULE-SQE-012")`). Manifest rows: `CITATIONS.tsv`
+`RULE-SQE-012` at Ford Global 8D src_line 1991 / 2026.
 
 ---
 
-## RULE-SQE-009: SCAR "Prevention / Read-Across" section heading (`scar.py`, #120)
+## RULE-SQE-013: SCAR "Prevention / Read-Across" section heading (`scar.py`, #120)
 
 **Decision.** The generated SCAR carries a **Prevention / Read-Across** section requiring the
 supplier to identify every other part, product, line, and process to which the same systemic root
 cause applies, and to extend the corrective action to them so a similar problem cannot arise there.
 
 **Source.** Ford Global 8D Manual src_line 2026, reused verbatim from `rca/ASSUMPTIONS_LOG.md`
-RULE 4. This is the same sentence cited by RULE-SQE-008: it genuinely supports both corrective
+RULE 4. This is the same sentence cited by RULE-SQE-012: it genuinely supports both corrective
 action ("need to be fixed" / "change the system") and prevention ("prevent problems from arising
 similar") in one statement, so it is recorded under both sites in `CITATIONS.tsv` — the manifest's
 duplicate check is on the `(site, quote)` pair, not on the quote alone.
@@ -255,8 +323,8 @@ duplicate check is on the `(site, quote)` pair, not on the quote alone.
 > These systemic problems need to be fixed. The goal is to change the system that allowed the problem to occur in the first place and prevent problems from arising similar.
 
 **Applied In:** `packages/quality-core/src/quality_core/sqe/scar.py`
-(`_build_sections`, `SCARSection(rule_id="RULE-SQE-009")`). Manifest row: `CITATIONS.tsv`
-`RULE-SQE-009` at Ford Global 8D src_line 2026.
+(`_build_sections`, `SCARSection(rule_id="RULE-SQE-013")`). Manifest row: `CITATIONS.tsv`
+`RULE-SQE-013` at Ford Global 8D src_line 2026.
 
 ---
 
@@ -309,6 +377,7 @@ entries above for exactly that reason.
    value, or COPQ PAF category literal appears in this module; the sub-engines' findings are
    surfaced verbatim, so a rule can only ever change in the engine that owns it.
 
+
 ---
 
 ## No-Standard-Implied Declarations
@@ -317,7 +386,7 @@ entries above for exactly that reason.
 - **The PPM and DPMO formulas themselves have no published standard.** They are generic industry arithmetic, attributable to no AIAG/ISO/IATF/CQI-20 clause, and are cited to nothing (RULE-SQE-004).
 - **The PPM sample-adequacy minimum has no published standard.** `PPMConfig.sample_adequacy_minimum` defaults to **1000 received units** — a declared engineering heuristic justified by the volatility of a per-million rate at low denominators, caller-overridable, and labelled `is_heuristic: True` in every payload (RULE-SQE-005).
 - **OTIF has no published standard.** The on-time window, the in-full tolerance, and whether early delivery counts as on-time are all **engineering heuristics** and must be caller-configurable. As implemented in `quality_core.sqe.otif` (E3, #117), the five `OTIFConfig` defaults — `early_tolerance_days=0`, `late_tolerance_days=2`, `early_counts_as_on_time=False`, `in_full_tolerance_pct=0.0`, `over_delivery_counts_as_in_full=True` — are declared engineering defaults carrying **no citation**; each is labelled `is_heuristic: True` in every result payload and is documented in RULE-SQE-002 above. Neither the on-time/in-full/OTIF arithmetic itself (RULE-SQE-001) nor these values may be presented as a standards requirement by any engine, MCP tool, canvas, or skill layer.
-- **Vendor scorecard weights and A/B/C rating-band boundaries have no published standard.** They are declared defaults, labelled as heuristics in every payload.
+- **Vendor scorecard weights and A/B/C rating-band boundaries have no published standard.** The 0.60 / 0.40 / 0.0 weights, 0-to-10,000 PPM and 100%-to-0% OTIF curves, and 90 / 75 band boundaries are declared caller-configurable engineering heuristics labelled individually in every payload (RULE-SQE-007/008). Weighted undecided evidence suppresses the composite and band (RULE-SQE-009); COPQ remains omitted at zero weight and requires an explicit curve when weighted (RULE-SQE-010).
 - **Escalation trigger levels have no published standard.** The escalation *ladder* is informed by CQI-20's problem-solving escalation discipline; the numeric triggers are not.
 - **The SCAR status vocabulary and closure criteria have no published standard.** ISO 9001:2015 §8.4/§10.2 and IATF 16949:2016 §8.4 require that nonconformity drive corrective action; they name no status set and no closure test. `DRAFT`/`ISSUABLE`/`AWAITING_SUPPLIER_RESPONSE`/`RESPONSE_REJECTED`/`CLOSABLE`/`INDETERMINATE`, the order the status rules are evaluated in, and the rule that `CLOSABLE` requires a stated verification of effectiveness are engineering decisions recorded under "Process Design Decisions" above (#120). Only the three SCAR section headings (RULE-SQE-007/008/009) carry a citation.
 - Any constant introduced later without a published source behind it is to be labelled an **engineering heuristic**, never implied to be a standard.

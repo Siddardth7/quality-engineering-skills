@@ -342,7 +342,7 @@ def test_root_cause_from_linkage_copies_verbatim() -> None:
 
 def test_build_sections_are_the_three_cited_headings() -> None:
     sections = _build_sections(_request())
-    assert [s.rule_id for s in sections] == ["RULE-SQE-007", "RULE-SQE-008", "RULE-SQE-009"]
+    assert [s.rule_id for s in sections] == ["RULE-SQE-011", "RULE-SQE-012", "RULE-SQE-013"]
     assert [s.heading for s in sections] == [
         "Root-Cause Requirement",
         "Corrective-Action Requirement",
@@ -535,8 +535,8 @@ def test_linkage_result_to_dict_raw_none_and_present() -> None:
 
 
 def test_section_to_dict() -> None:
-    section = SCARSection(heading="H", rule_id="RULE-SQE-007", content="C")
-    assert section.to_dict() == {"heading": "H", "rule_id": "RULE-SQE-007", "content": "C"}
+    section = SCARSection(heading="H", rule_id="RULE-SQE-011", content="C")
+    assert section.to_dict() == {"heading": "H", "rule_id": "RULE-SQE-011", "content": "C"}
 
 
 def test_result_to_dict_iso_dates_and_json_shape() -> None:

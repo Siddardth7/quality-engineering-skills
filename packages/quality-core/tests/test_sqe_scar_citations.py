@@ -48,15 +48,15 @@ MANUAL_PATHS: dict[str, Path] = {
 
 def _resolve_manual_key(site: str, src_line: int) -> str:
     """Map a citation site and line to the expected manual key."""
-    if site == "RULE-SQE-007":
+    if site == "RULE-SQE-011":
         if src_line in (2003, 2004):
             return "Ford_8D"
         if src_line in (1685,):
             return "AIAG_CQI20"
-    elif site == "RULE-SQE-008":
+    elif site == "RULE-SQE-012":
         if src_line in (1991, 2026):
             return "Ford_8D"
-    elif site == "RULE-SQE-009":
+    elif site == "RULE-SQE-013":
         if src_line in (2026,):
             return "Ford_8D"
     raise ValueError(f"Unmapped citation site/line: {site} at line {src_line}")

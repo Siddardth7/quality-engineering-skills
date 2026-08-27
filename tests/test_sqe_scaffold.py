@@ -3,8 +3,8 @@
 Validates:
 1. Presence of packages/quality-core/src/quality_core/sqe/ (ASSUMPTIONS_LOG.md, CITATIONS.tsv, __init__.py)
 2. ASSUMPTIONS_LOG.md package metadata and the four standard-reference paths CLAUDE.md maps for this domain
-3. Zero RULE entries and zero CITATIONS.tsv data rows (E0 steady state), making the
-   "no RULE entry without a matching CITATIONS.tsv row" invariant vacuously true
+3. Zero `## RULE N`-style entries, and exactly the CITATIONS.tsv rows the shipped SQE RULEs cite
+   (header-only at E0; the three cited SCAR section headings since #120)
 4. The five no-standard-implied declarations recorded verbatim
 5. Presence, tab-delimiter, and canonical header of sqe/CITATIONS.tsv
 6. Per-domain reference manual mapping in CLAUDE.md under ## Standards fidelity for Supplier Quality
@@ -67,6 +67,13 @@ _DECLARATIONS: tuple[str, ...] = (
 )
 
 _RULE_HEADING_RE = re.compile(r"^## RULE \d+", re.MULTILINE)
+
+# The SCAR generator (#120) added the first real citation rows to sqe/CITATIONS.tsv: three rows for
+# RULE-SQE-007, two for RULE-SQE-008, one for RULE-SQE-009.
+_EXPECTED_CITATION_ROW_COUNT = 6
+_EXPECTED_CITATION_SITES: frozenset[str] = frozenset(
+    {"RULE-SQE-007", "RULE-SQE-008", "RULE-SQE-009"}
+)
 
 
 def _validate_citations_tsv_format(content: str) -> tuple[list[str], list[dict[str, str]]]:
@@ -146,10 +153,22 @@ def test_citations_tsv_exists_and_header() -> None:
     assert headers == ["site", "src_line", "quote"]
 
 
-def test_citations_tsv_zero_data_rows() -> None:
-    """Verify sqe/CITATIONS.tsv is header-only — E0 introduces no citations."""
+def test_citations_tsv_data_rows_are_the_expected_sqe_rules() -> None:
+    """Verify sqe/CITATIONS.tsv carries exactly the rows the shipped SQE RULEs cite.
+
+    E0 (#114) left this manifest header-only, and PPM/OTIF (#116/#117) added no rows because those
+    engines assert no standard. E6 (#120) adds the first real rows: the three cited SCAR section
+    headings, reusing quotations already verified in ``rca/CITATIONS.tsv``. Pinning the exact row
+    count and site set keeps this a real gate — an uncited row or a dropped one still fails.
+    """
     _, rows = _validate_citations_tsv_format(_CITATIONS_TSV.read_text(encoding="utf-8"))
-    assert len(rows) == 0, f"E0 scaffold TSV must have zero data rows, found {len(rows)}"
+    assert len(rows) == _EXPECTED_CITATION_ROW_COUNT, (
+        f"sqe/CITATIONS.tsv must carry {_EXPECTED_CITATION_ROW_COUNT} data rows, found {len(rows)}"
+    )
+    assert {row["site"] for row in rows} == _EXPECTED_CITATION_SITES
+    for row in rows:
+        assert row["src_line"].isdigit(), f"non-numeric src_line: {row['src_line']!r}"
+        assert row["quote"].strip(), f"blank quote for site {row['site']!r}"
 
 
 @pytest.mark.parametrize(

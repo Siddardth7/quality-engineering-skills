@@ -68,6 +68,13 @@ from quality_core.canvas.spc import (
     SPCCanvasSubgroup,
     load_sample_spc_canvas,
 )
+from quality_core.canvas.sqe import (
+    SAMPLE_SQE_ROWS,
+    SQECanvas,
+    SQECanvasRow,
+    load_sample_sqe_canvas,
+    render_sqe,
+)
 
 __all__ = [
     "COPQCanvas",
@@ -101,6 +108,9 @@ __all__ = [
     "SAMPLE_SPC_XBAR_R_DATA",
     "SPCCanvas",
     "SPCCanvasSubgroup",
+    "SQECanvas",
+    "SQECanvasRow",
+    "SAMPLE_SQE_ROWS",
     "load_sample_5why_canvas",
     "load_sample_canvas",
     "load_sample_controlplan_canvas",
@@ -111,10 +121,12 @@ __all__ = [
     "load_sample_ncr_canvas",
     "load_sample_ppap_canvas",
     "load_sample_spc_canvas",
+    "load_sample_sqe_canvas",
     "render_copq",
     "render_fishbone",
     "render_five_why",
     "render_is_is_not",
     "render_ncr",
     "render_ppap",
+    "render_sqe",
 ]

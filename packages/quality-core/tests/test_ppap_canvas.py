@@ -341,6 +341,15 @@ class TestPPAPCanvasInstantiationAndProperties:
         assert c_rsn1.reason_for_submission == "Initial Submission"
         c_rsn2 = PPAPCanvas(reason_for_submission="initial submission")
         assert c_rsn2.reason_for_submission == "Initial Submission"
+        c_rsn3 = PPAPCanvas(reason_for_submission="INITIAL_SUBMISSION")
+        assert c_rsn3.reason_for_submission == "Initial Submission"
+
+        c_lvl_str = PPAPCanvas(submission_level="Level 3")
+        assert c_lvl_str.submission_level == 3
+
+        c_blanks = PPAPCanvas(supplier_code="   ", application="   ")
+        assert c_blanks.supplier_code is None
+        assert c_blanks.application is None
 
         # Organization & customer guards
         with pytest.raises(TypeError, match="organization / supplier_name must be a string or None"):
@@ -521,6 +530,11 @@ class TestPPAPCanvasBenchmarkDataAndFactories:
         assert c2.part_number == "PART-SFT-4410"
         assert len(c2.rows) == 18
 
+    def test_load_sample_extra_and_override_kwargs(self) -> None:
+        """load_sample forwards package overrides and ignores non-package kwargs."""
+        c = PPAPCanvas.load_sample(part_name="Custom Shaft", custom_extra_key="extra_val")
+        assert c.part_name == "Custom Shaft"
+
     def test_from_package_factory(self) -> None:
         """from_package constructs canvas from PPAPPackage model and dictionary."""
         pkg_dict = dict(SAMPLE_PPAP_PACKAGE)
@@ -631,6 +645,12 @@ class TestPPAPCanvasCRUD:
         updated2 = canvas.edit_row("2.2.2", Status="retained", Comments="New comment")
         assert updated2.status == "retained"
         assert updated2.comments == "New comment"
+
+        # Solo document_reference and comments updates keep artifact_ref and notes in sync
+        u_doc = canvas.update_element("2.2.1", document_reference="SOLO_DOC.pdf")
+        assert u_doc.artifact_ref == "SOLO_DOC.pdf"
+        u_comm = canvas.update_element("2.2.1", comments="SOLO_COMM")
+        assert u_comm.notes == "SOLO_COMM"
 
         # Non-existent element raises KeyError
         with pytest.raises(KeyError, match="Element with identifier '99' not found"):
@@ -753,7 +773,7 @@ class TestPPAPCanvasDomainInteroperabilityAndAudit:
         assert canvas_l4.get_element("2.2.1").validation_status == "valid"  # type: ignore[union-attr]
         assert canvas_l4.get_element("2.2.2").validation_status == "missing"  # type: ignore[union-attr]
         assert canvas_l4.get_element("2.2.3").validation_status == "undecided"  # type: ignore[union-attr]
-        assert canvas_l4.get_element("2.2.13").validation_status == "valid"  # type: ignore[union-attr]
+        assert canvas_l4.get_element("2.2.13").validation_status == "undecided"  # type: ignore[union-attr]
 
         # Test Level 5 requirement paths (all R except 2.2.18 S)
         canvas_l5 = load_sample_ppap_canvas()

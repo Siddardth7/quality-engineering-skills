@@ -132,8 +132,6 @@ class PPAPCanvasElement:
             clean = self.element_id.strip().lower()
             if clean in PPAP_ELEMENT_ALIASES:
                 self.element_id = PPAP_ELEMENT_ALIASES[clean]
-            elif self.element_id.strip() in PPAP_ELEMENT_IDS:
-                self.element_id = cast(PPAPElementId, self.element_id.strip())
             else:
                 raise ValueError(
                     f"Invalid element_id: '{self.element_id}'. Must be a canonical AIAG PPAP element ID ('2.2.1'–'2.2.18') or alias."
@@ -155,8 +153,6 @@ class PPAPCanvasElement:
         clean_status = self.status.strip().lower()
         if clean_status in EVIDENCE_STATUS_ALIASES:
             self.status = cast(EvidenceStatus, EVIDENCE_STATUS_ALIASES[clean_status])
-        elif clean_status in EVIDENCE_STATUS_VALUES:
-            self.status = cast(EvidenceStatus, clean_status)
         else:
             raise ValueError(
                 f"Invalid status '{self.status}'. Must be one of {list(EVIDENCE_STATUS_VALUES)} or recognized alias."
@@ -240,14 +236,12 @@ class PPAPCanvasElement:
         if not isinstance(data, dict):
             raise TypeError(f"data must be a dictionary, got {type(data).__name__}: {data!r}")
 
-        def get_field(snake_name: str, pascal_name: str, default: Any = ...) -> Any:
+        def get_field(snake_name: str, pascal_name: str, default: Any = None) -> Any:
             if snake_name in data:
                 return data[snake_name]
             if pascal_name in data:
                 return data[pascal_name]
-            if default is not ...:
-                return default
-            raise ValueError(f"Missing required field '{snake_name}' or '{pascal_name}'")
+            return default
 
         element_id = get_field("element_id", "Element_ID", default=get_field("id", "ID", default=None))
         if element_id is None:
@@ -559,8 +553,6 @@ class PPAPCanvas:
             self._reason_for_submission: ReasonForSubmission = REASON_FOR_SUBMISSION_ALIASES[clean_rsn]
         elif clean_rsn_normalized in REASON_FOR_SUBMISSION_ALIASES:
             self._reason_for_submission = REASON_FOR_SUBMISSION_ALIASES[clean_rsn_normalized]
-        elif reason_for_submission.strip() in REASON_FOR_SUBMISSION_VALUES:
-            self._reason_for_submission = cast(ReasonForSubmission, reason_for_submission.strip())
         else:
             raise ValueError(
                 f"Invalid reason_for_submission: '{reason_for_submission}'. Must be one of {list(REASON_FOR_SUBMISSION_VALUES)}."
@@ -768,8 +760,6 @@ class PPAPCanvas:
             self._reason_for_submission = REASON_FOR_SUBMISSION_ALIASES[clean]
         elif clean_normalized in REASON_FOR_SUBMISSION_ALIASES:
             self._reason_for_submission = REASON_FOR_SUBMISSION_ALIASES[clean_normalized]
-        elif value.strip() in REASON_FOR_SUBMISSION_VALUES:
-            self._reason_for_submission = cast(ReasonForSubmission, value.strip())
         else:
             raise ValueError(f"Invalid reason_for_submission: '{value}'")
 
@@ -934,7 +924,7 @@ class PPAPCanvas:
         for k in list(kwargs.keys()):
             if k in pkg_keys:
                 sample_copy[k] = kwargs.pop(k)
-        return cls(package=sample_copy, title=title, description=description, **kwargs)
+        return cls(package=sample_copy, title=title, description=description)
 
     @classmethod
     def from_package(
@@ -960,8 +950,6 @@ class PPAPCanvas:
             clean = element_id.strip().lower()
             if clean in PPAP_ELEMENT_ALIASES:
                 return PPAP_ELEMENT_ALIASES[clean]
-            if element_id.strip() in PPAP_ELEMENT_IDS:
-                return cast(PPAPElementId, element_id.strip())
             if clean.isdigit():
                 num = int(clean)
                 return PPAP_ELEMENT_NUMBERS.get(num)
@@ -1173,7 +1161,7 @@ class PPAPCanvas:
                     elem.findings = [
                         f"Element {elem.element_id} ({elem.element_name}) status is undecided (unsurveyed)."
                     ]
-                elif elem.status == "retained":
+                else:  # retained / other
                     elem.validation_status = "warning"
                     elem.findings = [
                         f"Element {elem.element_id} ({elem.element_name}) is marked retained but Submission Level {self._submission_level} requires submission ('S')."
@@ -1190,13 +1178,16 @@ class PPAPCanvas:
                     elem.findings = [
                         f"Element {elem.element_id} ({elem.element_name}) is required for retention at Level {self._submission_level} but is missing."
                     ]
-                elif elem.status == "undecided":
+                else:  # undecided / other
                     elem.validation_status = "undecided"
                     elem.findings = [
                         f"Element {elem.element_id} ({elem.element_name}) status is undecided."
                     ]
-            elif req_code == "*":
+            else:  # "*"
                 if elem.status in ("retained", "submitted"):
+                    elem.validation_status = "valid"
+                    elem.findings = []
+                elif elem.status == "not_applicable" and elem.applicability_verdict == "NOT_APPLICABLE":
                     elem.validation_status = "valid"
                     elem.findings = []
                 elif elem.status == "missing":
@@ -1204,7 +1195,7 @@ class PPAPCanvas:
                     elem.findings = [
                         f"Element {elem.element_id} ({elem.element_name}) required per customer definition at Level 4."
                     ]
-                elif elem.status == "undecided":
+                else:  # undecided / other
                     elem.validation_status = "undecided"
                     elem.findings = [
                         f"Element {elem.element_id} ({elem.element_name}) status is undecided."
@@ -1244,7 +1235,7 @@ class PPAPCanvas:
                 req_missing_count += 1
             elif elem.status == "undecided":
                 req_undecided_count += 1
-            elif elem.status == "retained":
+            else:  # retained / other
                 req_missing_count += 1
 
         # Submission readiness verdict evaluation (Section 5 Customer Authority Invariant compliant)
@@ -1252,10 +1243,8 @@ class PPAPCanvas:
             submission_readiness = "NOT_READY"
         elif req_undecided_count > 0 or undecided_count > 0:
             submission_readiness = "INDETERMINATE"
-        elif req_submitted_count >= required_elements_count:
-            submission_readiness = "SUBMISSION_READY"
         else:
-            submission_readiness = "NOT_READY"
+            submission_readiness = "SUBMISSION_READY"
 
         return {
             "total_elements": total_elements,

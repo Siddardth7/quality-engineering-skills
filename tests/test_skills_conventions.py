@@ -36,6 +36,18 @@ _PROHIBITED_MATH_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"perform\s+inline\s+(?:math|calculation)", re.IGNORECASE),
 )
 
+# Supplier-scar-specific prose arithmetic detector (#123). Deliberately NOT added to the shared
+# `_PROHIBITED_MATH_PATTERNS` tuple above: it is scoped to `skills/supplier-scar/SKILL.md` only,
+# matching this suite's hardcoded per-skill convention. It catches a worked metric derivation
+# written as plain prose with no code fence (e.g. `PPM = 12 / 40000 * 1,000,000 = 300`), which the
+# shared fenced-code patterns cannot see. Metric words are word-bounded so JSON keys such as
+# `composite_score` or `otif_pct` never match, and only same-line arithmetic counts, so a metric
+# quoted from a tool payload (`"ppm": 2500.0,`) is never a violation.
+_SUPPLIER_SCAR_PROSE_MATH_PATTERN: re.Pattern[str] = re.compile(
+    r"\b(?:ppm|dpmo|otif|score|composite)\b\"?[ \t]*[=:][ \t]*\d[\d.,]*[ \t]*[*/×][ \t]*\d",
+    re.IGNORECASE,
+)
+
 
 def parse_frontmatter(content: str) -> tuple[dict[str, str], str]:
     """Parse YAML frontmatter delimited by '---' from markdown content.
@@ -179,6 +191,7 @@ def test_discoverable_skill_directories_exist() -> None:
     assert "is-is-not-scoping" in dir_names, "skills/is-is-not-scoping directory missing"
     assert "ncr-writing" in dir_names, "skills/ncr-writing directory missing"
     assert "copq-estimator" in dir_names, "skills/copq-estimator directory missing"
+    assert "supplier-scar" in dir_names, "skills/supplier-scar directory missing"
 
 
 @pytest.mark.parametrize(
@@ -319,6 +332,70 @@ def test_copq_estimator_skill_specifies_tools() -> None:
     assert "ASQ" in content or "CSSGB" in content, "copq-estimator skill must cite ASQ CSSGB"
 
 
+def test_supplier_scar_skill_specifies_tools() -> None:
+    """skills/supplier-scar/SKILL.md must document all six SQE tools, reference quality-mcp, cite ISO 9001 §8.4 / IATF 16949 §8.4, and state the heuristic-labelling and root-cause-authorship invariants."""
+    supplier_scar_file = _SKILLS_DIR / "supplier-scar" / "SKILL.md"
+    assert supplier_scar_file.exists(), "skills/supplier-scar/SKILL.md does not exist"
+    content = supplier_scar_file.read_text(encoding="utf-8")
+    for tool_name in (
+        "calculate_supplier_ppm",
+        "calculate_otif",
+        "calculate_vendor_scorecard",
+        "evaluate_escalation",
+        "generate_scar",
+        "render_sqe_canvas",
+    ):
+        assert tool_name in content, f"supplier-scar skill must document {tool_name} tool"
+    assert "quality-mcp" in content, "supplier-scar skill must reference quality-mcp"
+    assert "ISO 9001" in content, "supplier-scar skill must cite ISO 9001"
+    assert "IATF 16949" in content, "supplier-scar skill must cite IATF 16949"
+    assert "8.4" in content, "supplier-scar skill must cite Section/Clause 8.4"
+    assert "CQI-20" in content, "supplier-scar skill must cite AIAG CQI-20"
+    assert "8D" in content, "supplier-scar skill must cite Ford Global 8D"
+    assert "engineering heuristic" in content, (
+        "supplier-scar skill must label weights/bands/thresholds as engineering heuristics, "
+        "not standards requirements"
+    )
+    assert "never author" in content.lower() or "does not author" in content.lower(), (
+        "supplier-scar skill must state the agent never authors a supplier's root cause"
+    )
+    assert "root cause" in content.lower(), (
+        "supplier-scar skill must reference the root-cause-authorship invariant"
+    )
+    assert "INDETERMINATE" in content, (
+        "supplier-scar skill must document the INDETERMINATE negative control"
+    )
+
+
+def test_supplier_scar_skill_contains_no_worked_arithmetic() -> None:
+    """skills/supplier-scar/SKILL.md must contain no worked arithmetic, in a code fence or in prose.
+
+    Every metric in the worked examples must be quoted from a tool response, never derived in the
+    skill body. This is the supplier-scar-scoped companion to the shared fenced-code check applied
+    to every skill by `test_each_skill_directory_has_valid_skill_md`.
+    """
+    supplier_scar_file = _SKILLS_DIR / "supplier-scar" / "SKILL.md"
+    assert supplier_scar_file.exists(), "skills/supplier-scar/SKILL.md does not exist"
+    content = supplier_scar_file.read_text(encoding="utf-8")
+
+    # (a) Fenced-code math: no executable calculation block of any kind belongs in this skill.
+    assert detect_prohibited_calculation_logic(content) == [], (
+        "supplier-scar skill must not contain inline calculation logic: "
+        f"{detect_prohibited_calculation_logic(content)}"
+    )
+    assert "```python" not in content, (
+        "supplier-scar skill must express every example as JSON tool calls, never a python block"
+    )
+
+    # (b) Prose arithmetic: a metric derived in a sentence bypasses the tools just as a code block
+    # does (e.g. `PPM = 12 / 40000 * 1,000,000 = 300`).
+    prose_math = _SUPPLIER_SCAR_PROSE_MATH_PATTERN.findall(content)
+    assert not prose_math, (
+        "supplier-scar skill must not derive a metric in prose; every PPM, DPMO, OTIF, score, or "
+        f"composite figure must be quoted from a tool response. Matched: {prose_math}"
+    )
+
+
 def test_claude_skills_isolation() -> None:
     """.claude/skills/ must remain segregated from domain skills/."""
     if not _CLAUDE_SKILLS_DIR.exists():
@@ -336,6 +413,7 @@ def test_claude_skills_isolation() -> None:
     assert "is-is-not-scoping" not in claude_dirs, "is-is-not-scoping domain skill leaked into .claude/skills/"
     assert "ncr-writing" not in claude_dirs, "ncr-writing domain skill leaked into .claude/skills/"
     assert "copq-estimator" not in claude_dirs, "copq-estimator domain skill leaked into .claude/skills/"
+    assert "supplier-scar" not in claude_dirs, "supplier-scar domain skill leaked into .claude/skills/"
 
 
 

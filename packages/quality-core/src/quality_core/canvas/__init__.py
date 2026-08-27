@@ -35,6 +35,14 @@ from quality_core.canvas.ncr import (
     load_sample_ncr_canvas,
     render_ncr,
 )
+from quality_core.canvas.ppap import (
+    SAMPLE_PPAP_ELEMENTS,
+    SAMPLE_PPAP_PACKAGE,
+    PPAPCanvas,
+    PPAPCanvasElement,
+    load_sample_ppap_canvas,
+    render_ppap,
+)
 from quality_core.canvas.rca import (
     SAMPLE_FISHBONE_CAUSES,
     SAMPLE_FISHBONE_DATASET,
@@ -76,6 +84,8 @@ __all__ = [
     "MSACanvas",
     "MSACanvasMeasurement",
     "NCRCanvas",
+    "PPAPCanvas",
+    "PPAPCanvasElement",
     "SAMPLE_CONTROL_PLAN_ROWS",
     "SAMPLE_COPQ_ITEMS",
     "SAMPLE_FISHBONE_CAUSES",
@@ -86,6 +96,8 @@ __all__ = [
     "SAMPLE_IS_IS_NOT_ROWS",
     "SAMPLE_MSA_STUDY_DATA",
     "SAMPLE_NCR_RECORDS",
+    "SAMPLE_PPAP_ELEMENTS",
+    "SAMPLE_PPAP_PACKAGE",
     "SAMPLE_SPC_XBAR_R_DATA",
     "SPCCanvas",
     "SPCCanvasSubgroup",
@@ -97,10 +109,12 @@ __all__ = [
     "load_sample_is_is_not_canvas",
     "load_sample_msa_canvas",
     "load_sample_ncr_canvas",
+    "load_sample_ppap_canvas",
     "load_sample_spc_canvas",
     "render_copq",
     "render_fishbone",
     "render_five_why",
     "render_is_is_not",
     "render_ncr",
+    "render_ppap",
 ]

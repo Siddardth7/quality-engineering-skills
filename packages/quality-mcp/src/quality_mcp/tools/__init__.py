@@ -14,6 +14,7 @@ from quality_mcp.tools.canvas import (
     render_ncr_canvas,
     render_ppap_canvas,
     render_spc_canvas,
+    render_sqe_canvas,
 )
 from quality_mcp.tools.controlplan import validate_control_plan
 from quality_mcp.tools.copq import estimate_copq
@@ -35,14 +36,26 @@ from quality_mcp.tools.rca import (
     validate_5why,
 )
 from quality_mcp.tools.spc import calculate_spc_chart
+from quality_mcp.tools.sqe import (
+    calculate_otif,
+    calculate_supplier_ppm,
+    calculate_vendor_scorecard,
+    evaluate_escalation,
+    generate_scar,
+)
 
 __all__ = [
     "assess_ppap_capability",
     "audit_ppap_package",
     "calculate_gage_rr",
+    "calculate_otif",
     "calculate_spc_chart",
+    "calculate_supplier_ppm",
+    "calculate_vendor_scorecard",
     "categorize_fishbone",
     "estimate_copq",
+    "evaluate_escalation",
+    "generate_scar",
     "lookup_fmea_ap",
     "lookup_ppap_requirement",
     "recommend_disposition",
@@ -57,6 +70,7 @@ __all__ = [
     "render_ncr_canvas",
     "render_ppap_canvas",
     "render_spc_canvas",
+    "render_sqe_canvas",
     "scope_is_is_not",
     "validate_5why",
     "validate_control_plan",

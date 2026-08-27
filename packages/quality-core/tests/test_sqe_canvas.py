@@ -11,7 +11,12 @@ from quality_core.canvas.sqe import (
     load_sample_sqe_canvas,
     render_sqe,
 )
-from quality_core.sqe import EscalationResult, ScorecardDimensionResult, ScorecardResult
+from quality_core.sqe import (
+    EscalationResult,
+    EscalationTrigger,
+    ScorecardDimensionResult,
+    ScorecardResult,
+)
 
 
 def row(supplier="SUP-1", verdict="RATED", band="A", tier="NONE", cost=True):
@@ -27,7 +32,9 @@ def row(supplier="SUP-1", verdict="RATED", band="A", tier="NONE", cost=True):
                             band if verdict == "RATED" else None, dims, {"is_heuristic": True},
                             [] if cost else [{"dimension": "cost", "reason": "not provided"}],
                             "missing <evidence>" if verdict != "RATED" else None, ["warn <x>"])
-    esc = EscalationResult(supplier, tier, verdict, [], [], None,
+    trigger = EscalationTrigger(tier="MONITOR", metric="composite_score", comparison="<=",
+                                observed_value=80.0, threshold=89.0, fired=True)
+    esc = EscalationResult(supplier, tier, verdict, [trigger], [trigger], None,
                            "reason <x>" if verdict != "RATED" else None, {}, "basis <x>")
     return SQECanvasRow(supplier, score, esc, "Name <script>alert(1)</script>")
 
@@ -55,6 +62,16 @@ def test_render_modes_and_all_benchmarks(theme, standalone):
     for value in ("A", "B", "C", "NONE", "MONITOR", "SCAR_REQUIRED", "CONTAINMENT_REQUIRED", "EXECUTIVE_REVIEW", "INDETERMINATE"):
         assert value in out
     assert "no standards citation" in out
+
+
+def test_escalation_disclosures_include_config_evidence_and_basis():
+    rated = row()
+    rated.escalation.heuristic_configuration["monitor <max>"] = {"value": 89, "is_heuristic": True}
+    out = SQECanvas([rated]).to_html(standalone=False)
+    assert "Escalation heuristic configuration" in out
+    assert "monitor &lt;max&gt;" in out
+    assert "Trigger evidence" in out and "composite_score" in out
+    assert "Escalation standards basis" in out and "basis &lt;x&gt;" in out
 
 
 def test_empty_omitted_indeterminate_and_escaping():

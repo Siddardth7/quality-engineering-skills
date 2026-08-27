@@ -7,19 +7,27 @@ Covers (issue #122):
    evaluate_escalation, generate_scar, render_sqe_canvas.
 3. Schema generation: Annotated Field descriptions on every parameter.
 4. Benchmark dataset fallbacks on None input; explicit empty-list handling.
-5. Empty / malformed input returning fully-shaped INDETERMINATE payloads (evaluate_escalation).
+5. Empty input returning fully-shaped INDETERMINATE payloads across every tool that can take it
+   (calculate_supplier_ppm, calculate_otif, calculate_vendor_scorecard, evaluate_escalation,
+   generate_scar, render_sqe_canvas) — never an exception. Distinguished from a supplied-but-
+   INVALID value (an unknown escalation verdict, a non-empty request holding a bad field), which
+   surfaces as a clean single-line error carrying no pydantic URL or traceback.
 6. The three invariant negative controls (no-standard-implied, commercial-authority,
    root-cause-authorship) applied to BOTH the tool descriptions AND the benchmark payloads.
 7. Type-guard negative controls per tool (boolean rejection, wrong container types, bad theme/title).
 8. FastMCP in-process client three-way parity per tool
    (structuredContent == serialized text JSON == direct Python call).
 
-NOTE ON THE VALIDATIONERROR CONTROL: render_sqe_canvas and evaluate_escalation construct no pydantic
-model on their success paths, so they have no `except pydantic.ValidationError` branch of their own
-and are deliberately omitted from the monkeypatch ValidationError controls below — that omission is
-intentional, not a coverage gap. The other four tools each build a pydantic model and are covered
-both through the public surface (inverted period window / blank issue_description) and via a
-monkeypatch forcing the private core to raise.
+NOTE ON THE VALIDATIONERROR CONTROL: render_sqe_canvas constructs no pydantic model on its success
+path, so it has no `except pydantic.ValidationError` branch of its own and is deliberately omitted
+from the monkeypatch ValidationError controls below — that omission is intentional, not a coverage
+gap. The other five tools each guard a pydantic-raising call. Four of them build a pydantic model
+directly and are covered both through the public surface (inverted period window / blank
+issue_description) and via a monkeypatch forcing the private core to raise. evaluate_escalation
+builds no model itself but still guards its engine call, so no raw pydantic URL or multi-line
+traceback can reach the wire if a nested engine ever raises one; its plain-ValueError arm is
+covered through the public surface (an invalid scorecard verdict / out-of-range composite) and its
+ValidationError arm through the same monkeypatch control.
 """
 
 from __future__ import annotations
@@ -267,6 +275,87 @@ def test_evaluate_escalation_indeterminate_scorecard_propagates() -> None:
     assert "malformed or incomplete" not in res["reason"]
 
 
+@pytest.mark.parametrize(
+    ("bad_override", "expected_message"),
+    [
+        ({"verdict": "BROKEN"}, "scorecard verdict must be RATED or INDETERMINATE, got 'BROKEN'"),
+        ({"composite_score": 150.0}, "scorecard.composite_score must be within [0, 100]"),
+    ],
+)
+def test_evaluate_escalation_invalid_value_is_clean_error_not_indeterminate(
+    bad_override: dict[str, Any], expected_message: str
+) -> None:
+    """A scorecard that reconstructs but carries an invalid VALUE raises a clean error, not a status.
+
+    This is the empty-vs-invalid split's other side: an empty {} is absent input (INDETERMINATE),
+    but a fully-shaped scorecard whose verdict is outside {RATED, INDETERMINATE} or whose
+    composite_score is outside [0, 100] is a supplied-but-wrong value. It must surface as a
+    single-line ValueError carrying no pydantic URL or multi-line body — and it must RAISE rather
+    than return an INDETERMINATE payload, because "neither cleared nor escalated" would falsely
+    imply the scorecard was read and found inconclusive. Reaches the `except ValueError` arm.
+    """
+    good = calculate_vendor_scorecard(None, None, None)
+    with pytest.raises(ValueError) as excinfo:
+        evaluate_escalation(scorecard={**good, **bad_override})
+    message = str(excinfo.value)
+    assert message == expected_message
+    assert "http" not in message
+    assert "errors.pydantic.dev" not in message
+    assert "ValidationError" not in message
+    assert "\n" not in message
+
+
+def test_evaluate_escalation_valueerror_arm_strips_pydantic_prefix(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The `except ValueError` arm is load-bearing: it cleans the surfaced message, not just re-raises.
+
+    A bare re-raise would leave a pydantic-style ``"Value error, "`` prefix on the wire; the arm
+    strips it via clean_pydantic_message. Proven by forcing the core to raise a prefixed ValueError
+    (natural engine messages are already clean, so this is the only way the cleaning transform is
+    observable) and asserting the prefix is gone. Replacing the wrapping with a raw ``raise`` makes
+    this assertion fail.
+    """
+
+    def _raise(*_args: Any, **_kwargs: Any) -> Any:
+        raise ValueError("Value error, scorecard rejected by nested validator")
+
+    monkeypatch.setattr("quality_mcp.tools.sqe._evaluate_escalation_core", _raise)
+    with pytest.raises(ValueError) as excinfo:
+        evaluate_escalation(None)
+    message = str(excinfo.value)
+    assert message == "scorecard rejected by nested validator"
+    assert not message.startswith("Value error,")
+
+
+def test_evaluate_escalation_validationerror_arm_surfaces_clean(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The `except pydantic.ValidationError` arm surfaces a single clean line, no URL/traceback.
+
+    evaluate_escalation builds no pydantic model on its own path, so this arm is only reachable by
+    forcing the private core to raise a real ValidationError (whose str() carries the docs URL and a
+    multi-line body). The arm must reduce that to the first error's ``msg`` only. Replacing the
+    wrapping with a raw ``raise`` makes the pydantic URL and newline reappear and fails this test.
+    """
+
+    class _Dummy(pydantic.BaseModel):
+        val: int
+
+    def _raise(*_args: Any, **_kwargs: Any) -> Any:
+        _Dummy(val="not-an-int")  # type: ignore[arg-type]
+
+    monkeypatch.setattr("quality_mcp.tools.sqe._evaluate_escalation_core", _raise)
+    with pytest.raises(ValueError) as excinfo:
+        evaluate_escalation(None)
+    message = str(excinfo.value)
+    assert message == "Input should be a valid integer, unable to parse string as an integer"
+    assert "http" not in message
+    assert "errors.pydantic.dev" not in message
+    assert "ValidationError" not in message
+    assert "\n" not in message
+
+
 def test_generate_scar_benchmark() -> None:
     """generate_scar(None) issues the benchmark SCAR, awaiting supplier response, no root cause."""
     res = generate_scar(None)
@@ -292,10 +381,22 @@ def test_generate_scar_linkage_flag_override() -> None:
     assert res["status"] == "AWAITING_SUPPLIER_RESPONSE"
 
 
-def test_generate_scar_empty_request_raises_valueerror() -> None:
-    """generate_scar(request={}) is the pydantic path (missing required fields) -> clean ValueError."""
-    with pytest.raises(ValueError):
-        generate_scar(request={})
+def test_generate_scar_empty_request_is_indeterminate_not_raised() -> None:
+    """generate_scar(request={}) returns a fully-shaped INDETERMINATE SCAR; it never raises.
+
+    The empty-input rule is blanket across all six tools: an empty request is absent input, not a
+    caller mistake. The key set must equal a real SCARResult.to_dict()'s key set so downstream
+    consumers never see a truncated envelope, and the reason must name the missing fields.
+    """
+    real = generate_scar(None)
+    res = generate_scar(request={})
+    assert res["status"] == "INDETERMINATE"
+    assert set(res.keys()) == set(real.keys())
+    assert set(res["linkage"]) == set(real["linkage"])
+    assert "supplier_id" in res["reason"]
+    assert "issue_description" in res["reason"]
+    assert res["root_cause"] is None
+    assert res["basis"] == res["standards_basis"]
 
 
 def test_render_sqe_canvas_benchmark() -> None:
@@ -318,9 +419,19 @@ def test_render_sqe_canvas_benchmark() -> None:
     assert res["basis"]
 
 
-def test_render_sqe_canvas_empty_list() -> None:
-    """render_sqe_canvas(rows=[]) renders an explicitly empty canvas, no exception."""
+def test_render_sqe_canvas_empty_list_is_indeterminate_envelope() -> None:
+    """render_sqe_canvas(rows=[]) is empty input: an INDETERMINATE envelope, not a clean canvas.
+
+    Zero supplier results must never read as a supplier population with nothing wrong in it. The
+    key set is identical to a rendered canvas's, so the envelope shape never varies.
+    """
+    rendered = render_sqe_canvas(None)
     res = render_sqe_canvas(rows=[])
+    assert res["verdict"] == "INDETERMINATE"
+    assert res["reason"]
+    assert set(res.keys()) == set(rendered.keys())
+    assert rendered["verdict"] == "RENDERED"
+    assert rendered["reason"] is None
     assert res["rows_count"] == 0
     assert "No supplier scorecard results captured" in res["html"]
 

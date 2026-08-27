@@ -187,7 +187,7 @@ Follow the 5-step supplier rating and corrective-action methodology:
 - **MCP Server:** `quality-mcp`
 - **Purpose:** Generate a CQI-20/Ford Global 8D structured Supplier Corrective Action Request and adjudicate its linked evidence. The tool **requests and validates a supplier root cause and never authors, infers, or paraphrases one**: `root_cause` is only ever a verbatim copy of the terminal cause in a supplier-returned chain that `quality_core.rca` accepts.
 - **Parameters:**
-  - `request` (`dict[str, Any]`, required): `supplier_id`, `issue_description`, optional `scar_id`, `linked_ncr_id`, `date_issued`, `due_date`, `requested_by`.
+  - `request` (`dict[str, Any]`, required): `supplier_id`, `issue_description`, optional `scar_id`, `linked_ncr_id`, `date_issued`, `due_date`, `requested_by`. An empty request returns an `INDETERMINATE` SCAR naming the fields a usable request must carry; a non-empty request holding an invalid value returns a clean error.
   - `config` (`dict[str, Any] | null`, optional): `SCARConfig` — `evaluate_vendor_scorecard_linkage` (`bool`, default `true`).
   - `linked_ncr_evidence` (`dict[str, Any] | null`, optional): Nonconformance evidence, dispatched to `quality_core.ncr`.
   - `supplier_root_cause_evidence` (`dict[str, Any] | null`, optional): The supplier's own 5-Why chain, dispatched to `quality_core.rca`'s reversible validator.
@@ -216,6 +216,8 @@ Follow the 5-step supplier rating and corrective-action methodology:
 - **Return Type:** `dict[str, Any]`
 - **Return Schema:**
   - `title` (`string`): Canvas title.
+  - `verdict` (`string`): `"RENDERED"`, or `"INDETERMINATE"` when `rows` was supplied as an empty list — zero supplier results is never presented as a supplier population with nothing wrong in it.
+  - `reason` (`string | null`): The explanation of an `INDETERMINATE` verdict; `null` when rendered.
   - `rows_count` (`integer`): Number of supplier rows rendered.
   - `html` (`string`): Rendered HTML string.
 

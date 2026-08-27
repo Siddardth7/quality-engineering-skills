@@ -54,7 +54,12 @@ from quality_core.sqe.otif import OTIFConfig
 from quality_core.sqe.otif import calculate_otif as _calculate_otif_core
 from quality_core.sqe.ppm import PPMConfig
 from quality_core.sqe.ppm import calculate_supplier_ppm as _calculate_supplier_ppm_core
-from quality_core.sqe.scar import SCARConfig
+from quality_core.sqe.scar import (
+    LINKAGE_KEYS,
+    SCARConfig,
+    SCARLinkageResult,
+    SCARResult,
+)
 from quality_core.sqe.scar import generate_scar as _generate_scar_core
 from quality_core.sqe.schema import (
     SCARRequest,
@@ -341,6 +346,21 @@ def _clean_validation_error(exc: pydantic.ValidationError) -> ValueError:
     return ValueError(clean_pydantic_message(message))
 
 
+def _clean_validation_details(exc: pydantic.ValidationError) -> str:
+    """Render every error in a ``ValidationError`` as a cleaned ``"location: message"`` phrase.
+
+    Unlike :func:`_clean_validation_error`, which surfaces only the first error because it is
+    building an exception message, this names **every** offending field — it backs the ``reason``
+    of a fully-shaped INDETERMINATE payload, where the caller is being told what a usable input
+    would have had to contain rather than being handed an error.
+    """
+    return "; ".join(
+        f"{'.'.join(str(part) for part in error['loc'])}: "
+        f"{clean_pydantic_message(str(error['msg']))}"
+        for error in exc.errors()
+    )
+
+
 def _curve_from_payload(
     name: str, payload: list[float] | dict[str, float] | None
 ) -> LinearScoringCurve | None:
@@ -487,6 +507,50 @@ def _indeterminate_escalation_payload(
         recurrence_count=recurrence_count,
         reason=reason,
         heuristic_configuration=config.to_dict(),
+    )
+    payload = result.to_dict()
+    payload["basis"] = payload["standards_basis"]
+    return payload
+
+
+def _indeterminate_scar_payload(*, reason: str) -> dict[str, Any]:
+    """Build the fully-shaped INDETERMINATE SCAR payload for an empty request.
+
+    A real ``SCARResult`` is constructed and serialized rather than a dict hand-rolled, so this
+    payload's key set can never drift from the engine's own — the same technique
+    :func:`_indeterminate_escalation_payload` uses.
+
+    Every linkage slot resolves ``LINKAGE_NOT_AVAILABLE`` rather than ``EVIDENCE_NOT_SUPPLIED``:
+    the request could not be constructed, so no evidence was ever dispatched to an owning engine.
+    Saying "not supplied" would assert something about the caller's evidence that was never
+    checked. For the same reason no caller-supplied evidence or verification statement is echoed
+    back here — there is no SCAR for it to belong to.
+    """
+    result = SCARResult(
+        supplier_id="",
+        scar_id=None,
+        issue_description="",
+        status="INDETERMINATE",
+        sections=[],
+        linkage={
+            key: SCARLinkageResult(
+                linkage_key=key,
+                verdict="LINKAGE_NOT_AVAILABLE",
+                engine=None,
+                findings=(),
+                rationale=(
+                    "The SCAR request was empty, so no evidence slot was dispatched to its "
+                    "owning engine."
+                ),
+                raw_result=None,
+            )
+            for key in LINKAGE_KEYS
+        },
+        root_cause=None,
+        verification_of_effectiveness=None,
+        due_date=None,
+        date_issued=None,
+        reason=reason,
     )
     payload = result.to_dict()
     payload["basis"] = payload["standards_basis"]
@@ -843,8 +907,11 @@ def evaluate_escalation(
             description=(
                 "A ScorecardResult payload in the exact shape calculate_vendor_scorecard returns "
                 "(the same dict, unmodified). If None, falls back to the benchmark scorecard "
-                "composed from the benchmark PPM/OTIF datasets. A malformed or incomplete "
-                "payload returns a fully-shaped INDETERMINATE result rather than raising."
+                "composed from the benchmark PPM/OTIF datasets. An empty {} or a payload missing "
+                "required keys is treated as absent input and returns a fully-shaped "
+                "INDETERMINATE result rather than raising. A payload that reconstructs but "
+                "carries an invalid value — a verdict other than RATED or INDETERMINATE, or a "
+                "composite_score outside [0, 100] — raises a clean, single-line error instead."
             )
         ),
     ] = None,
@@ -896,6 +963,12 @@ def evaluate_escalation(
     evaluated_triggers whether it fired or not, and the tier the result carries is backed by
     selected_evidence rather than asserted. An INDETERMINATE scorecard yields tier=INDETERMINATE:
     the supplier is neither cleared nor escalated while required evidence is missing.
+
+    Missing input and invalid input are answered differently. An empty {} or a scorecard missing
+    required keys is absent evidence and yields tier=INDETERMINATE with a stated reason. A
+    scorecard that reconstructs but carries an invalid value — a verdict other than RATED or
+    INDETERMINATE, or a composite_score outside [0, 100] — raises a clean, single-line error:
+    an unreadable scorecard is not the same claim as an inconclusive one.
     """
     _guard_optional_dict("scorecard", scorecard)
     _guard_optional_int("recurrence_count", recurrence_count)
@@ -943,11 +1016,22 @@ def evaluate_escalation(
                 recurrence_count=recurrence_count,
             )
 
-    result = _evaluate_escalation_core(
-        scorecard_model,
-        config=active_config,
-        recurrence_count=recurrence_count,
-    )
+    # A scorecard that reconstructed cleanly can still be semantically invalid — a verdict outside
+    # {RATED, INDETERMINATE}, or a composite_score outside [0, 100]. That is a supplied-but-wrong
+    # VALUE, not missing input, so it surfaces as a clean error rather than as an INDETERMINATE
+    # tier: reporting "neither cleared nor escalated" would imply the scorecard was read and found
+    # inconclusive, when in fact it was rejected.
+    try:
+        result = _evaluate_escalation_core(
+            scorecard_model,
+            config=active_config,
+            recurrence_count=recurrence_count,
+        )
+    except pydantic.ValidationError as exc:
+        raise _clean_validation_error(exc) from exc
+    except ValueError as exc:
+        raise ValueError(clean_pydantic_message(str(exc))) from exc
+
     payload = result.to_dict()
     payload["basis"] = payload["standards_basis"]
     return payload
@@ -961,7 +1045,9 @@ def generate_scar(
             description=(
                 "SCAR request: supplier_id, issue_description, scar_id, linked_ncr_id, "
                 "date_issued, due_date, requested_by. If None, falls back to a benchmark issued "
-                "SCAR request for SUP-1001."
+                "SCAR request for SUP-1001. An empty {} returns a fully-shaped INDETERMINATE SCAR "
+                "naming the fields a usable request must carry; a non-empty request holding an "
+                "invalid value raises a clean, single-line error instead."
             )
         ),
     ] = None,
@@ -1021,6 +1107,11 @@ def generate_scar(
     findings are surfaced verbatim. The status state machine is not caller-tunable: CLOSABLE
     requires a stated verification of effectiveness, and a request issued with no date but with a
     response or verification attached resolves INDETERMINATE rather than picking a side.
+
+    Empty input versus invalid input: an empty request ({}) returns a fully-shaped INDETERMINATE
+    SCAR whose reason names every field a usable request must carry, and whose linkage slots all
+    read LINKAGE_NOT_AVAILABLE because no evidence was ever dispatched. A non-empty request
+    carrying an invalid value raises a clean, single-line error instead of a status.
     """
     _guard_optional_dict("request", request)
     _guard_optional_evidence("linked_ncr_evidence", linked_ncr_evidence)
@@ -1046,6 +1137,17 @@ def generate_scar(
             verification_of_effectiveness=verification_of_effectiveness,
         )
     except pydantic.ValidationError as exc:
+        # An EMPTY request ({}) is the empty-input case, not a caller mistake: like every other
+        # tool here it resolves to a fully-shaped INDETERMINATE payload naming what a usable
+        # request would have carried. A NON-empty request that fails validation supplied
+        # genuinely invalid values, and surfaces as a clean single-line ValueError.
+        if not request_payload:
+            return _indeterminate_scar_payload(
+                reason=(
+                    "SCAR request payload is empty, so no request could be constructed: "
+                    + _clean_validation_details(exc)
+                )
+            )
         raise _clean_validation_error(exc) from exc
 
     payload = result.to_dict()
@@ -1065,7 +1167,9 @@ def render_sqe_canvas(
                 "'escalation': <evaluate_escalation's own return dict>}. This tool renders "
                 "already-computed scorecard/escalation results; it does not recompute them from "
                 "raw receipt or delivery data. If None, loads the 6-supplier benchmark canvas. "
-                "Pass an empty list [] (not None) to render an explicitly empty canvas."
+                "An empty list [] (not None) is empty input: the canvas renders with no rows and "
+                "the envelope resolves verdict=INDETERMINATE with a stated reason, so zero "
+                "supplier results is never reported as a clean supplier population."
             )
         ),
     ] = None,
@@ -1090,6 +1194,10 @@ def render_sqe_canvas(
     computed: an agent calls calculate_vendor_scorecard and evaluate_escalation per supplier,
     assembles those two payloads into a row envelope, and passes the rows here. An INDETERMINATE
     scorecard is rendered as UNRATED rather than as a score.
+
+    Every payload carries verdict and reason. Supplying rows=[] is empty input and resolves
+    verdict=INDETERMINATE with a stated reason; a canvas built from None (benchmark) or from at
+    least one row resolves verdict=RENDERED with reason=None.
     """
     if type(standalone) is not bool:
         raise TypeError(f"standalone must be a boolean, got {type(standalone).__name__}: {standalone!r}")
@@ -1155,8 +1263,24 @@ def render_sqe_canvas(
         },
     }
 
+    # An explicitly empty row list is empty input, not a rendered result: the envelope says so
+    # rather than returning a zero-row canvas that reads like a supplier population with nothing
+    # wrong in it. The HTML is still rendered so the key set never varies.
+    if rows is not None and not rows:
+        verdict = "INDETERMINATE"
+        reason: str | None = (
+            "rows=[] was supplied, so no supplier scorecard or escalation result was available "
+            "to render; no supplier on this canvas is rated, cleared, or escalated. Pass None to "
+            "load the benchmark canvas."
+        )
+    else:
+        verdict = "RENDERED"
+        reason = None
+
     return {
         "title": canvas.title,
+        "verdict": verdict,
+        "reason": reason,
         "rows_count": len(canvas_rows),
         "summary": summary,
         "html": html_content,

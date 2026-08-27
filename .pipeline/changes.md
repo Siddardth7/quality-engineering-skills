@@ -16,3 +16,9 @@ engine dependency is supplied by the companion #119 branch.
 - Removed the unused theme local and extraneous empty-state f-string reported by Ruff.
 - Added `ScorecardBand` and `EscalationTier` annotations to the benchmark helpers for strict mypy
   compatibility.
+
+## Review-driven fix
+
+- Added a per-supplier escalation disclosure containing the supplied heuristic configuration,
+  selected trigger evidence, and standards-basis text. Values are displayed verbatim and escaped;
+  no escalation arithmetic or adjudication was added.

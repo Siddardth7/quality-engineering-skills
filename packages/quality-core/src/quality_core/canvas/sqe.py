@@ -136,13 +136,28 @@ class SQECanvas:
             reason = score.reason or row.escalation.reason
             reason_html = f'<div class="reason">{html.escape(reason)}</div>' if reason else ""
             period = score.period_label or f"{score.period_start.isoformat()} to {score.period_end.isoformat()}"
+            escalation_config = "; ".join(
+                f"{html.escape(str(key))}: {html.escape(str(value))}"
+                for key, value in row.escalation.heuristic_configuration.items()
+            ) or "not supplied"
+            trigger_evidence = "; ".join(
+                html.escape(str(trigger.to_dict()))
+                for trigger in row.escalation.selected_evidence
+            ) or "none selected"
+            escalation_disclosure = (
+                f'<div class="disclosure"><strong>Escalation heuristic configuration (no numeric '
+                f'standards basis):</strong> {escalation_config}<br>'
+                f'<strong>Trigger evidence:</strong> {trigger_evidence}<br>'
+                f'<strong>Escalation standards basis:</strong> '
+                f'{html.escape(row.escalation.standards_basis)}</div>'
+            )
             rows.append(f"""
             <tr><td><strong>{html.escape(row.supplier_id)}</strong>{f'<br><small>{html.escape(row.supplier_name)}</small>' if row.supplier_name else ''}<br><small>{html.escape(period)}</small></td>
               <td>{_number(ppm)}</td><td>{_number(on_time)}<br><small>on-time</small><br>{_number(in_full)}<br><small>in-full</small></td>
               <td>{_number(cost_value)}</td><td>{composite}</td>
               <td><span class="badge" style="color:{band_colour};">{html.escape(str(band))}</span></td>
               <td><span class="badge" style="color:{tier_colour};">{html.escape(tier)}</span></td></tr>
-              {f'<tr><td colspan="7">{reason_html}</td></tr>' if reason_html else ''}
+              {f'<tr><td colspan="7">{reason_html}{escalation_disclosure}</td></tr>'}
             """)
         if not rows:
             rows.append('<tr><td colspan="7" class="empty">No supplier scorecard results captured in canvas.</td></tr>')
@@ -153,7 +168,7 @@ class SQECanvas:
 <th>Supplier / period</th><th>PPM</th><th>OTIF</th><th>COPQ / cost</th><th>Composite score</th><th>Band</th><th>Escalation tier</th>
 </tr></thead><tbody>{''.join(rows)}</tbody></table>
 <div style="margin-top:12px;color:{secondary};font-size:12px;">Period context is taken from each scorecard result. Escalation is a quality recommendation only; commercial response remains authorized-business-person territory.</div>
-<style>th,td{{padding:10px;text-align:left;border-bottom:1px solid {border};}} th{{color:{secondary};font-size:11px;text-transform:uppercase;}} .badge{{font-weight:700;}} .empty{{text-align:center;padding:36px;color:{secondary};font-style:italic;}} .reason{{color:{secondary};font-size:12px;}}</style></div>"""
+<style>th,td{{padding:10px;text-align:left;border-bottom:1px solid {border};}} th{{color:{secondary};font-size:11px;text-transform:uppercase;}} .badge{{font-weight:700;}} .empty{{text-align:center;padding:36px;color:{secondary};font-style:italic;}} .reason,.disclosure{{color:{secondary};font-size:12px;}} .disclosure{{line-height:1.6;}}</style></div>"""
         if not standalone:
             return body
         return f'<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>{html.escape(self._title)}</title><style>body{{margin:0;background:{page};}}*{{box-sizing:border-box;}}</style></head><body>{body}</body></html>'

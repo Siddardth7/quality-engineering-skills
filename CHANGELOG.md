@@ -9,6 +9,7 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- FastMCP tools for Supplier Quality Engineering (SQE) in `quality_mcp.tools.sqe` (`calculate_supplier_ppm`, `calculate_otif`, `calculate_vendor_scorecard`, `evaluate_escalation`, `generate_scar`, `render_sqe_canvas`), registered on `quality-mcp` server, `render_sqe_canvas` re-exported in `quality_mcp.tools.canvas` and `quality_mcp`, enforcing deterministic JSON dictionary returns, typed parameter annotations, benchmark dataset fallbacks, per-call standards-basis echoing, the no-standard-implied / commercial-authority / root-cause-authorship invariants (verified against both payloads and tool descriptions), and input type guards (#122).
 - SQE vendor scorecard canvas controller and themed HTML renderer (`quality_core.canvas.sqe`) with
   evidence-preserving scorecard/escalation matrix display (#121).
 - Deterministic 18-element completeness auditor (`quality_core.ppap.auditor.audit_ppap_package`), supplier submission readiness verdicts (`SUBMISSION_READY`, `NOT_READY`, `INDETERMINATE`), strict Section 5 Authority Invariant enforcement, zero duplicated standards data composition, and comprehensive engine and scorecard test suites (#102).

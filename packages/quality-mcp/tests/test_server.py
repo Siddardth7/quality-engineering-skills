@@ -13,9 +13,14 @@ from quality_mcp.server import (
     assess_ppap_capability,
     audit_ppap_package,
     calculate_gage_rr,
+    calculate_otif,
     calculate_spc_chart,
+    calculate_supplier_ppm,
+    calculate_vendor_scorecard,
     categorize_fishbone,
     estimate_copq,
+    evaluate_escalation,
+    generate_scar,
     lookup_fmea_ap,
     lookup_ppap_requirement,
     main,
@@ -33,6 +38,7 @@ from quality_mcp.server import (
     render_ncr_canvas,
     render_ppap_canvas,
     render_spc_canvas,
+    render_sqe_canvas,
     scope_is_is_not,
     validate_5why,
     validate_control_plan,
@@ -87,6 +93,16 @@ def test_mcp_instance_configuration() -> None:
     assert "lookup_ppap_requirement" in tool_names
     assert "render_ppap_canvas" in tool_names
     assert "validate_psw" in tool_names
+    assert "calculate_supplier_ppm" in tool_names
+    assert "calculate_otif" in tool_names
+    assert "calculate_vendor_scorecard" in tool_names
+    assert "evaluate_escalation" in tool_names
+    assert "generate_scar" in tool_names
+    assert "render_sqe_canvas" in tool_names
+
+    # Exactly 31 tools registered (25 baseline + 6 SQE), each name unique.
+    assert len(tool_names) == 31
+    assert len(set(tool_names)) == 31
 
     # Verify tool execution via FastMCP interface
     _, content = asyncio.run(mcp.call_tool("ping", {}))
@@ -262,6 +278,30 @@ def test_mcp_instance_configuration() -> None:
     assert "summary" in ppap_canvas_content
     assert "html" in ppap_canvas_content
 
+    _, ppm_content = asyncio.run(mcp.call_tool("calculate_supplier_ppm", {}))
+    assert ppm_content["verdict"] == "MEASURED"
+    assert ppm_content["ppm"] == 400.0
+
+    _, otif_content = asyncio.run(mcp.call_tool("calculate_otif", {}))
+    assert otif_content["verdict"] == "MEASURED"
+    assert otif_content["on_time_pct"] == 100.0
+
+    _, scorecard_content = asyncio.run(mcp.call_tool("calculate_vendor_scorecard", {}))
+    assert scorecard_content["verdict"] == "RATED"
+    assert scorecard_content["band"] == "B"
+
+    _, escalation_content = asyncio.run(mcp.call_tool("evaluate_escalation", {}))
+    assert escalation_content["tier"] == "MONITOR"
+
+    _, scar_content = asyncio.run(mcp.call_tool("generate_scar", {}))
+    assert scar_content["status"] == "AWAITING_SUPPLIER_RESPONSE"
+    assert scar_content["root_cause"] is None
+
+    _, sqe_canvas_content = asyncio.run(mcp.call_tool("render_sqe_canvas", {}))
+    assert sqe_canvas_content["rows_count"] == 6
+    assert "summary" in sqe_canvas_content
+    assert "html" in sqe_canvas_content
+
 
 def test_main_invokes_mcp_run() -> None:
     """main() entry point must call mcp.run() once."""
@@ -308,15 +348,26 @@ def test_package_exports() -> None:
     assert quality_mcp.lookup_ppap_requirement is lookup_ppap_requirement
     assert quality_mcp.render_ppap_canvas is render_ppap_canvas
     assert quality_mcp.validate_psw is validate_psw
+    assert quality_mcp.calculate_supplier_ppm is calculate_supplier_ppm
+    assert quality_mcp.calculate_otif is calculate_otif
+    assert quality_mcp.calculate_vendor_scorecard is calculate_vendor_scorecard
+    assert quality_mcp.evaluate_escalation is evaluate_escalation
+    assert quality_mcp.generate_scar is generate_scar
+    assert quality_mcp.render_sqe_canvas is render_sqe_canvas
     assert quality_mcp.__version__ == "0.7.0"
     assert set(quality_mcp.__all__) == {
         "__version__",
         "assess_ppap_capability",
         "audit_ppap_package",
         "calculate_gage_rr",
+        "calculate_otif",
         "calculate_spc_chart",
+        "calculate_supplier_ppm",
+        "calculate_vendor_scorecard",
         "categorize_fishbone",
         "estimate_copq",
+        "evaluate_escalation",
+        "generate_scar",
         "lookup_fmea_ap",
         "lookup_ppap_requirement",
         "mcp",
@@ -333,6 +384,7 @@ def test_package_exports() -> None:
         "render_ncr_canvas",
         "render_ppap_canvas",
         "render_spc_canvas",
+        "render_sqe_canvas",
         "scope_is_is_not",
         "validate_5why",
         "validate_control_plan",
@@ -344,9 +396,14 @@ def test_package_exports() -> None:
         "assess_ppap_capability",
         "audit_ppap_package",
         "calculate_gage_rr",
+        "calculate_otif",
         "calculate_spc_chart",
+        "calculate_supplier_ppm",
+        "calculate_vendor_scorecard",
         "categorize_fishbone",
         "estimate_copq",
+        "evaluate_escalation",
+        "generate_scar",
         "lookup_fmea_ap",
         "lookup_ppap_requirement",
         "mcp",
@@ -363,6 +420,7 @@ def test_package_exports() -> None:
         "render_ncr_canvas",
         "render_ppap_canvas",
         "render_spc_canvas",
+        "render_sqe_canvas",
         "scope_is_is_not",
         "validate_5why",
         "validate_control_plan",

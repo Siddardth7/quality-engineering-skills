@@ -22,6 +22,7 @@ from quality_mcp.tools.canvas import (
     render_ncr_canvas,
     render_ppap_canvas,
     render_spc_canvas,
+    render_sqe_canvas,
 )
 from quality_mcp.tools.controlplan import validate_control_plan
 from quality_mcp.tools.copq import estimate_copq
@@ -43,6 +44,13 @@ from quality_mcp.tools.rca import (
     validate_5why,
 )
 from quality_mcp.tools.spc import calculate_spc_chart
+from quality_mcp.tools.sqe import (
+    calculate_otif,
+    calculate_supplier_ppm,
+    calculate_vendor_scorecard,
+    evaluate_escalation,
+    generate_scar,
+)
 
 mcp = FastMCP("quality-mcp")
 
@@ -71,6 +79,12 @@ mcp.tool()(audit_ppap_package)
 mcp.tool()(lookup_ppap_requirement)
 mcp.tool()(validate_psw)
 mcp.tool()(assess_ppap_capability)
+mcp.tool()(calculate_supplier_ppm)
+mcp.tool()(calculate_otif)
+mcp.tool()(calculate_vendor_scorecard)
+mcp.tool()(evaluate_escalation)
+mcp.tool()(generate_scar)
+mcp.tool()(render_sqe_canvas)
 
 
 @mcp.tool()
@@ -95,9 +109,14 @@ __all__ = [
     "assess_ppap_capability",
     "audit_ppap_package",
     "calculate_gage_rr",
+    "calculate_otif",
     "calculate_spc_chart",
+    "calculate_supplier_ppm",
+    "calculate_vendor_scorecard",
     "categorize_fishbone",
     "estimate_copq",
+    "evaluate_escalation",
+    "generate_scar",
     "lookup_fmea_ap",
     "lookup_ppap_requirement",
     "main",
@@ -115,6 +134,7 @@ __all__ = [
     "render_ncr_canvas",
     "render_ppap_canvas",
     "render_spc_canvas",
+    "render_sqe_canvas",
     "scope_is_is_not",
     "validate_5why",
     "validate_control_plan",

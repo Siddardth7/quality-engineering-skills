@@ -27,6 +27,7 @@ from quality_mcp.tools.rca import (
     render_is_is_not_canvas,
     render_isisnot_canvas,
 )
+from quality_mcp.tools.sqe import render_sqe_canvas
 
 
 def render_fmea_canvas(
@@ -628,5 +629,6 @@ __all__ = [
     "render_ncr_canvas",
     "render_ppap_canvas",
     "render_spc_canvas",
+    "render_sqe_canvas",
 ]
 

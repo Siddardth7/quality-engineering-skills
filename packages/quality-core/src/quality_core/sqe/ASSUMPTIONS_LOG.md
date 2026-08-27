@@ -41,7 +41,7 @@ will ever carry.
 
 ## RULE Entries
 
-## RULE-SQE-011: Escalation tiers are evidence recommendations, not commercial decisions (`escalation.py`, #119)
+## RULE-SQE-014: Escalation tiers are evidence recommendations, not commercial decisions (`escalation.py`, #119)
 
 **Decision:** `evaluate_escalation` recommends only one quality-engineering tier: `NONE`,
 `MONITOR`, `SCAR_REQUIRED`, `CONTAINMENT_REQUIRED`, or `EXECUTIVE_REVIEW`. It retains every

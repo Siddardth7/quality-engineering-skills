@@ -5,7 +5,8 @@ Supplier Quality Engineering (SQE) suite. Exports the receipt-lot, delivery-reco
 request schemas, their row/dataset models, the caller-constructed Supplier/SupplierPeriod
 identity models, and the CSV ingest loaders (Issue #115), plus the supplier PPM/DPMO defect-rate
 engine (Issue #116), the OTIF & delivery-performance calculator (Issue #117), the composed vendor
-scorecard engine (Issue #118), and the evidence-first supplier escalation tier engine (Issue #119).
+scorecard engine (Issue #118), the evidence-first supplier escalation tier engine (Issue #119),
+and the SCAR generator with cross-engine evidence linkage (Issue #120).
 """
 
 from __future__ import annotations
@@ -26,6 +27,13 @@ from quality_core.sqe.ppm import (
     PPMConfig,
     PPMResult,
     calculate_supplier_ppm,
+)
+from quality_core.sqe.scar import (
+    SCARConfig,
+    SCARLinkageResult,
+    SCARResult,
+    SCARSection,
+    generate_scar,
 )
 from quality_core.sqe.schema import (
     SQE_DELIVERY_SCHEMA,
@@ -70,8 +78,12 @@ __all__ = [
     "PPMResult",
     "ReceiptLot",
     "ReceiptLotDataset",
+    "SCARConfig",
+    "SCARLinkageResult",
     "SCARRequest",
     "SCARRequestDataset",
+    "SCARResult",
+    "SCARSection",
     "SQE_DELIVERY_SCHEMA",
     "SQE_RECEIPT_SCHEMA",
     "SQE_SCAR_SCHEMA",
@@ -84,6 +96,7 @@ __all__ = [
     "evaluate_escalation",
     "calculate_supplier_ppm",
     "calculate_vendor_scorecard",
+    "generate_scar",
     "load_sqe_delivery_csv",
     "load_sqe_receipt_csv",
     "load_sqe_scar_csv",

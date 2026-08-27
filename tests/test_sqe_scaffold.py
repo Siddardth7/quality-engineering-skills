@@ -123,13 +123,6 @@ def _is_rule_valid(heading: str, block: str, cited_sites: set[str]) -> bool:
     is_cited = any(rule_id in site for site in cited_sites) or any(site in heading for site in cited_sites)
     return is_cited or _is_declared_heuristic_or_unstandardized(heading, block)
 
-# The SCAR generator (#120) added the first real citation rows to sqe/CITATIONS.tsv: three rows for
-# RULE-SQE-011, two for RULE-SQE-012, one for RULE-SQE-013.
-_EXPECTED_CITATION_ROW_COUNT = 6
-_EXPECTED_CITATION_SITES: frozenset[str] = frozenset(
-    {"RULE-SQE-011", "RULE-SQE-012", "RULE-SQE-013"}
-)
-
 
 def _validate_citations_tsv_format(content: str) -> tuple[list[str], list[dict[str, str]]]:
     """Validate that TSV content uses tab delimiters and returns headers and rows."""
@@ -178,7 +171,7 @@ def test_assumptions_log_rules_cited() -> None:
     assert "## RULE Entries" in content
 
     rule_blocks = _extract_rule_blocks(content)
-    assert len(rule_blocks) == 13, f"Expected 13 RULE entries in SQE assumptions log, found {len(rule_blocks)}"
+    assert len(rule_blocks) == 11, f"Expected 11 RULE entries in SQE assumptions log, found {len(rule_blocks)}"
 
     _, rows = _validate_citations_tsv_format(_CITATIONS_TSV.read_text(encoding="utf-8"))
     cited_sites = {row["site"] for row in rows}
@@ -210,22 +203,10 @@ def test_citations_tsv_exists_and_header() -> None:
     assert headers == ["site", "src_line", "quote"]
 
 
-def test_citations_tsv_data_rows_are_the_expected_sqe_rules() -> None:
-    """Verify sqe/CITATIONS.tsv carries exactly the rows the shipped SQE RULEs cite.
-
-    E0 (#114) left this manifest header-only, and PPM/OTIF (#116/#117) added no rows because those
-    engines assert no standard. E6 (#120) adds the first real rows: the three cited SCAR section
-    headings, reusing quotations already verified in ``rca/CITATIONS.tsv``. Pinning the exact row
-    count and site set keeps this a real gate — an uncited row or a dropped one still fails.
-    """
+def test_citations_tsv_zero_data_rows() -> None:
+    """Verify sqe/CITATIONS.tsv is header-only — E0 introduces no citations."""
     _, rows = _validate_citations_tsv_format(_CITATIONS_TSV.read_text(encoding="utf-8"))
-    assert len(rows) == _EXPECTED_CITATION_ROW_COUNT, (
-        f"sqe/CITATIONS.tsv must carry {_EXPECTED_CITATION_ROW_COUNT} data rows, found {len(rows)}"
-    )
-    assert {row["site"] for row in rows} == _EXPECTED_CITATION_SITES
-    for row in rows:
-        assert row["src_line"].isdigit(), f"non-numeric src_line: {row['src_line']!r}"
-        assert row["quote"].strip(), f"blank quote for site {row['site']!r}"
+    assert len(rows) == 0, f"E0 scaffold TSV must have zero data rows, found {len(rows)}"
 
 
 @pytest.mark.parametrize(

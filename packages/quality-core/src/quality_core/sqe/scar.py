@@ -20,8 +20,9 @@ verbatim — no rule belonging to a sub-engine is re-encoded here:
 - ``supplier_root_cause`` -> :func:`quality_core.rca.five_why.validate_five_why_chain`
 - ``cost_impact`` -> :func:`quality_core.copq.estimator.estimate_copq`
 
-A fourth slot, ``vendor_scorecard``, always resolves ``LINKAGE_NOT_AVAILABLE``: the
-``quality_core.sqe.scorecard`` engine (#118) does not exist yet. It is never verdict-affecting.
+A fourth slot, ``vendor_scorecard``, always resolves ``LINKAGE_NOT_AVAILABLE``: this SCAR
+release deliberately defers wiring the ``quality_core.sqe.scorecard`` engine (#118, already on
+``test``). It is never verdict-affecting.
 
 Imports run downward only (``sqe`` -> ``ncr``/``rca``/``copq``); none of those packages imports
 ``sqe``.
@@ -141,9 +142,10 @@ class SCARConfig:
     ----------
     evaluate_vendor_scorecard_linkage : bool
         Whether to include the ``"vendor_scorecard"`` key in ``SCARResult.linkage`` at all. It
-        always resolves ``LINKAGE_NOT_AVAILABLE`` this release (``quality_core.sqe.scorecard``,
-        #118, does not exist yet) and is never verdict-affecting either way; this flag exists only
-        so a caller who does not want the placeholder key can omit it.
+        always resolves ``LINKAGE_NOT_AVAILABLE`` this release (wiring the already-shipped
+        ``quality_core.sqe.scorecard`` engine, #118, is deferred) and is never verdict-affecting
+        either way; this flag exists only so a caller who does not want the placeholder key can
+        omit it.
     """
 
     evaluate_vendor_scorecard_linkage: bool = True
@@ -307,7 +309,7 @@ def _evaluate_ncr_linkage(evidence: Any) -> SCARLinkageResult:
         )
     try:
         dataset = validate_ncr(evidence)
-    except (pydantic.ValidationError, TypeError) as exc:
+    except (pydantic.ValidationError, TypeError, ValueError) as exc:
         return SCARLinkageResult(
             linkage_key="linked_ncr",
             verdict="EVIDENCE_INVALID",
@@ -434,8 +436,8 @@ def _evaluate_cost_impact_linkage(evidence: Any) -> SCARLinkageResult:
 def _evaluate_vendor_scorecard_linkage() -> SCARLinkageResult:
     """Placeholder slot for vendor-scorecard linkage — always ``LINKAGE_NOT_AVAILABLE``.
 
-    ``quality_core.sqe.scorecard`` (#118) is not implemented yet. This slot takes no input, has no
-    branches, and is never verdict-affecting.
+    Wiring ``quality_core.sqe.scorecard`` (#118, already on ``test``) is deferred for this SCAR
+    release. This slot takes no input, has no branches, and is never verdict-affecting.
     """
     return SCARLinkageResult(
         linkage_key="vendor_scorecard",
@@ -443,8 +445,9 @@ def _evaluate_vendor_scorecard_linkage() -> SCARLinkageResult:
         engine=None,
         findings=(),
         rationale=(
-            "Vendor scorecard linkage is not available in this release: the vendor scorecard "
-            "engine (#118) has not shipped. This slot never affects the SCAR status."
+            "Vendor scorecard linkage is not available in this release: wiring the vendor "
+            "scorecard engine (#118, already on `test`) is deferred. This slot never affects the "
+            "SCAR status."
         ),
         raw_result=None,
     )

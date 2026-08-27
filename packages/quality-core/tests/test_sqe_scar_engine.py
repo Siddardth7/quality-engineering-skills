@@ -770,18 +770,24 @@ def test_generate_scar_cost_total_hand_computed() -> None:
 
 
 # ===========================================================================
-# Pre-existing NCR empty-records leak (documented, not fixed here)
+# NCR empty-records evidence resolves EVIDENCE_INVALID (not an uncaught raise)
 # ===========================================================================
 
 
-def test_ncr_empty_records_dict_escapes_as_valueerror() -> None:
-    """Documents a pre-existing quality_core.ncr limitation for the reviewer/SME.
+def test_ncr_empty_records_dict_resolves_evidence_invalid() -> None:
+    """An empty-records NCR payload is invalid evidence, not a crash.
 
-    validate_ncr({"records": []}) raises a BARE pandas ValueError, which is NOT in
-    _evaluate_ncr_linkage's catch tuple (pydantic.ValidationError, TypeError). That specific
-    input therefore ESCAPES the linkage helper instead of resolving EVIDENCE_INVALID. Every other
-    invalid NCR shape (blank field, out-of-range quantity, empty list, wrong type) is handled.
-    ncr/ is off-limits for #120, so this is asserted-as-is, not fixed.
+    validate_ncr({"records": []}) raises a bare pandas ValueError. That is caught at this
+    module's own linkage boundary (_evaluate_ncr_linkage's except tuple includes ValueError, of
+    which pydantic.ValidationError is a subclass), so the input resolves EVIDENCE_INVALID like
+    every other invalid NCR shape rather than escaping. quality_core.ncr itself is not modified.
     """
-    with pytest.raises(ValueError):
-        generate_scar(_request(), linked_ncr_evidence={"records": []})
+    r = _evaluate_ncr_linkage({"records": []})
+    assert r.verdict == "EVIDENCE_INVALID"
+    assert r.raw_result is None
+    assert r.findings  # non-empty
+
+    # And end-to-end: generate_scar returns a safe, non-issuable result instead of raising.
+    result = generate_scar(_request(), linked_ncr_evidence={"records": []})
+    assert result.linkage["linked_ncr"].verdict == "EVIDENCE_INVALID"
+    assert result.status != "ISSUABLE"

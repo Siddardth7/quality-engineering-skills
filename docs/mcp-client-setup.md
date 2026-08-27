@@ -2,7 +2,7 @@
 
 This guide details how to configure Model Context Protocol (MCP) clients—including Claude Code, Cursor, and other MCP-compliant hosts—to communicate with `quality-mcp`.
 
-`quality-mcp` exposes the deterministic quality engineering engines in `quality-core` (Statistical Process Control, Measurement System Analysis, FMEA risk scoring, Control Plans) as callable MCP tools over standard transports.
+`quality-mcp` exposes the deterministic quality engineering engines in `quality-core` (Statistical Process Control, Measurement System Analysis, FMEA risk scoring, Control Plans, Root Cause Analysis, Nonconformance Reporting, Cost of Poor Quality, PPAP, and Supplier Quality Engineering) as callable MCP tools over standard transports.
 
 ---
 
@@ -156,6 +156,12 @@ The automated test suites exercise MCP client-server protocol lifecycles (`initi
    uv run pytest packages/quality-mcp/tests/test_ncr_copq_client_roundtrip.py -v
    ```
    Validates in-process JSON-RPC execution of all five Nonconformance Reporting (NCR) and Cost of Poor Quality (COPQ) tools (`write_ncr`, `recommend_disposition`, `render_ncr_canvas`, `estimate_copq`, `render_copq_canvas`), asserts dual-payload parity against `quality_core.ncr` and `quality_core.copq`, executes real-world benchmark manufacturing datasets (Cylinder Bore Honing Porosity, Connecting Rod Pin Bore Rework, Turbocharger Seal Warranty Escapes), verifies multi-tool chained workflow execution (`write_ncr` -> `recommend_disposition` -> `estimate_copq` -> `render_copq_canvas`) across a single session without state pollution, and validates session error isolation and protocol-level negative controls.
+
+9. **SQE Client-Server Round-Trip (Milestone 9 Checkpoint)**:
+   ```bash
+   uv run pytest packages/quality-mcp/tests/test_sqe_client_roundtrip.py -v
+   ```
+   Validates in-process JSON-RPC execution of all six Supplier Quality Engineering (SQE) tools (`calculate_supplier_ppm`, `calculate_otif`, `calculate_vendor_scorecard`, `evaluate_escalation`, `generate_scar`, `render_sqe_canvas`), asserts three-way payload parity (`structuredContent` == serialized `content[0].text` == a direct `quality_core.sqe` / `quality_core.canvas.sqe` **engine** call, never the tool wrapper), executes a real-world supplier scenario (Bracket Machining Supplier SUP-3001, March 2026), verifies session error isolation and protocol-level negative controls, checks cross-domain non-contamination by interleaving SQE calls with FMEA, SPC, MSA, Control Plan, RCA, NCR, COPQ, and PPAP calls in one session, asserts all three no-standard-implied / commercial-authority / root-cause-authorship invariants at the wire, and drives the chained NCR -> SCAR workflow (a validated nonconformity producing an `ISSUABLE` SCAR, and an injected-defect nonconformity producing `EVIDENCE_INVALID` with `quality_core.ncr`'s findings surfaced verbatim and the SCAR held out of `ISSUABLE`) in a single client session.
 
 ### Coverage Gate
 Run the full 100% line and branch coverage gate for `quality-mcp`:
@@ -1696,6 +1702,541 @@ sequenceDiagram
     Core-->>Server: Rendered HTML5 artifact + Pareto ranking table + KPI summary cards
     Server-->>Client: {rows_count: 4, summary: {copq: 7200.0}, html: "<!DOCTYPE html>..."}
 ```
+
+---
+
+> **Transcript truncation convention**: the transcripts below elide bulk sub-structures the way
+> §4.24 elides `"pareto_breakdown": [...]` — `"elements": {...}`, `"applicability_result": {...}`,
+> `"fields": {...}`, `"source_evidence": {...}`, `"heuristic_configuration": {...}`,
+> `"evaluated_triggers": [...]`, `"sections": [...]`, and `"html": "<!DOCTYPE html>..."`. Every
+> value that IS shown is byte-exact `content[0].text` captured from a real in-process client
+> session, and every response was asserted to satisfy `structuredContent == json.loads(content[0].text)`
+> at capture time.
+
+### 4.26 Tool Invocation (tools/call -> audit_ppap_package AIAG PPAP 18-Element Package Audit)
+
+**Client Request**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 26,
+  "method": "tools/call",
+  "params": {
+    "name": "audit_ppap_package",
+    "arguments": {}
+  }
+}
+```
+
+**Server Response** (`structuredContent` and `content[0].text` matching):
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 26,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"package_verdict\": \"INDETERMINATE\",\n  \"submission_level\": 3,\n  \"reason_for_submission\": \"Initial Submission\",\n  \"elements\": {...},\n  \"verdict_counts\": {\n    \"SUBMITTED\": 13,\n    \"RETAINED_ON_FILE\": 2,\n    \"MISSING\": 0,\n    \"NOT_APPLICABLE\": 1,\n    \"INDETERMINATE\": 2,\n    \"EVIDENCE_INVALID\": 0\n  },\n  \"blocking_elements\": [\n    \"2.2.3\",\n    \"2.2.15\"\n  ],\n  \"blocking_element_names\": [\n    \"Customer Engineering Approval\",\n    \"Master Sample\"\n  ],\n  \"submitted_elements\": [\n    \"2.2.1\",\n    \"2.2.2\",\n    \"2.2.4\",\n    \"2.2.5\",\n    \"2.2.6\",\n    \"2.2.7\",\n    \"2.2.8\",\n    \"2.2.9\",\n    \"2.2.10\",\n    \"2.2.11\",\n    \"2.2.12\",\n    \"2.2.14\",\n    \"2.2.18\"\n  ],\n  \"retained_elements\": [\n    \"2.2.16\",\n    \"2.2.17\"\n  ],\n  \"missing_elements\": [],\n  \"not_applicable_elements\": [\n    \"2.2.13\"\n  ],\n  \"indeterminate_elements\": [\n    \"2.2.3\",\n    \"2.2.15\"\n  ],\n  \"invalid_elements\": [],\n  \"standards_basis\": \"AIAG PPAP 4th Edition (June 2006)\",\n  \"applicability_result\": {...},\n  \"basis\": \"AIAG PPAP Reference Manual, 4th Edition (2006)\"\n}"
+      }
+    ],
+    "isError": false
+  }
+}
+```
+
+### 4.27 Tool Invocation (tools/call -> lookup_ppap_requirement Table 4.1 Requirement Code Lookup)
+
+**Client Request**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 27,
+  "method": "tools/call",
+  "params": {
+    "name": "lookup_ppap_requirement",
+    "arguments": {
+      "element_id": "2.2.4",
+      "submission_level": 3
+    }
+  }
+}
+```
+
+**Server Response** (`structuredContent` and `content[0].text` matching):
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 27,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"basis\": \"AIAG PPAP Reference Manual, 4th Edition (2006)\",\n  \"submission_level\": 3,\n  \"submission_level_description\": \"Warrant with product samples and complete supporting data submitted to the customer.\",\n  \"element_id\": \"2.2.4\",\n  \"element_name\": \"Design Failure Mode and Effects Analysis (Design FMEA)\",\n  \"requirement_code\": \"S\",\n  \"requirement_description\": \"The organization shall submit to the customer and retain a copy of records or documentation items at appropriate locations.\",\n  \"legend\": {\n    \"S\": \"The organization shall submit to the customer and retain a copy of records or documentation items at appropriate locations.\",\n    \"R\": \"The organization shall retain at appropriate locations and make available to the customer upon request.\",\n    \"*\": \"The organization shall retain at appropriate locations and submit to the customer upon request.\",\n    \"CUSTOMER_DEFINED\": \"Warrant and other requirements as defined by the customer.\"\n  }\n}"
+      }
+    ],
+    "isError": false
+  }
+}
+```
+
+### 4.28 Tool Invocation (tools/call -> validate_psw Appendix A Part Submission Warrant Validation)
+
+**Client Request**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 28,
+  "method": "tools/call",
+  "params": {
+    "name": "validate_psw",
+    "arguments": {}
+  }
+}
+```
+
+**Server Response** (`structuredContent` and `content[0].text` matching):
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 28,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"verdict\": \"COMPLETE\",\n  \"fields\": {...},\n  \"missing_fields\": [],\n  \"invalid_fields\": [],\n  \"indeterminate_fields\": [],\n  \"blanket_statement_detected\": false,\n  \"blanket_statement_findings\": [],\n  \"cross_consistency_findings\": [],\n  \"customer_disposition_present\": false,\n  \"customer_disposition_warning\": null,\n  \"warnings\": [],\n  \"standards_basis\": \"AIAG Production Part Approval Process (PPAP) Reference Manual, 4th Edition (June 2006), Appendix A \\u2014 Part Submission Warrant (PSW) Completion Instructions and Section 5 \\u2014 Part Submission Status.\",\n  \"basis\": \"AIAG PPAP Reference Manual, 4th Edition (2006)\"\n}"
+      }
+    ],
+    "isError": false
+  }
+}
+```
+
+### 4.29 Tool Invocation (tools/call -> assess_ppap_capability §2.2.11 Initial Process Study)
+
+**Client Request**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 29,
+  "method": "tools/call",
+  "params": {
+    "name": "assess_ppap_capability",
+    "arguments": {
+      "precomputed_index_type": "Ppk",
+      "precomputed_index_value": 1.85,
+      "precomputed_sample_size": 125,
+      "precomputed_subgroup_count": 25
+    }
+  }
+}
+```
+
+**Server Response** (`structuredContent` and `content[0].text` matching):
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 29,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"verdict\": \"ACCEPTABLE\",\n  \"index_type\": \"Ppk\",\n  \"index_value\": 1.85,\n  \"band\": \"GREATER_THAN_1_67\",\n  \"required_action\": \"The process currently meets the acceptance criteria.\",\n  \"rationales\": [\n    \"Ppk = 1.8500 > 1.67: Process meets acceptance criteria.\",\n    \"Used Ppk based on initial process study short-term data (\u00a72.2.11.2).\"\n  ],\n  \"citations\": [\n    \"AIAG PPAP 4th Edition \u00a72.2.11.3 (Table 2.2.11.3: Index > 1.67)\"\n  ],\n  \"stable\": null,\n  \"violations\": null,\n  \"sample_size\": 125,\n  \"subgroup_count\": 25,\n  \"is_attribute\": false,\n  \"customer_concurrence\": false,\n  \"basis\": \"AIAG PPAP Reference Manual, 4th Edition (2006)\"\n}"
+      }
+    ],
+    "isError": false
+  }
+}
+```
+
+### 4.30 Tool Invocation (tools/call -> render_ppap_canvas Visual 18-Element Checklist Canvas)
+
+**Client Request**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 30,
+  "method": "tools/call",
+  "params": {
+    "name": "render_ppap_canvas",
+    "arguments": {
+      "submission_level": 3,
+      "standalone": true,
+      "title": "Transmission Shaft PPAP Level 3 Checklist Canvas"
+    }
+  }
+}
+```
+
+**Server Response** (`structuredContent` and `content[0].text` matching):
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 30,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"title\": \"Transmission Shaft PPAP Level 3 Checklist Canvas\",\n  \"rows_count\": 18,\n  \"submission_level\": 3,\n  \"summary\": {\n    \"total_elements\": 18,\n    \"submission_level\": 3,\n    \"submission_level_description\": \"Warrant with product samples and complete supporting data submitted to the customer.\",\n    \"reason_for_submission\": \"Initial Submission\",\n    \"part_name\": \"Transmission Output Shaft\",\n    \"part_number\": \"PART-SFT-4410\",\n    \"organization\": \"Acme Precision Driveline Systems\",\n    \"customer\": \"Apex Automotive Group\",\n    \"status_counts\": {\n      \"submitted\": 16,\n      \"retained\": 1,\n      \"not_applicable\": 1,\n      \"missing\": 0,\n      \"undecided\": 0\n    },\n    \"required_elements_count\": 15,\n    \"required_submitted_count\": 15,\n    \"required_missing_count\": 0,\n    \"required_undecided_count\": 0,\n    \"submission_readiness\": \"SUBMISSION_READY\",\n    \"standards_basis\": \"AIAG Production Part Approval Process (PPAP) Reference Manual, 4th Edition (June 2006), Table 4.1 & Table 4.2 Submission and Retention Matrix, Section 2.2 Element Requirements, and Section 5 Part Submission Status.\",\n    \"authority_notice\": \"Customer approval dispositions ('Approved', 'Interim Approval', 'Rejected') are reserved exclusively for the customer's authorized representative per AIAG PPAP 4th Edition Section 5. This canvas evaluates supplier submission readiness only.\"\n  },\n  \"html\": \"<!DOCTYPE html>...\",\n  \"basis\": \"AIAG PPAP Reference Manual, 4th Edition (2006)\"\n}"
+      }
+    ],
+    "isError": false
+  }
+}
+```
+
+### 4.31 Multi-Tool Chained Control Plan -> PPAP Submission Readiness Workflow
+
+The following sequence illustrates a single client session carrying an AIAG Control Plan through
+the PPAP package it belongs to: the plan is validated first, its PPAP element (§2.2.7) and Table 4.1
+requirement code are looked up, the §2.2.11 Initial Process Study is assessed, the 18-element
+package is audited, the Part Submission Warrant is validated, and the checklist matrix is rendered.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Client as MCP Client
+    participant Server as quality-mcp Server
+    participant Core as quality-core Engines
+
+    Note over Client,Server: Single In-Process JSON-RPC Session Handshake
+    Client->>Server: initialize
+    Server-->>Client: serverInfo ("quality-mcp")
+    Client->>Server: tools/list
+    Server-->>Client: [validate_control_plan, audit_ppap_package, lookup_ppap_requirement, validate_psw, assess_ppap_capability, render_ppap_canvas, ...]
+
+    Note over Client,Server: Stage 1. AIAG Control Plan Validation
+    Client->>Server: tools/call ("validate_control_plan", plan=[{characteristic: "Bore Diameter", ...}])
+    Server->>Core: quality_core.controlplan.validate_control_plan(...)
+    Core-->>Server: valid=true, schema_valid=true
+    Server-->>Client: {basis: "AIAG Control Plan", valid: true, schema_valid: true}
+
+    Note over Client,Server: Stage 2. Table 4.1 Requirement Code for the Control Plan Element
+    Client->>Server: tools/call ("lookup_ppap_requirement", element_id="control_plan", submission_level=3)
+    Server->>Core: quality_core.ppap Table 4.1 lookup (§2.2.7, Level 3)
+    Core-->>Server: element_id="2.2.7", element_name="Control Plan", requirement_code="S"
+    Server-->>Client: {element_id: "2.2.7", requirement_code: "S", legend: {...}}
+
+    Note over Client,Server: Stage 3. §2.2.11 Initial Process Study Capability Assessment
+    Client->>Server: tools/call ("assess_ppap_capability", precomputed_index_type="Ppk", precomputed_index_value=1.85, ...)
+    Server->>Core: quality_core.ppap capability assessment (Ppk >= 1.67 threshold, §2.2.11.3)
+    Core-->>Server: index_type="Ppk", index_value=1.85, verdict="ACCEPTABLE"
+    Server-->>Client: {verdict: "ACCEPTABLE", index_type: "Ppk", index_value: 1.85}
+
+    Note over Client,Server: Stage 4. 18-Element Package Audit (Supplier Readiness Only)
+    Client->>Server: tools/call ("audit_ppap_package", {})
+    Server->>Core: quality_core.ppap 18-element audit against Table 4.1 (Level 3)
+    Core-->>Server: SUBMITTED=13, RETAINED_ON_FILE=2, NOT_APPLICABLE=1, INDETERMINATE=2
+    Server-->>Client: {package_verdict: "INDETERMINATE", blocking_elements: ["2.2.3", "2.2.15"]}
+
+    Note over Client,Server: Stage 5. Appendix A Part Submission Warrant Validation
+    Client->>Server: tools/call ("validate_psw", {})
+    Server->>Core: quality_core.ppap PSW field validation (Appendix A, Fields 1-27)
+    Core-->>Server: verdict="COMPLETE", missing_fields=[], blanket_statement_detected=false
+    Server-->>Client: {verdict: "COMPLETE", customer_disposition_present: false}
+
+    Note over Client,Server: Stage 6. 18-Element Checklist Matrix Canvas Rendering
+    Client->>Server: tools/call ("render_ppap_canvas", submission_level=3, standalone=true)
+    Server->>Core: quality_core.canvas.ppap checklist matrix render
+    Core-->>Server: Rendered HTML5 artifact + Level 1-5 matrix + KPI summary cards
+    Server-->>Client: {rows_count: 18, summary: {...}, html: "<!DOCTYPE html>..."}
+```
+
+Note on Customer Authority (AIAG PPAP 4th Edition Section 5): none of these tools returns a part
+submission disposition. `Approved`, `Interim Approval`, and `Rejected` are reserved for the
+customer's authorized representative; the tools report supplier submission readiness only
+(`SUBMISSION_READY`, `NOT_READY`, `INDETERMINATE`).
+
+### 4.32 Tool Invocation (tools/call -> calculate_supplier_ppm SUP-3001 March 2026 PPM & DPMO)
+
+**Client Request**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 32,
+  "method": "tools/call",
+  "params": {
+    "name": "calculate_supplier_ppm",
+    "arguments": {
+      "period": {
+        "supplier_id": "SUP-3001",
+        "period_start": "2026-03-01",
+        "period_end": "2026-03-31",
+        "period_label": "March 2026"
+      },
+      "lots": [
+        {
+          "supplier_id": "SUP-3001",
+          "lot_id": "LOT-SUP-3001-A",
+          "quantity_received": 4000,
+          "receipt_date": "2026-03-04",
+          "defect_count": 6,
+          "opportunities_per_unit": 3
+        },
+        {
+          "supplier_id": "SUP-3001",
+          "lot_id": "LOT-SUP-3001-B",
+          "quantity_received": 3500,
+          "receipt_date": "2026-03-13",
+          "defect_count": 2,
+          "opportunities_per_unit": 3
+        },
+        {
+          "supplier_id": "SUP-3001",
+          "lot_id": "LOT-SUP-3001-C",
+          "quantity_received": 2500,
+          "receipt_date": "2026-03-25",
+          "defect_count": 4,
+          "opportunities_per_unit": 3
+        }
+      ]
+    }
+  }
+}
+```
+
+**Server Response** (`structuredContent` and `content[0].text` matching):
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 32,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"supplier_id\": \"SUP-3001\",\n  \"period_start\": \"2026-03-01\",\n  \"period_end\": \"2026-03-31\",\n  \"period_label\": \"March 2026\",\n  \"verdict\": \"MEASURED\",\n  \"ppm\": 1200.0,\n  \"numerator\": 12,\n  \"denominator\": 10000,\n  \"lot_count\": 3,\n  \"dpmo\": 400.0,\n  \"dpmo_opportunity_count\": 30000,\n  \"sample_adequacy\": {\n    \"minimum\": 1000,\n    \"meets_minimum\": true,\n    \"is_heuristic\": true,\n    \"basis\": \"declared engineering default, no standards citation \u2014 see ASSUMPTIONS_LOG.md\"\n  },\n  \"reason\": null,\n  \"warnings\": [],\n  \"recommendations\": [],\n  \"standards_basis\": \"No published AIAG/ISO/IATF standard defines a PPM formula, DPMO opportunity model, or sample-adequacy threshold; the arithmetic here is generic industry practice and the sample-adequacy minimum is a declared engineering heuristic (see ASSUMPTIONS_LOG.md).\",\n  \"basis\": \"No published AIAG/ISO/IATF standard defines a PPM formula, DPMO opportunity model, or sample-adequacy threshold; the arithmetic here is generic industry practice and the sample-adequacy minimum is a declared engineering heuristic (see ASSUMPTIONS_LOG.md).\"\n}"
+      }
+    ],
+    "isError": false
+  }
+}
+```
+
+### 4.33 Tool Invocation (tools/call -> calculate_otif Strict-Conjunction OTIF Delivery Performance)
+
+**Client Request**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 33,
+  "method": "tools/call",
+  "params": {
+    "name": "calculate_otif",
+    "arguments": {}
+  }
+}
+```
+
+**Server Response** (`structuredContent` and `content[0].text` matching):
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 33,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"supplier_id\": \"SUP-1001\",\n  \"period_start\": \"2026-01-01\",\n  \"period_end\": \"2026-01-31\",\n  \"period_label\": \"January 2026\",\n  \"verdict\": \"MEASURED\",\n  \"delivery_count\": 3,\n  \"on_time_count\": 3,\n  \"in_full_count\": 2,\n  \"otif_count\": 2,\n  \"on_time_pct\": 100.0,\n  \"in_full_pct\": 66.66666666666666,\n  \"otif_pct\": 66.66666666666666,\n  \"delivery_breakdown\": [\n    {\n      \"order_id\": \"PO-9001\",\n      \"is_on_time\": true,\n      \"is_in_full\": true,\n      \"is_otif\": true,\n      \"shortfall_qty\": 0\n    },\n    {\n      \"order_id\": \"PO-9002\",\n      \"is_on_time\": true,\n      \"is_in_full\": true,\n      \"is_otif\": true,\n      \"shortfall_qty\": 0\n    },\n    {\n      \"order_id\": \"PO-9003\",\n      \"is_on_time\": true,\n      \"is_in_full\": false,\n      \"is_otif\": false,\n      \"shortfall_qty\": 100\n    }\n  ],\n  \"heuristic_configuration\": {\n    \"early_tolerance_days\": 0,\n    \"late_tolerance_days\": 2,\n    \"early_counts_as_on_time\": false,\n    \"in_full_tolerance_pct\": 0.0,\n    \"over_delivery_counts_as_in_full\": true,\n    \"is_heuristic\": true,\n    \"basis\": \"declared engineering default, no standards citation \u2014 see ASSUMPTIONS_LOG.md\"\n  },\n  \"reason\": null,\n  \"warnings\": [\n    \"1 of 3 deliveries fell short of the configured in-full tolerance.\"\n  ],\n  \"recommendations\": [\n    \"Confirm the on-time window, the in-full tolerance, and the early-delivery rule against the supplier agreement: they are engineering defaults, not standards requirements.\",\n    \"Review delivery_breakdown: OTIF counts only deliveries that are both on-time and in-full, so it is at or below each of on_time_pct and in_full_pct.\"\n  ],\n  \"standards_basis\": \"No published AIAG/ISO/IATF standard defines an on-time window, an in-full tolerance, or whether early delivery counts as on-time; every OTIFConfig value here is a declared engineering heuristic, caller-configurable (see ASSUMPTIONS_LOG.md, RULE-SQE-001/002).\",\n  \"basis\": \"No published AIAG/ISO/IATF standard defines an on-time window, an in-full tolerance, or whether early delivery counts as on-time; every OTIFConfig value here is a declared engineering heuristic, caller-configurable (see ASSUMPTIONS_LOG.md, RULE-SQE-001/002).\"\n}"
+      }
+    ],
+    "isError": false
+  }
+}
+```
+
+### 4.34 Tool Invocation (tools/call -> calculate_vendor_scorecard Composed Quality + Delivery Scorecard)
+
+**Client Request**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 34,
+  "method": "tools/call",
+  "params": {
+    "name": "calculate_vendor_scorecard",
+    "arguments": {}
+  }
+}
+```
+
+**Server Response** (`structuredContent` and `content[0].text` matching):
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 34,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"supplier_id\": \"SUP-1001\",\n  \"period_start\": \"2026-01-01\",\n  \"period_end\": \"2026-01-31\",\n  \"period_label\": \"January 2026\",\n  \"verdict\": \"RATED\",\n  \"composite_score\": 84.2666666667,\n  \"band\": \"B\",\n  \"dimensions\": [\n    {\n      \"name\": \"quality\",\n      \"source_metric_name\": \"ppm\",\n      \"raw_metric\": 400.0,\n      \"sub_score\": 96.0,\n      \"weight\": 0.6,\n      \"weighted_contribution\": 57.6,\n      \"source_verdict\": \"MEASURED\",\n      \"source_reason\": null,\n      \"source_evidence\": {...},\n      \"warnings\": [],\n      \"recommendations\": [],\n      \"is_heuristic\": true,\n      \"basis\": \"caller-configurable engineering heuristic with no standards citation \\u2014 see ASSUMPTIONS_LOG.md\"\n    },\n    {\n      \"name\": \"delivery\",\n      \"source_metric_name\": \"otif_pct\",\n      \"raw_metric\": 66.6666666667,\n      \"sub_score\": 66.6666666667,\n      \"weight\": 0.4,\n      \"weighted_contribution\": 26.6666666667,\n      \"source_verdict\": \"MEASURED\",\n      \"source_reason\": null,\n      \"source_evidence\": {...},\n      \"warnings\": [\n        \"1 of 3 deliveries fell short of the configured in-full tolerance.\"\n      ],\n      \"recommendations\": [\n        \"Confirm the on-time window, the in-full tolerance, and the early-delivery rule against the supplier agreement: they are engineering defaults, not standards requirements.\",\n        \"Review delivery_breakdown: OTIF counts only deliveries that are both on-time and in-full, so it is at or below each of on_time_pct and in_full_pct.\"\n      ],\n      \"is_heuristic\": true,\n      \"basis\": \"caller-configurable engineering heuristic with no standards citation \\u2014 see ASSUMPTIONS_LOG.md\"\n    }\n  ],\n  \"heuristic_configuration\": {...},\n  \"omitted_dimensions\": [\n    {\n      \"name\": \"cost\",\n      \"reason\": \"cost_weight is 0.0 and no COPQ evidence was supplied; cost was not scored\"\n    }\n  ],\n  \"reason\": null,\n  \"warnings\": [\n    \"delivery: 1 of 3 deliveries fell short of the configured in-full tolerance.\"\n  ],\n  \"recommendations\": [\n    \"delivery: Confirm the on-time window, the in-full tolerance, and the early-delivery rule against the supplier agreement: they are engineering defaults, not standards requirements.\",\n    \"delivery: Review delivery_breakdown: OTIF counts only deliveries that are both on-time and in-full, so it is at or below each of on_time_pct and in_full_pct.\"\n  ],\n  \"standards_basis\": \"ISO 9001:2015 section 8.4 and IATF 16949:2016 section 8.4 require supplier evaluation against criteria determined by the organization; those clauses do not define any scorecard weight, scoring curve, or A/B/C band.\",\n  \"basis\": \"ISO 9001:2015 section 8.4 and IATF 16949:2016 section 8.4 require supplier evaluation against criteria determined by the organization; those clauses do not define any scorecard weight, scoring curve, or A/B/C band.\"\n}"
+      }
+    ],
+    "isError": false
+  }
+}
+```
+
+### 4.35 Tool Invocation (tools/call -> evaluate_escalation Evidence-Backed Escalation Tier)
+
+**Client Request**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 35,
+  "method": "tools/call",
+  "params": {
+    "name": "evaluate_escalation",
+    "arguments": {
+      "recurrence_count": 2
+    }
+  }
+}
+```
+
+**Server Response** (`structuredContent` and `content[0].text` matching):
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 35,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"supplier_id\": \"SUP-1001\",\n  \"tier\": \"SCAR_REQUIRED\",\n  \"scorecard_verdict\": \"RATED\",\n  \"evaluated_triggers\": [...],\n  \"selected_evidence\": [\n    {\n      \"tier\": \"SCAR_REQUIRED\",\n      \"metric\": \"recurrence_count\",\n      \"comparison\": \">=\",\n      \"observed_value\": 2,\n      \"threshold\": 2,\n      \"fired\": true,\n      \"is_heuristic\": true,\n      \"basis\": \"caller-configurable engineering heuristic with no standards citation \\u2014 see ASSUMPTIONS_LOG.md\"\n    }\n  ],\n  \"recurrence_count\": 2,\n  \"reason\": null,\n  \"heuristic_configuration\": {...},\n  \"standards_basis\": \"AIAG CQI-20 corrective-action escalation discipline; organizational tier structure only, not numeric thresholds.\",\n  \"commercial_authority\": \"Any commercial response remains a business decision made by authorized people; this result recommends only a quality-engineering tier.\",\n  \"basis\": \"AIAG CQI-20 corrective-action escalation discipline; organizational tier structure only, not numeric thresholds.\"\n}"
+      }
+    ],
+    "isError": false
+  }
+}
+```
+
+### 4.36 Tool Invocation (tools/call -> generate_scar Cross-Engine NCR Evidence Linkage, ISSUABLE)
+
+**Client Request**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 36,
+  "method": "tools/call",
+  "params": {
+    "name": "generate_scar",
+    "arguments": {
+      "request": {
+        "supplier_id": "SUP-3001",
+        "issue_description": "Incoming inspection found bracket bore diameter oversize on lot LOT-SUP-3001-A.",
+        "scar_id": "SCAR-2026-CHAIN-VALID",
+        "date_issued": null
+      },
+      "linked_ncr_evidence": [
+        {
+          "part_lot_id": "LOT-SUP-3001-A",
+          "defect_description": "Bracket bore diameter oversize",
+          "requirement_violated": "Drawing Rev C: bore diameter 12.00 +/- 0.02 mm",
+          "quantity_affected": 6,
+          "detection_point": "Incoming Inspection Station 2"
+        }
+      ]
+    }
+  }
+}
+```
+
+**Server Response** (`structuredContent` and `content[0].text` matching):
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 36,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"supplier_id\": \"SUP-3001\",\n  \"scar_id\": \"SCAR-2026-CHAIN-VALID\",\n  \"issue_description\": \"Incoming inspection found bracket bore diameter oversize on lot LOT-SUP-3001-A.\",\n  \"status\": \"ISSUABLE\",\n  \"sections\": [...],\n  \"linkage\": {\n    \"linked_ncr\": {\n      \"linkage_key\": \"linked_ncr\",\n      \"verdict\": \"EVIDENCE_VALID\",\n      \"engine\": \"quality_core.ncr\",\n      \"findings\": [],\n      \"rationale\": \"quality_core.ncr accepted the supplied nonconformance evidence.\",\n      \"raw_result\": {\n        \"records\": [\n          {\n            \"part_lot_id\": \"LOT-SUP-3001-A\",\n            \"defect_description\": \"Bracket bore diameter oversize\",\n            \"requirement_violated\": \"Drawing Rev C: bore diameter 12.00 +/- 0.02 mm\",\n            \"quantity_affected\": 6,\n            \"detection_point\": \"Incoming Inspection Station 2\",\n            \"record_id\": null,\n            \"disposition\": null,\n            \"severity\": null,\n            \"rationale\": null,\n            \"approval_authority\": null\n          }\n        ]\n      }\n    },\n    \"supplier_root_cause\": {\n      \"linkage_key\": \"supplier_root_cause\",\n      \"verdict\": \"EVIDENCE_NOT_SUPPLIED\",\n      \"engine\": \"quality_core.rca\",\n      \"findings\": [],\n      \"rationale\": \"No supplier root-cause response has been received. The root cause is stated by the supplier and validated here; this generator never authors, infers, or substitutes one.\",\n      \"raw_result\": null\n    },\n    \"cost_impact\": {\n      \"linkage_key\": \"cost_impact\",\n      \"verdict\": \"EVIDENCE_NOT_SUPPLIED\",\n      \"engine\": \"quality_core.copq\",\n      \"findings\": [],\n      \"rationale\": \"No cost-of-poor-quality evidence was supplied for this SCAR.\",\n      \"raw_result\": null\n    },\n    \"vendor_scorecard\": {\n      \"linkage_key\": \"vendor_scorecard\",\n      \"verdict\": \"LINKAGE_NOT_AVAILABLE\",\n      \"engine\": null,\n      \"findings\": [],\n      \"rationale\": \"Vendor scorecard linkage is not available in this release: wiring the vendor scorecard engine (#118, already on `test`) is deferred. This slot never affects the SCAR status.\",\n      \"raw_result\": null\n    }\n  },\n  \"root_cause\": null,\n  \"verification_of_effectiveness\": null,\n  \"due_date\": null,\n  \"date_issued\": null,\n  \"reason\": null,\n  \"warnings\": [\n    \"No due_date is recorded on this SCAR request; the supplier response due date is undecided and is not invented by this generator.\"\n  ],\n  \"recommendations\": [\n    \"Request the supplier's 5-Why root-cause response. The root cause is stated by the supplier and validated here; this generator never authors, infers, or substitutes one.\",\n    \"Obtain a written verification-of-effectiveness statement from the supplier: no SCAR closes without one.\",\n    \"Attach itemized cost-of-poor-quality evidence so the financial impact is quantified by quality_core.copq rather than estimated by hand.\"\n  ],\n  \"standards_basis\": \"AIAG CQI-20 Effective Problem Solving (2nd Edition, 2018) and the Ford Global 8D Manual back the three rendered section headings only (ASSUMPTIONS_LOG.md RULE-SQE-011/008/009). The status state machine, the linkage dispatch, and SCARConfig assert no published standard: ISO 9001:2015 \\u00a78.4/\\u00a710.2 and IATF 16949:2016 \\u00a78.4 require corrective action but supply no status vocabulary and no closure criteria.\",\n  \"basis\": \"AIAG CQI-20 Effective Problem Solving (2nd Edition, 2018) and the Ford Global 8D Manual back the three rendered section headings only (ASSUMPTIONS_LOG.md RULE-SQE-011/008/009). The status state machine, the linkage dispatch, and SCARConfig assert no published standard: ISO 9001:2015 \\u00a78.4/\\u00a710.2 and IATF 16949:2016 \\u00a78.4 require corrective action but supply no status vocabulary and no closure criteria.\"\n}"
+      }
+    ],
+    "isError": false
+  }
+}
+```
+
+### 4.37 Tool Invocation (tools/call -> render_sqe_canvas Visual Vendor Scorecard Canvas)
+
+**Client Request**:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 37,
+  "method": "tools/call",
+  "params": {
+    "name": "render_sqe_canvas",
+    "arguments": {
+      "standalone": true,
+      "title": "SUP-3001 Bracket Machining Vendor Scorecard Canvas"
+    }
+  }
+}
+```
+
+**Server Response** (`structuredContent` and `content[0].text` matching):
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 37,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"title\": \"SUP-3001 Bracket Machining Vendor Scorecard Canvas\",\n  \"verdict\": \"RENDERED\",\n  \"reason\": null,\n  \"rows_count\": 6,\n  \"summary\": {\n    \"rows_count\": 6,\n    \"rated_count\": 5,\n    \"indeterminate_count\": 1,\n    \"band_counts\": {\n      \"A\": 1,\n      \"B\": 1,\n      \"C\": 3\n    },\n    \"tier_counts\": {\n      \"NONE\": 1,\n      \"MONITOR\": 1,\n      \"SCAR_REQUIRED\": 1,\n      \"CONTAINMENT_REQUIRED\": 1,\n      \"EXECUTIVE_REVIEW\": 1,\n      \"INDETERMINATE\": 1\n    }\n  },\n  \"html\": \"<!DOCTYPE html>...\",\n  \"basis\": \"All weights, thresholds, curves, bands, and escalation tiers rendered on this canvas are caller-configurable engineering heuristics with no standards citation; see each row's own scorecard/escalation standards_basis for engine-level detail.\"\n}"
+      }
+    ],
+    "isError": false
+  }
+}
+```
+
+### 4.38 Multi-Tool Chained NCR -> SCAR Workflow (Valid & Invalid Evidence)
+
+The following sequence illustrates a single client session driving the cross-engine evidence
+linkage that backs a Supplier Corrective Action Request. **Both stages call the same tool,
+`generate_scar`, twice with different `linked_ncr_evidence`** — unlike the §4.25 NCR -> COPQ chain,
+there is no separate NCR tool call here. `generate_scar` dispatches the evidence it is handed to
+`quality_core.ncr.schema.validate_ncr` itself, and surfaces that engine's own findings verbatim.
+
+Both requests carry `date_issued: null`. That is load-bearing: the SCAR status state machine only
+reaches `ISSUABLE` (Rule 5) or `DRAFT` (Rule 4) for a SCAR that was never issued. A request with a
+`date_issued` set resolves `AWAITING_SUPPLIER_RESPONSE` (Rule 3) for both halves, and the evidence
+verdict would never affect the status at all.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Client as MCP Client
+    participant Server as quality-mcp Server
+    participant Core as quality-core Engines
+
+    Note over Client,Server: Single In-Process JSON-RPC Session Handshake
+    Client->>Server: initialize
+    Server-->>Client: serverInfo ("quality-mcp")
+    Client->>Server: tools/list
+    Server-->>Client: [calculate_supplier_ppm, calculate_otif, calculate_vendor_scorecard, evaluate_escalation, generate_scar, render_sqe_canvas, ...]
+
+    Note over Client,Server: Stage 1. Valid Nonconformity -> ISSUABLE SCAR
+    Client->>Server: tools/call ("generate_scar", request={date_issued: null, scar_id: "SCAR-2026-CHAIN-VALID", ...}, linked_ncr_evidence=[{part_lot_id: "LOT-SUP-3001-A", quantity_affected: 6, ...}])
+    Server->>Core: quality_core.ncr.schema.validate_ncr(evidence) -> NCRDataset accepted
+    Core-->>Server: EVIDENCE_VALID, raw_result=NCRDataset.model_dump() verbatim, findings=[]
+    Server-->>Client: {status: "ISSUABLE", reason: null, root_cause: null, linkage: {linked_ncr: {verdict: "EVIDENCE_VALID", findings: []}}}
+
+    Note over Client,Server: Stage 2. Invalid Nonconformity (quantity_affected=0) -> EVIDENCE_INVALID, not ISSUABLE
+    Client->>Server: tools/call ("generate_scar", request={date_issued: null, scar_id: "SCAR-2026-CHAIN-INVALID", ...}, linked_ncr_evidence=[{..., quantity_affected: 0}])
+    Server->>Core: quality_core.ncr.schema.validate_ncr(evidence) raises pydantic.ValidationError (NonconformanceRecord.quantity_affected ge=1)
+    Core-->>Server: EVIDENCE_INVALID, findings=["quantity_affected: Input should be greater than or equal to 1"]
+    Server-->>Client: {status: "DRAFT", root_cause: null, linkage: {linked_ncr: {verdict: "EVIDENCE_INVALID", findings: ["quantity_affected: Input should be greater than or equal to 1"], raw_result: null}}}
+```
+
+The invalid half's `reason` reads *"this SCAR has not been issued and linked evidence already fails
+validation; see the EVIDENCE_INVALID entries in linkage."*, and the finding text is
+`quality_core.ncr`'s own pydantic message passed through unchanged — the SCAR engine re-authors
+nothing. `root_cause` stays `null` in both halves, because no supplier root-cause evidence was
+supplied and the engine never states a cause of its own.
 
 ---
 

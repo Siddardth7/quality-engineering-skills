@@ -177,7 +177,7 @@ def test_skills_readme_exists_and_documents_conventions() -> None:
 
 
 def test_discoverable_skill_directories_exist() -> None:
-    """At least _template, mcp-health, fmea-reviewer, spc-control-charts, msa-gauge-rr, control-plan, 5why-root-cause, fishbone-analysis, and is-is-not-scoping skill directories must exist."""
+    """At least _template, mcp-health, fmea-reviewer, spc-control-charts, msa-gauge-rr, control-plan, 5why-root-cause, fishbone-analysis, is-is-not-scoping, ncr-writing, copq-estimator, and ppap-checker skill directories must exist."""
     skill_dirs = _discover_skill_directories()
     dir_names = {d.name for d in skill_dirs}
     assert "_template" in dir_names, "skills/_template directory missing"
@@ -191,6 +191,7 @@ def test_discoverable_skill_directories_exist() -> None:
     assert "is-is-not-scoping" in dir_names, "skills/is-is-not-scoping directory missing"
     assert "ncr-writing" in dir_names, "skills/ncr-writing directory missing"
     assert "copq-estimator" in dir_names, "skills/copq-estimator directory missing"
+    assert "ppap-checker" in dir_names, "skills/ppap-checker directory missing"
     assert "supplier-scar" in dir_names, "skills/supplier-scar directory missing"
 
 
@@ -396,6 +397,41 @@ def test_supplier_scar_skill_contains_no_worked_arithmetic() -> None:
     )
 
 
+def test_ppap_checker_skill_specifies_ppap_tools() -> None:
+    """skills/ppap-checker/SKILL.md must document PPAP MCP tools, reference quality-mcp, cite AIAG, 18 elements, and Levels 1–5."""
+    ppap_file = _SKILLS_DIR / "ppap-checker" / "SKILL.md"
+    assert ppap_file.exists(), "skills/ppap-checker/SKILL.md does not exist"
+    content = ppap_file.read_text(encoding="utf-8")
+    assert "audit_ppap_package" in content, "ppap-checker skill must document audit_ppap_package tool"
+    assert "lookup_ppap_requirement" in content, "ppap-checker skill must document lookup_ppap_requirement tool"
+    assert "validate_psw" in content, "ppap-checker skill must document validate_psw tool"
+    assert "assess_ppap_capability" in content, "ppap-checker skill must document assess_ppap_capability tool"
+    assert "render_ppap_canvas" in content, "ppap-checker skill must document render_ppap_canvas tool"
+    assert "quality-mcp" in content, "ppap-checker skill must reference quality-mcp"
+    assert "AIAG" in content, "ppap-checker skill must cite AIAG"
+    assert "18" in content, "ppap-checker skill must cite 18 elements"
+    for level_num in range(1, 6):
+        assert f"Level {level_num}" in content, f"ppap-checker skill must cite Level {level_num}"
+    for inv_num in range(1, 6):
+        assert f"Domain Invariant {inv_num}" in content, f"ppap-checker skill must document Domain Invariant {inv_num}"
+
+
+def test_ppap_checker_authority_invariant() -> None:
+    """skills/ppap-checker/SKILL.md must assert Section 5 Customer Authority Invariant and supplier readiness states."""
+    ppap_file = _SKILLS_DIR / "ppap-checker" / "SKILL.md"
+    assert ppap_file.exists(), "skills/ppap-checker/SKILL.md does not exist"
+    content = ppap_file.read_text(encoding="utf-8")
+    assert "Section 5" in content or "Customer Authority Invariant" in content, (
+        "ppap-checker skill must cite Section 5 Customer Authority Invariant"
+    )
+    assert "SUBMISSION_READY" in content, "ppap-checker skill must document SUBMISSION_READY status"
+    assert "NOT_READY" in content, "ppap-checker skill must document NOT_READY status"
+    assert "INDETERMINATE" in content, "ppap-checker skill must document INDETERMINATE status"
+    assert "CUSTOMER USE ONLY" in content or "customer use only" in content.lower(), (
+        "ppap-checker skill must state that approval statuses are for customer use only"
+    )
+
+
 def test_claude_skills_isolation() -> None:
     """.claude/skills/ must remain segregated from domain skills/."""
     if not _CLAUDE_SKILLS_DIR.exists():
@@ -413,6 +449,7 @@ def test_claude_skills_isolation() -> None:
     assert "is-is-not-scoping" not in claude_dirs, "is-is-not-scoping domain skill leaked into .claude/skills/"
     assert "ncr-writing" not in claude_dirs, "ncr-writing domain skill leaked into .claude/skills/"
     assert "copq-estimator" not in claude_dirs, "copq-estimator domain skill leaked into .claude/skills/"
+    assert "ppap-checker" not in claude_dirs, "ppap-checker domain skill leaked into .claude/skills/"
     assert "supplier-scar" not in claude_dirs, "supplier-scar domain skill leaked into .claude/skills/"
 
 

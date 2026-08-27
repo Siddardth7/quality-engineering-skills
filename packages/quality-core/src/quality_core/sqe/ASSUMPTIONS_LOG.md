@@ -197,6 +197,7 @@ because what was received remains knowable even when what was defective does not
 
 ---
 
+
 ## RULE-SQE-007: Vendor-scorecard weights are configurable engineering heuristics (`scorecard.py`, #118)
 
 **Decision:** `ScorecardConfig` defaults to quality / delivery / cost weights of **0.60 / 0.40 /
@@ -263,6 +264,123 @@ revenue basis. `scorecard.py` contains no COPQ arithmetic.
 
 ---
 
+## RULE-SQE-011: SCAR "Root-Cause Requirement" section heading (`scar.py`, #120)
+
+**Decision.** The generated SCAR carries a **Root-Cause Requirement** section stating that the
+supplier must establish and state the *systemic* root cause — continuing to ask why past any
+individual- or task-level explanation until the procedure, policy, or practice that allowed the
+problem to occur and to escape is identified. The engine requests and validates that root cause; it
+never authors, infers, or substitutes one (see "Process Design Decisions" below).
+
+**Source.** Ford Global 8D Manual and AIAG CQI-20 (2nd Edition, 2018), reused verbatim from
+`rca/ASSUMPTIONS_LOG.md` RULE 3 / RULE 4 — the same manuals at the same lines already verified
+during the RCA milestone, cited here for a new purpose (the SCAR heading text, not the 5-Why
+validator's own logic):
+
+> Essentially, this involves asking "why" of the root cause until the cause is established.
+
+> root of the root cause. The question can be asked more or less 5 times, it doesn't have to be 5!
+
+> The systemic root cause(s) addresses, "Why did the system or planning process fail to identify the cause of the problem and the non-discovery?" The systemic root cause typically is understood last and diligence is required to address thoroughly.
+
+**Applied In:** `packages/quality-core/src/quality_core/sqe/scar.py`
+(`_build_sections`, `SCARSection(rule_id="RULE-SQE-011")`). Manifest rows: `CITATIONS.tsv`
+`RULE-SQE-011` at Ford Global 8D src_line 2003 / 2004 and AIAG CQI-20 src_line 1685.
+
+---
+
+## RULE-SQE-012: SCAR "Corrective-Action Requirement" section heading (`scar.py`, #120)
+
+**Decision.** The generated SCAR carries a **Corrective-Action Requirement** section stating that
+the supplier must define and implement the permanent corrective action(s) that resolve the
+established systemic root cause — changing only the affected product is not a corrective action.
+
+**Source.** Ford Global 8D Manual, reused verbatim from `rca/ASSUMPTIONS_LOG.md` RULE 4 (same
+manual, same lines):
+
+> there is normally a procedure, a policy, or a (systemic) practice that has allowed you pass. We call this the 'root cause of the root cause.' This must be established and resolved.
+
+> These systemic problems need to be fixed. The goal is to change the system that allowed the problem to occur in the first place and prevent problems from arising similar.
+
+**Applied In:** `packages/quality-core/src/quality_core/sqe/scar.py`
+(`_build_sections`, `SCARSection(rule_id="RULE-SQE-012")`). Manifest rows: `CITATIONS.tsv`
+`RULE-SQE-012` at Ford Global 8D src_line 1991 / 2026.
+
+---
+
+## RULE-SQE-013: SCAR "Prevention / Read-Across" section heading (`scar.py`, #120)
+
+**Decision.** The generated SCAR carries a **Prevention / Read-Across** section requiring the
+supplier to identify every other part, product, line, and process to which the same systemic root
+cause applies, and to extend the corrective action to them so a similar problem cannot arise there.
+
+**Source.** Ford Global 8D Manual src_line 2026, reused verbatim from `rca/ASSUMPTIONS_LOG.md`
+RULE 4. This is the same sentence cited by RULE-SQE-012: it genuinely supports both corrective
+action ("need to be fixed" / "change the system") and prevention ("prevent problems from arising
+similar") in one statement, so it is recorded under both sites in `CITATIONS.tsv` — the manifest's
+duplicate check is on the `(site, quote)` pair, not on the quote alone.
+
+> These systemic problems need to be fixed. The goal is to change the system that allowed the problem to occur in the first place and prevent problems from arising similar.
+
+**Applied In:** `packages/quality-core/src/quality_core/sqe/scar.py`
+(`_build_sections`, `SCARSection(rule_id="RULE-SQE-013")`). Manifest row: `CITATIONS.tsv`
+`RULE-SQE-013` at Ford Global 8D src_line 2026.
+
+---
+
+## Process Design Decisions (no standard implied)
+
+These are engineering and process decisions taken while building `scar.py` (#120). **None of them
+is a standards claim**, none is backed by a `CITATIONS.tsv` row, and none may be presented as one
+by any engine, MCP tool, canvas, or skill layer. They are recorded separately from the cited RULE
+entries above for exactly that reason.
+
+1. **Three SCAR section headings are withheld pending citation.** The E6 issue names six sections;
+   only three (root cause, corrective action, prevention/read-across) have a verified quotation
+   available in this repository. Heading text for problem definition (Ford 8D D2), containment
+   (D3), and verification of effectiveness (D6) is **not emitted**, because writing a heading
+   before its `RULE-SQE-0NN` row exists is fabrication. Their *mechanisms* remain fully wired:
+   `SCARRequest.due_date` is carried onto `SCARResult.due_date` and its absence raises a warning
+   (no date is ever invented), and `verification_of_effectiveness` gates the `CLOSABLE` status. A
+   follow-up issue tracks extracting the three missing quotations; adding a section then means
+   adding its `RULE-SQE-0NN` row first and one entry to `_build_sections`.
+
+2. **The root-cause authorship invariant is not configurable.** `generate_scar` never authors,
+   infers, or synthesizes a root cause. `SCARResult.root_cause` is assigned only by
+   `_root_cause_from_linkage`, which copies `linkage["supplier_root_cause"].raw_result`'s own
+   `root_cause` value verbatim, and is `None` whenever no supplier chain could be parsed. There is
+   no fallback string, no template, and no `SCARConfig` flag that relaxes this.
+
+3. **RCA linkage validates 5-Why only, not Is/Is-Not.** `quality_core.rca.five_why.
+   validate_five_why_chain` returns an accept/reject verdict that a SCAR status can be gated on;
+   `quality_core.rca.is_is_not.scope_is_is_not` is a scoping tool with no such verdict, so gating
+   on it would mean inventing an acceptance rule that neither the standard nor that engine states.
+   Is/Is-Not evidence is therefore out of scope for E6 linkage.
+
+4. **The `vendor_scorecard` linkage slot is deliberately `LINKAGE_NOT_AVAILABLE`.** The vendor
+   scorecard engine (#118) is on `test`, but this SCAR release defers wiring it. The slot is
+   present, fully tested, takes no input, has
+   no branches, and never affects the SCAR status; `SCARConfig.evaluate_vendor_scorecard_linkage`
+   only controls whether the placeholder key appears in the payload at all.
+
+5. **`AWAITING_SUPPLIER_RESPONSE` is deliberately overloaded.** It covers both "issued, no response
+   received yet" and "root cause accepted, but closure is blocked (no verification-of-effectiveness
+   statement, or other linked evidence currently invalid)". The status vocabulary is fixed at six
+   values and there is no seventh name for the second state, which is genuinely still open, not
+   rejected, and not closable. The distinction is carried in `SCARResult.reason`.
+
+6. **`INDETERMINATE` is a temporal-contradiction verdict, not a failure verdict.** A SCAR with no
+   `date_issued` that nevertheless carries a supplier response and/or a verification statement is
+   internally contradictory. The engine reports the contradiction rather than guessing which
+   record is wrong — the same "undecided is never imputed" discipline as RULE-SQE-003/006.
+
+7. **No sub-engine rule is re-encoded in `scar.py`.** No RCA anti-pattern code, NCR disposition
+   value, or COPQ PAF category literal appears in this module; the sub-engines' findings are
+   surfaced verbatim, so a rule can only ever change in the engine that owns it.
+
+
+---
+
 ## No-Standard-Implied Declarations
 
 - **PPM acceptance thresholds have no published standard.** Customer-specific PPM targets exist per OEM contract; none is a standard this repository may encode as authoritative.
@@ -271,4 +389,5 @@ revenue basis. `scorecard.py` contains no COPQ arithmetic.
 - **OTIF has no published standard.** The on-time window, the in-full tolerance, and whether early delivery counts as on-time are all **engineering heuristics** and must be caller-configurable. As implemented in `quality_core.sqe.otif` (E3, #117), the five `OTIFConfig` defaults — `early_tolerance_days=0`, `late_tolerance_days=2`, `early_counts_as_on_time=False`, `in_full_tolerance_pct=0.0`, `over_delivery_counts_as_in_full=True` — are declared engineering defaults carrying **no citation**; each is labelled `is_heuristic: True` in every result payload and is documented in RULE-SQE-002 above. Neither the on-time/in-full/OTIF arithmetic itself (RULE-SQE-001) nor these values may be presented as a standards requirement by any engine, MCP tool, canvas, or skill layer.
 - **Vendor scorecard weights and A/B/C rating-band boundaries have no published standard.** The 0.60 / 0.40 / 0.0 weights, 0-to-10,000 PPM and 100%-to-0% OTIF curves, and 90 / 75 band boundaries are declared caller-configurable engineering heuristics labelled individually in every payload (RULE-SQE-007/008). Weighted undecided evidence suppresses the composite and band (RULE-SQE-009); COPQ remains omitted at zero weight and requires an explicit curve when weighted (RULE-SQE-010).
 - **Escalation trigger levels have no published standard.** The escalation *ladder* is informed by CQI-20's problem-solving escalation discipline; the numeric triggers are not.
+- **The SCAR status vocabulary and closure criteria have no published standard.** ISO 9001:2015 §8.4/§10.2 and IATF 16949:2016 §8.4 require that nonconformity drive corrective action; they name no status set and no closure test. `DRAFT`/`ISSUABLE`/`AWAITING_SUPPLIER_RESPONSE`/`RESPONSE_REJECTED`/`CLOSABLE`/`INDETERMINATE`, the order the status rules are evaluated in, and the rule that `CLOSABLE` requires a stated verification of effectiveness are engineering decisions recorded under "Process Design Decisions" above (#120). Only the three SCAR section headings (RULE-SQE-011/012/013) carry a citation.
 - Any constant introduced later without a published source behind it is to be labelled an **engineering heuristic**, never implied to be a standard.

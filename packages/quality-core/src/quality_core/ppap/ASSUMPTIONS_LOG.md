@@ -139,16 +139,16 @@
 All remaining 13 elements (§2.2.1, §2.2.2, §2.2.5–§2.2.12, §2.2.14, §2.2.17, §2.2.18) are unconditionally `APPLICABLE` for standard discrete-part submissions. When any element is `INDETERMINATE`, the package verdict resolves `INDETERMINATE`.
 
 **Source:** AIAG PPAP Reference Manual, 4th Edition (June 2006):
-- §2.2.4 (Line 230):
-> "The organization shall have a Design FMEA for parts or materials for which they are design-responsible."
-- §2.2.13 (Line 380):
-> "A separate Appearance Approval Report (AAR) shall be completed for each part or series of parts for which a submission is required if the product/part has appearance requirements on the design record."
-- §2.2.16 (Line 430):
-> "If requested by the customer, the organization shall submit with the PPAP submission any part-specific assembly or component checking aid."
-- §2.2.3 (Line 210):
+- §2.2.4 (Line 221):
+> "The product design-responsible organization shall develop a Design FMEA in accordance with, and compliant to, customer-specified requirements"
+- §2.2.13 (Line 387):
+> "A separate Appearance Approval Report (AAR) shall be completed for each part or series of parts if the productipart has appearance requirements on the design record."
+- §2.2.16 (Line 409):
+> "The organization shall certify that all aspects of the checking aid agree with part dimensional"
+- §2.2.3 (Line 215):
 > "Where specified by the customer, the organization shall have evidence of customer engineering approval."
-- §2.2.15 (Line 410):
-> "The organization shall retain a master sample for the same period as the production part approval records"
+- §2.2.15 (Line 401):
+> "The organization shall retain a master sainple for the same period as the production part approval records"
 
 **Rationale:** The AIAG PPAP 4th Edition standard establishes that certain elements are strictly contingent on part characteristics or commercial assignment of responsibility. Forcing suppliers to submit DFMEAs when the customer owns design responsibility, or requiring AARs for non-appearance internal components, violates the AIAG standard. Evaluating applicability prior to evidence completeness audits prevents erroneous omission findings.
 
@@ -197,14 +197,18 @@ All remaining 13 elements (§2.2.1, §2.2.2, §2.2.5–§2.2.12, §2.2.14, §2.2
 **Rationale:** Section 3 requires customer notification and submission for specified situations (e.g. tooling transfer, new supplier, engineering change). The reason for submission explains *why* PPAP is initiated; the submission level determines *what* is submitted vs retained. Inventing arbitrary element reductions based solely on submission reason without customer agreement violates Section 3.
 
 **Applied In:** `packages/quality-core/src/quality_core/ppap/applicability.py` (`assess_applicability`).
+
+---
+
 ## RULE 8: Part Submission Warrant (PSW) 27-Field Form Completeness & Authority Invariant (Appendix A & Section 5)
 
 **Decision:** Formulate 27-field PSW form completeness validation yielding `COMPLETE`, `INCOMPLETE`, or `INDETERMINATE`. Field 27 (Customer Disposition) is reserved exclusively for the customer; the engine validates supplier completion (Fields 1–26) and strictly refuses to emit or populate customer disposition statuses (`Approved`, `Interim Approval`, `Rejected`).
 
 **Source:** AIAG PPAP Reference Manual, 4th Edition (June 2006):
-- Appendix A (Part Submission Warrant Completion Instructions, Lines 700–780)
-- Section 5 (Part Submission Status, Lines 580–620):
-> "Customer PPAP approval shall be obtained prior to shipping production parts... Dispositions: Approved, Interim Approval, Rejected."
+- Appendix A (Field 1–26) & §2.2.18 (Line 423):
+> "Upon completion of all PPAP requirements, the organization shall complete the Part Submission Warrant (PSW)."
+- Section 3 (Line 468) & Section 5:
+> "The organization shall submit for PPAP approval prior to the first production shipment"
 
 **Rationale:** The PSW is the core legal declaration of production part conformance. Enforcing all 27 Appendix-A fields, conditional rules, and customer authority boundary prevents erroneous supplier submissions.
 
@@ -217,9 +221,9 @@ All remaining 13 elements (§2.2.1, §2.2.2, §2.2.5–§2.2.12, §2.2.14, §2.2
 **Decision:** Formulate word-boundary scanning heuristic detecting prohibited blanket conformance statements ("meets all specs", "all dimensions conform", "100% conforming") in test results and explanation fields, marking them `INVALID`.
 
 **Source:** AIAG PPAP Reference Manual, 4th Edition (June 2006):
-- §2.2.9 (Line 330): "Actual results are required... Blanket statements of conformance are unacceptable."
-- §2.2.10 (Line 350): "Blanket statements of conformance are unacceptable for any test results."
-- Appendix A (Field 20 & Field 21 Instructions).
+- §2.2.9 (Line 255): "The organization shall record, with the actual results: all dimensions"
+- §2.2.10 & Appendix A (Line 740):
+> "Blanket statements of conformance are unacceptable for any test results."
 
 **Rationale:** Suppliers frequently attempt to submit generic conformance statements instead of quantitative dimension/material data. Prohibiting blanket assertions enforces compliance with automotive OEM quality standards.
 
@@ -300,3 +304,17 @@ All remaining 13 elements (§2.2.1, §2.2.2, §2.2.5–§2.2.12, §2.2.14, §2.2
 
 ---
 
+## RULE 12: 18-Element Completeness Auditor Core, Readiness Verdicts & The Authority Invariant (Section 4, Section 5, Table 4.1, Table 4.2)
+
+**Decision:** Implement the 18-element completeness auditor joining evidence against Table 4.1 requirement codes and §2.2.1–§2.2.18 applicability. Dispositions `Approved`, `Interim Approval`, and `Rejected` are strictly customer authority (Section 5) and are never emitted by the auditor; the auditor reports supplier submission readiness (`SUBMISSION_READY`, `NOT_READY`, `INDETERMINATE`). The module contains no standards data of its own, composing from `table_4_1.py` and `applicability.py`.
+
+**Source:** AIAG PPAP Reference Manual, 4th Edition (June 2006):
+- Section 4 (Table 4.1 & Table 4.2, Lines 484–544)
+- Section 5 (Part Submission Status, Lines 546–575):
+> "Approved indicates that the part or material, including all sub-components, meets all customer requirements."
+> "Interim Approval permits shipment of material for production requirements on a limited time or piece quantity basis."
+> "Rejected means that the PPAP submission does not meet customer requirements, based on the production lot from which it was taken and/or accompanying documentation."
+
+**Rationale:** The auditor evaluates whether the package contains all required items and evidence for the requested submission level before transmitting to the customer. Assigning customer dispositions (Approved, Interim Approval, Rejected) belongs strictly to the customer's authorized representative; supplier tooling must evaluate and report readiness verdicts (`SUBMISSION_READY`, `NOT_READY`, `INDETERMINATE`).
+
+**Applied In:** `packages/quality-core/src/quality_core/ppap/auditor.py` (`audit_ppap_package`, `PPAPAuditResult`, `ElementAuditResult`, `ElementAuditVerdict`, `PackageAuditVerdict`, `AUDIT_ELEMENT_VERDICTS`, `AUDIT_PACKAGE_VERDICTS`).

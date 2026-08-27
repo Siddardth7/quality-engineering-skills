@@ -7,13 +7,12 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
-from quality_core.sqe.escalation import EscalationResult
-from quality_core.sqe.scorecard import ScorecardDimensionResult, ScorecardResult
+from quality_core.sqe.escalation import EscalationResult, EscalationTier
+from quality_core.sqe.scorecard import ScorecardBand, ScorecardDimensionResult, ScorecardResult
 from quality_core.theme.palette import (
     AMBER,
     BG_CARD,
     BG_PRIMARY,
-    BG_SECONDARY,
     BORDER,
     DANGER,
     SUCCESS,
@@ -113,7 +112,6 @@ class SQECanvas:
         is_dark, standalone = self._theme(theme, standalone)
         page = BG_PRIMARY if is_dark else "#f8fafc"
         card = BG_CARD if is_dark else "#ffffff"
-        sub = BG_SECONDARY if is_dark else "#f1f5f9"
         border = BORDER if is_dark else "#cbd5e1"
         primary = TEXT_PRIMARY if is_dark else "#0f172a"
         secondary = TEXT_SECONDARY if is_dark else "#64748b"
@@ -147,7 +145,7 @@ class SQECanvas:
               {f'<tr><td colspan="7">{reason_html}</td></tr>' if reason_html else ''}
             """)
         if not rows:
-            rows.append(f'<tr><td colspan="7" class="empty">No supplier scorecard results captured in canvas.</td></tr>')
+            rows.append('<tr><td colspan="7" class="empty">No supplier scorecard results captured in canvas.</td></tr>')
         heuristic = "All weights, thresholds, curves, bands, and escalation tiers are caller-configurable engineering heuristics with no standards citation."
         body = f"""<div class="sqe-canvas" style="font-family:Inter,Arial,sans-serif;max-width:1400px;margin:0 auto;padding:20px;background:{page};color:{primary};">
 <h2>{html.escape(self._title)}</h2><div style="color:{secondary};font-size:12px;">{html.escape(heuristic)}</div>
@@ -173,7 +171,7 @@ def _number(value: Any) -> str:
     return html.escape(str(value))
 
 
-def _sample_scorecard(supplier_id: str, composite: float | None, band: str | None) -> ScorecardResult:
+def _sample_scorecard(supplier_id: str, composite: float | None, band: ScorecardBand | None) -> ScorecardResult:
     rated = composite is not None
     dimensions = [
         ScorecardDimensionResult("quality", "ppm", 100.0, 95.0, 0.60, 57.0, "MEASURED", None, {"ppm": 100.0}),
@@ -182,7 +180,7 @@ def _sample_scorecard(supplier_id: str, composite: float | None, band: str | Non
     return ScorecardResult(supplier_id, date(2026, 1, 1), date(2026, 1, 31), "January 2026", "RATED" if rated else "INDETERMINATE", composite, band, dimensions, {"is_heuristic": True, "basis": "no standards citation"}, [], None if rated else "required evidence is unavailable")
 
 
-def _sample_row(supplier_id: str, tier: str, composite: float | None, band: str | None) -> dict[str, Any]:
+def _sample_row(supplier_id: str, tier: EscalationTier, composite: float | None, band: ScorecardBand | None) -> dict[str, Any]:
     scorecard = _sample_scorecard(supplier_id, composite, band)
     return {"supplier_id": supplier_id, "supplier_name": f"Benchmark {supplier_id}", "scorecard": scorecard, "escalation": EscalationResult(supplier_id, tier, scorecard.verdict, [], [], None, None if composite is not None else scorecard.reason, {}, "AIAG CQI-20 discipline; no numeric standard")}
 

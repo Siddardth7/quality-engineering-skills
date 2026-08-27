@@ -10,3 +10,9 @@
 Tester focus: verify all benchmark bands and escalation tiers, period/evidence display, heuristic
 disclosure, HTML escaping, input/theme validation, and 100% line/branch coverage. The escalation
 engine dependency is supplied by the companion #119 branch.
+
+## Tester-driven fixes
+
+- Removed the unused theme local and extraneous empty-state f-string reported by Ruff.
+- Added `ScorecardBand` and `EscalationTier` annotations to the benchmark helpers for strict mypy
+  compatibility.

@@ -9,6 +9,8 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- SQE vendor scorecard canvas controller and themed HTML renderer (`quality_core.canvas.sqe`) with
+  evidence-preserving scorecard/escalation matrix display (#121).
 - Deterministic 18-element completeness auditor (`quality_core.ppap.auditor.audit_ppap_package`), supplier submission readiness verdicts (`SUBMISSION_READY`, `NOT_READY`, `INDETERMINATE`), strict Section 5 Authority Invariant enforcement, zero duplicated standards data composition, and comprehensive engine and scorecard test suites (#102).
 - FastMCP tools for AIAG Production Part Approval Process (PPAP) 4th Edition in `quality_mcp.tools.ppap` (`audit_ppap_package`, `lookup_ppap_requirement`, `validate_psw`, `assess_ppap_capability`, `render_ppap_canvas`), registered on `quality-mcp` server, re-exported in `quality_mcp.tools.canvas` and `quality_mcp`, enforcing deterministic JSON dictionary returns, typed parameter annotations, benchmark dataset fallbacks, Section 5 Customer Authority Invariant, and input type guards (#107).
 - Deterministic supplier escalation tier engine in `quality_core.sqe.escalation`, exposing the full evaluated heuristic trigger set, highest-tier-wins evidence, optional explicit recurrence, and indeterminate-scorecard propagation while preserving commercial authority with people (#119).

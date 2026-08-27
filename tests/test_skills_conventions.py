@@ -48,6 +48,55 @@ _SUPPLIER_SCAR_PROSE_MATH_PATTERN: re.Pattern[str] = re.compile(
     re.IGNORECASE,
 )
 
+# PPAP-specific prose arithmetic and inline adjudication detectors (#108).
+_PPAP_PROHIBITED_AUTHORITY_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"(?:system|skill|tool|agent|platform)\s+(?:awards|assigns|emits|grants|decides|issues)\s+(?:an?\s+)?(?:approved|interim approval|rejected)\b", re.IGNORECASE),
+    re.compile(r"(?:verdict|status|disposition)\s*(?:is|:|=)\s*(?:approved|interim approval|rejected)\b", re.IGNORECASE),
+    re.compile(r"\b(?:award|assign|emit|grant)\s+(?:an?\s+)?(?:approved|interim approval|rejected)\s+disposition\b", re.IGNORECASE),
+)
+
+_PPAP_PROSE_MATH_AND_ADJUDICATION_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"\b(?:ppk|cpk|grr|ndc)\b\"?[ \t]*[=:][ \t]*\d[\d.,]*[ \t]*[*/×+\-][ \t]*\d", re.IGNORECASE),
+    re.compile(r"\b(?:ppk|cpk|grr|ndc)\b[ \t]*(?:>=|<=|>|<|=|≥|≤)[ \t]*\d[\d.,]*[ \t]*[:–-][ \t]*(?:capable|acceptable|potentially|unacceptable|meets|fails)", re.IGNORECASE),
+    re.compile(r"\d[\d.,]*[ \t]*(?:<=|>=|<|>|=|≤|≥)[ \t]*(?:ppk|cpk)[ \t]*(?:<=|>=|<|>|=|≤|≥)[ \t]*\d[\d.,]*[ \t]*[:–-][ \t]*(?:capable|acceptable|potentially|unacceptable)", re.IGNORECASE),
+)
+
+
+def validate_ppap_authority_invariants(content: str) -> None:
+    """Validate that PPAP content respects the Section 5 Customer Authority Invariant.
+
+    Raises ValueError if customer approval dispositions are awarded by the skill/system,
+    or if mandatory Section 5 notices and readiness states are missing.
+    """
+    for pattern in _PPAP_PROHIBITED_AUTHORITY_PATTERNS:
+        match = pattern.search(content)
+        if match:
+            raise ValueError(f"Prohibited customer disposition assignment found: {match.group(0)!r}")
+
+    if "Section 5" not in content and "Customer Authority Invariant" not in content:
+        raise ValueError("PPAP skill must cite Section 5 Customer Authority Invariant")
+    if "SUBMISSION_READY" not in content or "NOT_READY" not in content or "INDETERMINATE" not in content:
+        raise ValueError("PPAP skill must specify supplier readiness states (SUBMISSION_READY, NOT_READY, INDETERMINATE)")
+    if "FOR CUSTOMER USE ONLY" not in content and "customer's authorized representative" not in content:
+        raise ValueError("PPAP skill must document that approval statuses are for customer use only")
+
+
+def validate_ppap_no_worked_arithmetic_or_adjudication(content: str) -> None:
+    """Validate that PPAP content contains no worked arithmetic or inline threshold adjudication.
+
+    Raises ValueError if inline calculation or threshold-to-verdict mapping is found.
+    """
+    fenced_violations = detect_prohibited_calculation_logic(content)
+    if fenced_violations:
+        raise ValueError(f"Fenced code calculation found: {fenced_violations}")
+    if "```python" in content:
+        raise ValueError("Prohibited python code fence found in PPAP skill")
+
+    for pattern in _PPAP_PROSE_MATH_AND_ADJUDICATION_PATTERNS:
+        matches = pattern.findall(content)
+        if matches:
+            raise ValueError(f"Prohibited prose math or inline adjudication found: {matches}")
+
 
 def parse_frontmatter(content: str) -> tuple[dict[str, str], str]:
     """Parse YAML frontmatter delimited by '---' from markdown content.
@@ -177,7 +226,7 @@ def test_skills_readme_exists_and_documents_conventions() -> None:
 
 
 def test_discoverable_skill_directories_exist() -> None:
-    """At least _template, mcp-health, fmea-reviewer, spc-control-charts, msa-gauge-rr, control-plan, 5why-root-cause, fishbone-analysis, and is-is-not-scoping skill directories must exist."""
+    """At least _template, mcp-health, fmea-reviewer, spc-control-charts, msa-gauge-rr, control-plan, 5why-root-cause, fishbone-analysis, is-is-not-scoping, ncr-writing, copq-estimator, and ppap-checker skill directories must exist."""
     skill_dirs = _discover_skill_directories()
     dir_names = {d.name for d in skill_dirs}
     assert "_template" in dir_names, "skills/_template directory missing"
@@ -191,6 +240,7 @@ def test_discoverable_skill_directories_exist() -> None:
     assert "is-is-not-scoping" in dir_names, "skills/is-is-not-scoping directory missing"
     assert "ncr-writing" in dir_names, "skills/ncr-writing directory missing"
     assert "copq-estimator" in dir_names, "skills/copq-estimator directory missing"
+    assert "ppap-checker" in dir_names, "skills/ppap-checker directory missing"
     assert "supplier-scar" in dir_names, "skills/supplier-scar directory missing"
 
 
@@ -396,6 +446,77 @@ def test_supplier_scar_skill_contains_no_worked_arithmetic() -> None:
     )
 
 
+def test_ppap_checker_skill_specifies_ppap_tools() -> None:
+    """skills/ppap-checker/SKILL.md must document all 5 PPAP tools with full contracts and worked examples."""
+    ppap_file = _SKILLS_DIR / "ppap-checker" / "SKILL.md"
+    assert ppap_file.exists(), "skills/ppap-checker/SKILL.md does not exist"
+    content = ppap_file.read_text(encoding="utf-8")
+
+    tools = [
+        "audit_ppap_package",
+        "lookup_ppap_requirement",
+        "validate_psw",
+        "assess_ppap_capability",
+        "render_ppap_canvas",
+    ]
+    for tool_name in tools:
+        pattern = rf"(?ms)^###\s+`?{re.escape(tool_name)}`?\b.*?(?=\n---\n|\n###\s+`?[a-z]|\Z)"
+        match = re.search(pattern, content)
+        assert match, f"Missing dedicated section for {tool_name}"
+        sec_text = match.group(0)
+        for header in (
+            "**MCP Server:**",
+            "**Purpose:**",
+            "**Parameters:**",
+            "**Return Type:**",
+            "**Return Schema:**",
+            "#### Invocation",
+            "#### Successful Response",
+        ):
+            assert header in sec_text, f"Missing contract header {header} in {tool_name} section"
+
+    assert "quality-mcp" in content, "ppap-checker skill must reference quality-mcp"
+    assert "AIAG" in content, "ppap-checker skill must cite AIAG"
+    assert "18" in content, "ppap-checker skill must cite 18 elements"
+    for level_num in range(1, 6):
+        assert f"Level {level_num}" in content, f"ppap-checker skill must cite Level {level_num}"
+
+    # Assert both worked examples
+    assert "Example 1" in content, "ppap-checker skill missing worked example 1"
+    assert "Example 2" in content, "ppap-checker skill missing worked example 2 (negative control)"
+    assert "NOT_READY" in content, "ppap-checker skill must demonstrate NOT_READY verdict"
+    assert "INDETERMINATE" in content, "ppap-checker skill must demonstrate INDETERMINATE verdict"
+    assert "ask the user" in content.lower() or "prompt the user" in content.lower(), (
+        "ppap-checker skill must instruct agent to ask user on Level 4 indeterminate"
+    )
+
+
+def test_ppap_checker_authority_invariant() -> None:
+    """skills/ppap-checker/SKILL.md must assert Section 5 Customer Authority Invariant and all 5 verbatim invariants."""
+    ppap_file = _SKILLS_DIR / "ppap-checker" / "SKILL.md"
+    assert ppap_file.exists(), "skills/ppap-checker/SKILL.md does not exist"
+    content = ppap_file.read_text(encoding="utf-8")
+
+    # Run full production authority validation guard
+    validate_ppap_authority_invariants(content)
+
+    # Assert all 5 verbatim domain invariants
+    assert "Never recite a Table 4.1 cell from memory" in content
+    assert "Never decide an element's completeness inline" in content
+    assert "Never compute a capability index" in content
+    assert "Never state or imply a customer approval" in content
+    assert "Never substitute an OEM Customer-Specific Requirement" in content
+
+
+def test_ppap_checker_skill_contains_no_worked_arithmetic() -> None:
+    """skills/ppap-checker/SKILL.md must contain no worked arithmetic, in code or prose."""
+    ppap_file = _SKILLS_DIR / "ppap-checker" / "SKILL.md"
+    assert ppap_file.exists(), "skills/ppap-checker/SKILL.md does not exist"
+    content = ppap_file.read_text(encoding="utf-8")
+
+    validate_ppap_no_worked_arithmetic_or_adjudication(content)
+
+
 def test_claude_skills_isolation() -> None:
     """.claude/skills/ must remain segregated from domain skills/."""
     if not _CLAUDE_SKILLS_DIR.exists():
@@ -413,6 +534,7 @@ def test_claude_skills_isolation() -> None:
     assert "is-is-not-scoping" not in claude_dirs, "is-is-not-scoping domain skill leaked into .claude/skills/"
     assert "ncr-writing" not in claude_dirs, "ncr-writing domain skill leaked into .claude/skills/"
     assert "copq-estimator" not in claude_dirs, "copq-estimator domain skill leaked into .claude/skills/"
+    assert "ppap-checker" not in claude_dirs, "ppap-checker domain skill leaked into .claude/skills/"
     assert "supplier-scar" not in claude_dirs, "supplier-scar domain skill leaked into .claude/skills/"
 
 
@@ -479,3 +601,44 @@ def test_negative_prohibited_inline_math_fails() -> None:
     )
     with pytest.raises(ValueError, match="Prohibited calculation logic found"):
         validate_skill_document(bad_content)
+
+
+def test_negative_ppap_checker_prose_math_and_adjudication_fails() -> None:
+    """Prose derivations or inline threshold adjudications in PPAP skill body must fail validation."""
+    ppap_file = _SKILLS_DIR / "ppap-checker" / "SKILL.md"
+    assert ppap_file.exists(), "skills/ppap-checker/SKILL.md does not exist"
+    live_content = ppap_file.read_text(encoding="utf-8")
+
+    # Mutation 1: threshold-to-verdict mapping
+    mutated_adj_1 = live_content + "\nPpk >= 1.67: Capable (Meets acceptance criteria)."
+    with pytest.raises(ValueError, match="Prohibited prose math or inline adjudication"):
+        validate_ppap_no_worked_arithmetic_or_adjudication(mutated_adj_1)
+
+    # Mutation 2: band mapping
+    mutated_adj_2 = live_content + "\n1.33 <= Ppk < 1.67: Potentially acceptable"
+    with pytest.raises(ValueError, match="Prohibited prose math or inline adjudication"):
+        validate_ppap_no_worked_arithmetic_or_adjudication(mutated_adj_2)
+
+    # Mutation 3: arithmetic formula
+    mutated_math = live_content + "\nPpk = 1.8 - 0.2 * 1.5 = 1.50"
+    with pytest.raises(ValueError, match="Prohibited prose math or inline adjudication"):
+        validate_ppap_no_worked_arithmetic_or_adjudication(mutated_math)
+
+
+def test_negative_ppap_checker_customer_disposition_emission_fails() -> None:
+    """Skill claiming to award customer disposition must fail authority verification even with notices present."""
+    ppap_file = _SKILLS_DIR / "ppap-checker" / "SKILL.md"
+    assert ppap_file.exists(), "skills/ppap-checker/SKILL.md does not exist"
+    live_content = ppap_file.read_text(encoding="utf-8")
+
+    # Mutation 1: system awards Approved disposition
+    mutated_1 = live_content + "\nThe system awards Approved disposition to the supplier."
+    with pytest.raises(ValueError, match="Prohibited customer disposition assignment"):
+        validate_ppap_authority_invariants(mutated_1)
+
+    # Mutation 2: disposition is Interim Approval
+    mutated_2 = live_content + "\nThe final disposition is Interim Approval."
+    with pytest.raises(ValueError, match="Prohibited customer disposition assignment"):
+        validate_ppap_authority_invariants(mutated_2)
+
+

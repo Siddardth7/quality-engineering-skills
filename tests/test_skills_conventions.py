@@ -48,6 +48,12 @@ _SUPPLIER_SCAR_PROSE_MATH_PATTERN: re.Pattern[str] = re.compile(
     re.IGNORECASE,
 )
 
+# PPAP-specific prose arithmetic detector (#108). Catches worked derivations in plain prose.
+_PPAP_PROSE_MATH_PATTERN: re.Pattern[str] = re.compile(
+    r"\b(?:ppk|cpk|grr|ndc)\b\"?[ \t]*[=:][ \t]*\d[\d.,]*[ \t]*[*/×+\-][ \t]*\d",
+    re.IGNORECASE,
+)
+
 
 def parse_frontmatter(content: str) -> tuple[dict[str, str], str]:
     """Parse YAML frontmatter delimited by '---' from markdown content.
@@ -398,37 +404,92 @@ def test_supplier_scar_skill_contains_no_worked_arithmetic() -> None:
 
 
 def test_ppap_checker_skill_specifies_ppap_tools() -> None:
-    """skills/ppap-checker/SKILL.md must document PPAP MCP tools, reference quality-mcp, cite AIAG, 18 elements, and Levels 1–5."""
+    """skills/ppap-checker/SKILL.md must document all 5 PPAP tools with full contracts and worked examples."""
     ppap_file = _SKILLS_DIR / "ppap-checker" / "SKILL.md"
     assert ppap_file.exists(), "skills/ppap-checker/SKILL.md does not exist"
     content = ppap_file.read_text(encoding="utf-8")
-    assert "audit_ppap_package" in content, "ppap-checker skill must document audit_ppap_package tool"
-    assert "lookup_ppap_requirement" in content, "ppap-checker skill must document lookup_ppap_requirement tool"
-    assert "validate_psw" in content, "ppap-checker skill must document validate_psw tool"
-    assert "assess_ppap_capability" in content, "ppap-checker skill must document assess_ppap_capability tool"
-    assert "render_ppap_canvas" in content, "ppap-checker skill must document render_ppap_canvas tool"
+
+    tools = [
+        "audit_ppap_package",
+        "lookup_ppap_requirement",
+        "validate_psw",
+        "assess_ppap_capability",
+        "render_ppap_canvas",
+    ]
+    for tool_name in tools:
+        assert f"### `{tool_name}`" in content or f"### {tool_name}" in content, (
+            f"ppap-checker skill missing dedicated section for {tool_name}"
+        )
+
+    # Assert contract headers
+    for header in (
+        "**MCP Server:**",
+        "**Purpose:**",
+        "**Parameters:**",
+        "**Return Type:**",
+        "**Return Schema:**",
+        "#### Invocation",
+        "#### Successful Response",
+    ):
+        assert header in content, f"ppap-checker skill missing contract header {header}"
+
     assert "quality-mcp" in content, "ppap-checker skill must reference quality-mcp"
     assert "AIAG" in content, "ppap-checker skill must cite AIAG"
     assert "18" in content, "ppap-checker skill must cite 18 elements"
     for level_num in range(1, 6):
         assert f"Level {level_num}" in content, f"ppap-checker skill must cite Level {level_num}"
-    for inv_num in range(1, 6):
-        assert f"Domain Invariant {inv_num}" in content, f"ppap-checker skill must document Domain Invariant {inv_num}"
+
+    # Assert both worked examples
+    assert "Example 1" in content, "ppap-checker skill missing worked example 1"
+    assert "Example 2" in content, "ppap-checker skill missing worked example 2 (negative control)"
+    assert "NOT_READY" in content, "ppap-checker skill must demonstrate NOT_READY verdict"
+    assert "INDETERMINATE" in content, "ppap-checker skill must demonstrate INDETERMINATE verdict"
+    assert "ask the user" in content.lower() or "prompt the user" in content.lower(), (
+        "ppap-checker skill must instruct agent to ask user on Level 4 indeterminate"
+    )
 
 
 def test_ppap_checker_authority_invariant() -> None:
-    """skills/ppap-checker/SKILL.md must assert Section 5 Customer Authority Invariant and supplier readiness states."""
+    """skills/ppap-checker/SKILL.md must assert Section 5 Customer Authority Invariant and all 5 verbatim invariants."""
     ppap_file = _SKILLS_DIR / "ppap-checker" / "SKILL.md"
     assert ppap_file.exists(), "skills/ppap-checker/SKILL.md does not exist"
     content = ppap_file.read_text(encoding="utf-8")
-    assert "Section 5" in content or "Customer Authority Invariant" in content, (
-        "ppap-checker skill must cite Section 5 Customer Authority Invariant"
+
+    assert "Section 5" in content, "ppap-checker skill must cite Section 5"
+    assert "Customer Authority Invariant" in content or "customer-only" in content.lower(), (
+        "ppap-checker skill must document Customer Authority Invariant"
     )
     assert "SUBMISSION_READY" in content, "ppap-checker skill must document SUBMISSION_READY status"
     assert "NOT_READY" in content, "ppap-checker skill must document NOT_READY status"
     assert "INDETERMINATE" in content, "ppap-checker skill must document INDETERMINATE status"
-    assert "CUSTOMER USE ONLY" in content or "customer use only" in content.lower(), (
+    assert "FOR CUSTOMER USE ONLY" in content or "customer's authorized representative" in content, (
         "ppap-checker skill must state that approval statuses are for customer use only"
+    )
+
+    # Assert all 5 verbatim domain invariants
+    assert "Never recite a Table 4.1 cell from memory" in content
+    assert "Never decide an element's completeness inline" in content
+    assert "Never compute a capability index" in content
+    assert "Never state or imply a customer approval" in content
+    assert "Never substitute an OEM Customer-Specific Requirement" in content
+
+
+def test_ppap_checker_skill_contains_no_worked_arithmetic() -> None:
+    """skills/ppap-checker/SKILL.md must contain no worked arithmetic, in code or prose."""
+    ppap_file = _SKILLS_DIR / "ppap-checker" / "SKILL.md"
+    assert ppap_file.exists(), "skills/ppap-checker/SKILL.md does not exist"
+    content = ppap_file.read_text(encoding="utf-8")
+
+    assert detect_prohibited_calculation_logic(content) == [], (
+        f"ppap-checker skill must not contain inline calculation logic: {detect_prohibited_calculation_logic(content)}"
+    )
+    assert "```python" not in content, (
+        "ppap-checker skill must express every example as JSON tool calls, never a python block"
+    )
+
+    prose_math = _PPAP_PROSE_MATH_PATTERN.findall(content)
+    assert not prose_math, (
+        f"ppap-checker skill must not derive a metric in prose. Matched: {prose_math}"
     )
 
 
@@ -516,3 +577,22 @@ def test_negative_prohibited_inline_math_fails() -> None:
     )
     with pytest.raises(ValueError, match="Prohibited calculation logic found"):
         validate_skill_document(bad_content)
+
+
+def test_negative_ppap_checker_prose_math_fails() -> None:
+    """Prose derivations of capability in PPAP skill body must fail validation."""
+    bad_content = (
+        "## Overview\n"
+        "A capability calculation was computed as Ppk = 1.8 - 0.2 * 1.5 = 1.50 inline."
+    )
+    matches = _PPAP_PROSE_MATH_PATTERN.findall(bad_content)
+    assert matches, "PPAP prose math pattern must catch inline capability formula"
+
+
+def test_negative_ppap_checker_customer_disposition_emission_fails() -> None:
+    """Skill claiming to award customer disposition must fail authority verification."""
+    bad_content = "The system awards Approved disposition to the supplier."
+    # The authority invariant requires approval statuses to be customer-only
+    is_valid = "FOR CUSTOMER USE ONLY" in bad_content or "customer's authorized representative" in bad_content
+    assert not is_valid, "Authority guard must reject supplier-side approval assignment"
+

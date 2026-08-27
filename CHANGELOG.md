@@ -9,6 +9,8 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- Supplier Corrective Action Request (SCAR) & Vendor Rating domain skill in `skills/supplier-scar/SKILL.md` adhering to agentskills.io standard with 5 mandatory H2 sections, a `### <tool>` block for each of the six [E8] #122 SQE tools (`calculate_supplier_ppm`, `calculate_otif`, `calculate_vendor_scorecard`, `evaluate_escalation`, `generate_scar`, `render_sqe_canvas`), two worked examples with the second a zero-receipts `INDETERMINATE` negative control, and Zero Inline Math / Zero Inline Adjudication invariants specialized for supplier quality (heuristic-labelling, commercial-authority, and root-cause-authorship) (#123).
+- Extended skills governance test suite `tests/test_skills_conventions.py` with `supplier-scar` discovery, six-tool specification, heuristic-labelling, root-cause-authorship, prose-and-code zero-inline-math, and isolation assertions (#123).
 - SQE vendor scorecard canvas controller and themed HTML renderer (`quality_core.canvas.sqe`) with
   evidence-preserving scorecard/escalation matrix display (#121).
 - Deterministic 18-element completeness auditor (`quality_core.ppap.auditor.audit_ppap_package`), supplier submission readiness verdicts (`SUBMISSION_READY`, `NOT_READY`, `INDETERMINATE`), strict Section 5 Authority Invariant enforcement, zero duplicated standards data composition, and comprehensive engine and scorecard test suites (#102).

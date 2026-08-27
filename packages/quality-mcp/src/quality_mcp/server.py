@@ -20,6 +20,7 @@ from quality_mcp.tools.canvas import (
     render_isisnot_canvas,
     render_msa_canvas,
     render_ncr_canvas,
+    render_ppap_canvas,
     render_spc_canvas,
 )
 from quality_mcp.tools.controlplan import validate_control_plan
@@ -29,6 +30,12 @@ from quality_mcp.tools.msa import calculate_gage_rr
 from quality_mcp.tools.ncr import (
     recommend_disposition,
     write_ncr,
+)
+from quality_mcp.tools.ppap import (
+    assess_ppap_capability,
+    audit_ppap_package,
+    lookup_ppap_requirement,
+    validate_psw,
 )
 from quality_mcp.tools.rca import (
     categorize_fishbone,
@@ -49,6 +56,7 @@ mcp.tool()(render_fmea_canvas)
 mcp.tool()(render_isisnot_canvas)
 mcp.tool()(render_msa_canvas)
 mcp.tool()(render_ncr_canvas)
+mcp.tool()(render_ppap_canvas)
 mcp.tool()(render_spc_canvas)
 mcp.tool()(calculate_spc_chart)
 mcp.tool()(calculate_gage_rr)
@@ -59,6 +67,10 @@ mcp.tool()(validate_control_plan)
 mcp.tool()(write_ncr)
 mcp.tool()(recommend_disposition)
 mcp.tool()(estimate_copq)
+mcp.tool()(audit_ppap_package)
+mcp.tool()(lookup_ppap_requirement)
+mcp.tool()(validate_psw)
+mcp.tool()(assess_ppap_capability)
 
 
 @mcp.tool()
@@ -80,11 +92,14 @@ if __name__ == "__main__":
     main()
 
 __all__ = [
+    "assess_ppap_capability",
+    "audit_ppap_package",
     "calculate_gage_rr",
     "calculate_spc_chart",
     "categorize_fishbone",
     "estimate_copq",
     "lookup_fmea_ap",
+    "lookup_ppap_requirement",
     "main",
     "mcp",
     "ping",
@@ -98,9 +113,11 @@ __all__ = [
     "render_isisnot_canvas",
     "render_msa_canvas",
     "render_ncr_canvas",
+    "render_ppap_canvas",
     "render_spc_canvas",
     "scope_is_is_not",
     "validate_5why",
     "validate_control_plan",
+    "validate_psw",
     "write_ncr",
 ]

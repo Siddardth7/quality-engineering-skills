@@ -14,6 +14,7 @@ from quality_mcp.tools.canvas import (
     render_fishbone_canvas,
     render_fmea_canvas,
     render_msa_canvas,
+    render_ppap_canvas,
     render_spc_canvas,
 )
 
@@ -802,6 +803,138 @@ def test_mcp_client_roundtrip_render_fishbone_canvas_success() -> None:
             assert "<!DOCTYPE html>" in result.structuredContent["html"]
 
     asyncio.run(_run())
+
+
+# ---------------------------------------------------------------------------
+# PPAP Canvas Tool Tests
+# ---------------------------------------------------------------------------
+
+
+def test_render_ppap_canvas_from_canvas_module() -> None:
+    """render_ppap_canvas renders sample and custom dataset via quality_mcp.tools.canvas."""
+    # 1. Default sample
+    res_default = render_ppap_canvas()
+    assert res_default["title"] == "AIAG PPAP 4th Edition 18-Element Checklist Canvas"
+    assert res_default["rows_count"] == 18
+    assert res_default["submission_level"] == 3
+    assert res_default["basis"] == "AIAG PPAP Reference Manual, 4th Edition (2006)"
+    assert "<!DOCTYPE html>" in res_default["html"]
+    assert "Level 3" in res_default["html"]
+
+    # 2. Custom package embedded with light theme
+    custom_pkg = {
+        "part_name": "Bracket",
+        "part_number": "BRK-01",
+        "supplier_name": "Acme",
+        "submission_level": 2,
+        "elements": [
+            {"element_id": "2.2.1", "status": "submitted", "element_name": "Design Records"},
+            {"element_id": "2.2.18", "status": "submitted", "element_name": "Part Submission Warrant"},
+        ],
+    }
+    res_custom = render_ppap_canvas(
+        package=custom_pkg,
+        submission_level=2,
+        title="Bracket PPAP Level 2",
+        theme="light",
+        standalone=False,
+    )
+    assert res_custom["title"] == "Bracket PPAP Level 2"
+    assert res_custom["submission_level"] == 2
+    assert "<!DOCTYPE html>" not in res_custom["html"]
+
+
+@pytest.mark.parametrize(
+    ("invalid_kwargs", "expected_err_type", "match_str"),
+    [
+        (
+            {"standalone": "yes"},
+            TypeError,
+            "standalone must be a boolean",
+        ),
+        (
+            {"title": 123},
+            TypeError,
+            "title must be a string",
+        ),
+        (
+            {"title": "   "},
+            ValueError,
+            "title must not be empty",
+        ),
+        (
+            {"theme": 123},
+            TypeError,
+            "theme must be a string",
+        ),
+        (
+            {"theme": "neon"},
+            ValueError,
+            "theme must be 'dark' or 'light'",
+        ),
+        (
+            {"submission_level": True},
+            TypeError,
+            "submission_level must be an integer",
+        ),
+        (
+            {"package": "not-a-dict"},
+            TypeError,
+            "package must be a dict or None",
+        ),
+    ],
+)
+def test_render_ppap_canvas_invalid_arguments(
+    invalid_kwargs: dict[str, Any],
+    expected_err_type: type[Exception],
+    match_str: str,
+) -> None:
+    """Invalid arguments to render_ppap_canvas raise descriptive Type/ValueError."""
+    with pytest.raises(expected_err_type, match=match_str):
+        render_ppap_canvas(**invalid_kwargs)
+
+
+def test_render_ppap_canvas_package_exports() -> None:
+    """render_ppap_canvas is re-exported from quality_mcp, quality_mcp.tools, and quality_mcp.tools.canvas."""
+    import quality_mcp
+    import quality_mcp.tools
+    import quality_mcp.tools.canvas
+
+    assert hasattr(quality_mcp, "render_ppap_canvas")
+    assert hasattr(quality_mcp.tools, "render_ppap_canvas")
+    assert hasattr(quality_mcp.tools.canvas, "render_ppap_canvas")
+    assert "render_ppap_canvas" in quality_mcp.__all__
+    assert "render_ppap_canvas" in quality_mcp.tools.__all__
+    assert "render_ppap_canvas" in quality_mcp.tools.canvas.__all__
+
+
+def test_mcp_client_roundtrip_render_ppap_canvas_success() -> None:
+    """Call render_ppap_canvas over in-process FastMCP client session successfully."""
+    async def _run() -> None:
+        async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+            tools_response = await client.list_tools()
+            tool_names = [tool.name for tool in tools_response.tools]
+            assert "render_ppap_canvas" in tool_names
+
+            result = await client.call_tool("render_ppap_canvas", {})
+            assert not result.isError
+            assert result.structuredContent is not None
+            assert result.structuredContent["rows_count"] == 18
+            assert result.structuredContent["submission_level"] == 3
+            assert "<!DOCTYPE html>" in result.structuredContent["html"]
+
+    asyncio.run(_run())
+
+
+def test_mcp_client_roundtrip_render_ppap_canvas_error() -> None:
+    """Call render_ppap_canvas with invalid theme over client session produces isError response."""
+    async def _run() -> None:
+        async with create_connected_server_and_client_session(mcp._mcp_server) as client:
+            result = await client.call_tool("render_ppap_canvas", {"theme": "invalid_theme"})
+            assert result.isError
+
+    asyncio.run(_run())
+
 
 
 

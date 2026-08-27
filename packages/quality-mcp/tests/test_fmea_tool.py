@@ -281,11 +281,14 @@ def test_tools_package_exports() -> None:
     assert quality_mcp.tools.lookup_fmea_ap is lookup_fmea_ap
     assert quality_mcp.tools.render_fmea_canvas is quality_mcp.tools.render_fmea_canvas
     assert sorted(quality_mcp.tools.__all__) == [
+        "assess_ppap_capability",
+        "audit_ppap_package",
         "calculate_gage_rr",
         "calculate_spc_chart",
         "categorize_fishbone",
         "estimate_copq",
         "lookup_fmea_ap",
+        "lookup_ppap_requirement",
         "recommend_disposition",
         "render_5why_canvas",
         "render_controlplan_canvas",
@@ -296,10 +299,12 @@ def test_tools_package_exports() -> None:
         "render_isisnot_canvas",
         "render_msa_canvas",
         "render_ncr_canvas",
+        "render_ppap_canvas",
         "render_spc_canvas",
         "scope_is_is_not",
         "validate_5why",
         "validate_control_plan",
+        "validate_psw",
         "write_ncr",
     ]
 

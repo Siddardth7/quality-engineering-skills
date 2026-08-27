@@ -20,6 +20,7 @@ from quality_core.canvas import (
     SPCCanvas,
 )
 
+from quality_mcp.tools.ppap import render_ppap_canvas
 from quality_mcp.tools.rca import (
     render_5why_canvas,
     render_fishbone_canvas,
@@ -625,6 +626,7 @@ __all__ = [
     "render_isisnot_canvas",
     "render_msa_canvas",
     "render_ncr_canvas",
+    "render_ppap_canvas",
     "render_spc_canvas",
 ]
 

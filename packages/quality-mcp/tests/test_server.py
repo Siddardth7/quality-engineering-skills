@@ -10,11 +10,14 @@ from unittest.mock import patch
 import quality_mcp
 from quality_mcp import __version__
 from quality_mcp.server import (
+    assess_ppap_capability,
+    audit_ppap_package,
     calculate_gage_rr,
     calculate_spc_chart,
     categorize_fishbone,
     estimate_copq,
     lookup_fmea_ap,
+    lookup_ppap_requirement,
     main,
     mcp,
     ping,
@@ -28,10 +31,12 @@ from quality_mcp.server import (
     render_isisnot_canvas,
     render_msa_canvas,
     render_ncr_canvas,
+    render_ppap_canvas,
     render_spc_canvas,
     scope_is_is_not,
     validate_5why,
     validate_control_plan,
+    validate_psw,
     write_ncr,
 )
 
@@ -77,6 +82,11 @@ def test_mcp_instance_configuration() -> None:
     assert "recommend_disposition" in tool_names
     assert "render_ncr_canvas" in tool_names
     assert "estimate_copq" in tool_names
+    assert "audit_ppap_package" in tool_names
+    assert "lookup_ppap_requirement" in tool_names
+    assert "validate_psw" in tool_names
+    assert "assess_ppap_capability" in tool_names
+    assert "render_ppap_canvas" in tool_names
 
     # Verify tool execution via FastMCP interface
     _, content = asyncio.run(mcp.call_tool("ping", {}))
@@ -219,6 +229,28 @@ def test_mcp_instance_configuration() -> None:
     assert "summary" in copq_canvas_content
     assert "html" in copq_canvas_content
 
+    _, audit_content = asyncio.run(mcp.call_tool("audit_ppap_package", {}))
+    assert audit_content["submission_level"] == 3
+    assert "elements" in audit_content
+    assert audit_content["basis"] == "AIAG PPAP Reference Manual, 4th Edition (2006)"
+
+    _, req_content = asyncio.run(mcp.call_tool("lookup_ppap_requirement", {"element": "2.2.1", "level": 3}))
+    assert req_content["element_id"] == "2.2.1"
+    assert req_content["requirement_code"] == "S"
+
+    _, psw_content = asyncio.run(mcp.call_tool("validate_psw", {}))
+    assert psw_content["verdict"] == "COMPLETE"
+    assert "fields" in psw_content
+
+    _, cap_content = asyncio.run(mcp.call_tool("assess_ppap_capability", {}))
+    assert "verdict" in cap_content
+    assert cap_content["index_type"] == "Ppk"
+
+    _, ppap_canvas_content = asyncio.run(mcp.call_tool("render_ppap_canvas", {}))
+    assert ppap_canvas_content["rows_count"] == 18
+    assert "summary" in ppap_canvas_content
+    assert "html" in ppap_canvas_content
+
 
 def test_main_invokes_mcp_run() -> None:
     """main() entry point must call mcp.run() once."""
@@ -260,14 +292,22 @@ def test_package_exports() -> None:
     assert quality_mcp.write_ncr is write_ncr
     assert quality_mcp.recommend_disposition is recommend_disposition
     assert quality_mcp.estimate_copq is estimate_copq
+    assert quality_mcp.audit_ppap_package is audit_ppap_package
+    assert quality_mcp.lookup_ppap_requirement is lookup_ppap_requirement
+    assert quality_mcp.validate_psw is validate_psw
+    assert quality_mcp.assess_ppap_capability is assess_ppap_capability
+    assert quality_mcp.render_ppap_canvas is render_ppap_canvas
     assert quality_mcp.__version__ == "0.7.0"
     assert set(quality_mcp.__all__) == {
         "__version__",
+        "assess_ppap_capability",
+        "audit_ppap_package",
         "calculate_gage_rr",
         "calculate_spc_chart",
         "categorize_fishbone",
         "estimate_copq",
         "lookup_fmea_ap",
+        "lookup_ppap_requirement",
         "mcp",
         "ping",
         "recommend_disposition",
@@ -280,19 +320,24 @@ def test_package_exports() -> None:
         "render_isisnot_canvas",
         "render_msa_canvas",
         "render_ncr_canvas",
+        "render_ppap_canvas",
         "render_spc_canvas",
         "scope_is_is_not",
         "validate_5why",
         "validate_control_plan",
+        "validate_psw",
         "write_ncr",
     }
     assert sorted(quality_mcp.__all__) == [
         "__version__",
+        "assess_ppap_capability",
+        "audit_ppap_package",
         "calculate_gage_rr",
         "calculate_spc_chart",
         "categorize_fishbone",
         "estimate_copq",
         "lookup_fmea_ap",
+        "lookup_ppap_requirement",
         "mcp",
         "ping",
         "recommend_disposition",
@@ -305,10 +350,12 @@ def test_package_exports() -> None:
         "render_isisnot_canvas",
         "render_msa_canvas",
         "render_ncr_canvas",
+        "render_ppap_canvas",
         "render_spc_canvas",
         "scope_is_is_not",
         "validate_5why",
         "validate_control_plan",
+        "validate_psw",
         "write_ncr",
     ]
 

@@ -116,6 +116,10 @@ def test_sqe_module_all_exports() -> None:
     expected_exports = {
         "DeliveryRecord",
         "DeliveryRecordDataset",
+        "EscalationConfig",
+        "EscalationResult",
+        "EscalationTier",
+        "EscalationTrigger",
         "IngestError",
         "LinearScoringCurve",
         "OTIFConfig",
@@ -141,6 +145,7 @@ def test_sqe_module_all_exports() -> None:
         "calculate_otif",
         "calculate_supplier_ppm",
         "calculate_vendor_scorecard",
+        "evaluate_escalation",
         "generate_scar",
         "load_sqe_delivery_csv",
         "load_sqe_receipt_csv",

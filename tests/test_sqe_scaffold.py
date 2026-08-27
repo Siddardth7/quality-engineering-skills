@@ -178,7 +178,7 @@ def test_assumptions_log_rules_cited() -> None:
     assert "## RULE Entries" in content
 
     rule_blocks = _extract_rule_blocks(content)
-    assert len(rule_blocks) == 13, f"Expected 13 RULE entries in SQE assumptions log, found {len(rule_blocks)}"
+    assert len(rule_blocks) == 14, f"Expected 14 RULE entries in SQE assumptions log, found {len(rule_blocks)}"
 
     _, rows = _validate_citations_tsv_format(_CITATIONS_TSV.read_text(encoding="utf-8"))
     cited_sites = {row["site"] for row in rows}

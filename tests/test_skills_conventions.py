@@ -48,11 +48,54 @@ _SUPPLIER_SCAR_PROSE_MATH_PATTERN: re.Pattern[str] = re.compile(
     re.IGNORECASE,
 )
 
-# PPAP-specific prose arithmetic detector (#108). Catches worked derivations in plain prose.
-_PPAP_PROSE_MATH_PATTERN: re.Pattern[str] = re.compile(
-    r"\b(?:ppk|cpk|grr|ndc)\b\"?[ \t]*[=:][ \t]*\d[\d.,]*[ \t]*[*/×+\-][ \t]*\d",
-    re.IGNORECASE,
+# PPAP-specific prose arithmetic and inline adjudication detectors (#108).
+_PPAP_PROHIBITED_AUTHORITY_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"(?:system|skill|tool|agent|platform)\s+(?:awards|assigns|emits|grants|decides|issues)\s+(?:an?\s+)?(?:approved|interim approval|rejected)\b", re.IGNORECASE),
+    re.compile(r"(?:verdict|status|disposition)\s*(?:is|:|=)\s*(?:approved|interim approval|rejected)\b", re.IGNORECASE),
+    re.compile(r"\b(?:award|assign|emit|grant)\s+(?:an?\s+)?(?:approved|interim approval|rejected)\s+disposition\b", re.IGNORECASE),
 )
+
+_PPAP_PROSE_MATH_AND_ADJUDICATION_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"\b(?:ppk|cpk|grr|ndc)\b\"?[ \t]*[=:][ \t]*\d[\d.,]*[ \t]*[*/×+\-][ \t]*\d", re.IGNORECASE),
+    re.compile(r"\b(?:ppk|cpk|grr|ndc)\b[ \t]*(?:>=|<=|>|<|=|≥|≤)[ \t]*\d[\d.,]*[ \t]*[:–-][ \t]*(?:capable|acceptable|potentially|unacceptable|meets|fails)", re.IGNORECASE),
+    re.compile(r"\d[\d.,]*[ \t]*(?:<=|>=|<|>|=|≤|≥)[ \t]*(?:ppk|cpk)[ \t]*(?:<=|>=|<|>|=|≤|≥)[ \t]*\d[\d.,]*[ \t]*[:–-][ \t]*(?:capable|acceptable|potentially|unacceptable)", re.IGNORECASE),
+)
+
+
+def validate_ppap_authority_invariants(content: str) -> None:
+    """Validate that PPAP content respects the Section 5 Customer Authority Invariant.
+
+    Raises ValueError if customer approval dispositions are awarded by the skill/system,
+    or if mandatory Section 5 notices and readiness states are missing.
+    """
+    for pattern in _PPAP_PROHIBITED_AUTHORITY_PATTERNS:
+        match = pattern.search(content)
+        if match:
+            raise ValueError(f"Prohibited customer disposition assignment found: {match.group(0)!r}")
+
+    if "Section 5" not in content and "Customer Authority Invariant" not in content:
+        raise ValueError("PPAP skill must cite Section 5 Customer Authority Invariant")
+    if "SUBMISSION_READY" not in content or "NOT_READY" not in content or "INDETERMINATE" not in content:
+        raise ValueError("PPAP skill must specify supplier readiness states (SUBMISSION_READY, NOT_READY, INDETERMINATE)")
+    if "FOR CUSTOMER USE ONLY" not in content and "customer's authorized representative" not in content:
+        raise ValueError("PPAP skill must document that approval statuses are for customer use only")
+
+
+def validate_ppap_no_worked_arithmetic_or_adjudication(content: str) -> None:
+    """Validate that PPAP content contains no worked arithmetic or inline threshold adjudication.
+
+    Raises ValueError if inline calculation or threshold-to-verdict mapping is found.
+    """
+    fenced_violations = detect_prohibited_calculation_logic(content)
+    if fenced_violations:
+        raise ValueError(f"Fenced code calculation found: {fenced_violations}")
+    if "```python" in content:
+        raise ValueError("Prohibited python code fence found in PPAP skill")
+
+    for pattern in _PPAP_PROSE_MATH_AND_ADJUDICATION_PATTERNS:
+        matches = pattern.findall(content)
+        if matches:
+            raise ValueError(f"Prohibited prose math or inline adjudication found: {matches}")
 
 
 def parse_frontmatter(content: str) -> tuple[dict[str, str], str]:
@@ -417,21 +460,20 @@ def test_ppap_checker_skill_specifies_ppap_tools() -> None:
         "render_ppap_canvas",
     ]
     for tool_name in tools:
-        assert f"### `{tool_name}`" in content or f"### {tool_name}" in content, (
-            f"ppap-checker skill missing dedicated section for {tool_name}"
-        )
-
-    # Assert contract headers
-    for header in (
-        "**MCP Server:**",
-        "**Purpose:**",
-        "**Parameters:**",
-        "**Return Type:**",
-        "**Return Schema:**",
-        "#### Invocation",
-        "#### Successful Response",
-    ):
-        assert header in content, f"ppap-checker skill missing contract header {header}"
+        pattern = rf"(?ms)^###\s+`?{re.escape(tool_name)}`?\b.*?(?=\n---\n|\n###\s+`?[a-z]|\Z)"
+        match = re.search(pattern, content)
+        assert match, f"Missing dedicated section for {tool_name}"
+        sec_text = match.group(0)
+        for header in (
+            "**MCP Server:**",
+            "**Purpose:**",
+            "**Parameters:**",
+            "**Return Type:**",
+            "**Return Schema:**",
+            "#### Invocation",
+            "#### Successful Response",
+        ):
+            assert header in sec_text, f"Missing contract header {header} in {tool_name} section"
 
     assert "quality-mcp" in content, "ppap-checker skill must reference quality-mcp"
     assert "AIAG" in content, "ppap-checker skill must cite AIAG"
@@ -455,16 +497,8 @@ def test_ppap_checker_authority_invariant() -> None:
     assert ppap_file.exists(), "skills/ppap-checker/SKILL.md does not exist"
     content = ppap_file.read_text(encoding="utf-8")
 
-    assert "Section 5" in content, "ppap-checker skill must cite Section 5"
-    assert "Customer Authority Invariant" in content or "customer-only" in content.lower(), (
-        "ppap-checker skill must document Customer Authority Invariant"
-    )
-    assert "SUBMISSION_READY" in content, "ppap-checker skill must document SUBMISSION_READY status"
-    assert "NOT_READY" in content, "ppap-checker skill must document NOT_READY status"
-    assert "INDETERMINATE" in content, "ppap-checker skill must document INDETERMINATE status"
-    assert "FOR CUSTOMER USE ONLY" in content or "customer's authorized representative" in content, (
-        "ppap-checker skill must state that approval statuses are for customer use only"
-    )
+    # Run full production authority validation guard
+    validate_ppap_authority_invariants(content)
 
     # Assert all 5 verbatim domain invariants
     assert "Never recite a Table 4.1 cell from memory" in content
@@ -480,17 +514,7 @@ def test_ppap_checker_skill_contains_no_worked_arithmetic() -> None:
     assert ppap_file.exists(), "skills/ppap-checker/SKILL.md does not exist"
     content = ppap_file.read_text(encoding="utf-8")
 
-    assert detect_prohibited_calculation_logic(content) == [], (
-        f"ppap-checker skill must not contain inline calculation logic: {detect_prohibited_calculation_logic(content)}"
-    )
-    assert "```python" not in content, (
-        "ppap-checker skill must express every example as JSON tool calls, never a python block"
-    )
-
-    prose_math = _PPAP_PROSE_MATH_PATTERN.findall(content)
-    assert not prose_math, (
-        f"ppap-checker skill must not derive a metric in prose. Matched: {prose_math}"
-    )
+    validate_ppap_no_worked_arithmetic_or_adjudication(content)
 
 
 def test_claude_skills_isolation() -> None:
@@ -579,20 +603,42 @@ def test_negative_prohibited_inline_math_fails() -> None:
         validate_skill_document(bad_content)
 
 
-def test_negative_ppap_checker_prose_math_fails() -> None:
-    """Prose derivations of capability in PPAP skill body must fail validation."""
-    bad_content = (
-        "## Overview\n"
-        "A capability calculation was computed as Ppk = 1.8 - 0.2 * 1.5 = 1.50 inline."
-    )
-    matches = _PPAP_PROSE_MATH_PATTERN.findall(bad_content)
-    assert matches, "PPAP prose math pattern must catch inline capability formula"
+def test_negative_ppap_checker_prose_math_and_adjudication_fails() -> None:
+    """Prose derivations or inline threshold adjudications in PPAP skill body must fail validation."""
+    ppap_file = _SKILLS_DIR / "ppap-checker" / "SKILL.md"
+    assert ppap_file.exists(), "skills/ppap-checker/SKILL.md does not exist"
+    live_content = ppap_file.read_text(encoding="utf-8")
+
+    # Mutation 1: threshold-to-verdict mapping
+    mutated_adj_1 = live_content + "\nPpk >= 1.67: Capable (Meets acceptance criteria)."
+    with pytest.raises(ValueError, match="Prohibited prose math or inline adjudication"):
+        validate_ppap_no_worked_arithmetic_or_adjudication(mutated_adj_1)
+
+    # Mutation 2: band mapping
+    mutated_adj_2 = live_content + "\n1.33 <= Ppk < 1.67: Potentially acceptable"
+    with pytest.raises(ValueError, match="Prohibited prose math or inline adjudication"):
+        validate_ppap_no_worked_arithmetic_or_adjudication(mutated_adj_2)
+
+    # Mutation 3: arithmetic formula
+    mutated_math = live_content + "\nPpk = 1.8 - 0.2 * 1.5 = 1.50"
+    with pytest.raises(ValueError, match="Prohibited prose math or inline adjudication"):
+        validate_ppap_no_worked_arithmetic_or_adjudication(mutated_math)
 
 
 def test_negative_ppap_checker_customer_disposition_emission_fails() -> None:
-    """Skill claiming to award customer disposition must fail authority verification."""
-    bad_content = "The system awards Approved disposition to the supplier."
-    # The authority invariant requires approval statuses to be customer-only
-    is_valid = "FOR CUSTOMER USE ONLY" in bad_content or "customer's authorized representative" in bad_content
-    assert not is_valid, "Authority guard must reject supplier-side approval assignment"
+    """Skill claiming to award customer disposition must fail authority verification even with notices present."""
+    ppap_file = _SKILLS_DIR / "ppap-checker" / "SKILL.md"
+    assert ppap_file.exists(), "skills/ppap-checker/SKILL.md does not exist"
+    live_content = ppap_file.read_text(encoding="utf-8")
+
+    # Mutation 1: system awards Approved disposition
+    mutated_1 = live_content + "\nThe system awards Approved disposition to the supplier."
+    with pytest.raises(ValueError, match="Prohibited customer disposition assignment"):
+        validate_ppap_authority_invariants(mutated_1)
+
+    # Mutation 2: disposition is Interim Approval
+    mutated_2 = live_content + "\nThe final disposition is Interim Approval."
+    with pytest.raises(ValueError, match="Prohibited customer disposition assignment"):
+        validate_ppap_authority_invariants(mutated_2)
+
 

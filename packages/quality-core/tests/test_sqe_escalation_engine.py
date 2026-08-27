@@ -33,6 +33,17 @@ def _scorecard(score: float | None = 100.0, verdict: str = "RATED") -> Scorecard
     )
 
 
+def _string_values(value: object) -> list[str]:
+    """Recursively collect every serialized string, including nested reasons and evidence."""
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        return [string for nested in value.values() for string in _string_values(nested)]
+    if isinstance(value, list):
+        return [string for nested in value for string in _string_values(nested)]
+    return []
+
+
 def test_config_defaults_normalization_serialization_and_frozen_contract() -> None:
     config = EscalationConfig(monitor_score_maximum=90, scar_score_maximum=75,
                               containment_score_maximum=60, executive_score_maximum=40)
@@ -172,3 +183,37 @@ def test_heuristic_and_authority_wording_negative_control_is_load_bearing() -> N
     payload = result.to_dict()
     assert "authorized people" in payload["commercial_authority"]
     assert "no standards citation" in payload["evaluated_triggers"][0]["basis"]
+
+
+@pytest.mark.parametrize(
+    ("score", "verdict"),
+    [
+        (100.0, "RATED"),
+        (89.0, "RATED"),
+        (74.0, "RATED"),
+        (59.0, "RATED"),
+        (39.0, "RATED"),
+        (None, "INDETERMINATE"),
+    ],
+)
+def test_serialized_results_never_recommend_forbidden_commercial_actions(
+    score: float | None, verdict: str
+) -> None:
+    payload = evaluate_escalation(_scorecard(score, verdict)).to_dict()
+    forbidden_actions = (
+        "new_business_hold",
+        "new-business-hold",
+        "new business hold",
+        "de-source",
+        "de_source",
+        "de source",
+        "resource",
+        "charge-back",
+        "charge_back",
+        "charge back",
+    )
+    assert not any(
+        action in string.casefold()
+        for string in _string_values(payload)
+        for action in forbidden_actions
+    )

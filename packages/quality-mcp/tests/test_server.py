@@ -53,7 +53,7 @@ def test_ping_returns_correct_dict() -> None:
     expected = {
         "status": "ok",
         "server": "quality-mcp",
-        "version": "0.7.0",
+        "version": "0.8.0",
     }
     assert result == expected
     assert result["status"] == "ok"
@@ -354,7 +354,7 @@ def test_package_exports() -> None:
     assert quality_mcp.evaluate_escalation is evaluate_escalation
     assert quality_mcp.generate_scar is generate_scar
     assert quality_mcp.render_sqe_canvas is render_sqe_canvas
-    assert quality_mcp.__version__ == "0.7.0"
+    assert quality_mcp.__version__ == "0.8.0"
     assert set(quality_mcp.__all__) == {
         "__version__",
         "assess_ppap_capability",

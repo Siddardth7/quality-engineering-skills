@@ -9,7 +9,7 @@ Validates:
 5. The five honesty, authority, and scoping declarations recorded in ASSUMPTIONS_LOG.md
 6. Presence, tab-delimiter, and canonical header of ppap/CITATIONS.tsv
 7. Per-domain reference manual mapping in CLAUDE.md under ## Standards fidelity for PPAP
-8. CHANGELOG.md entry under [Unreleased] (#98)
+8. CHANGELOG.md entry for the #98 scaffold, released under [0.8.0] by the #110 closeout
 9. Negative controls: invalid TSV delimiters, malformed/permuted TSV headers, non-zero TSV data rows,
    uncited RULE entries, missing declarations, missing inventory items, missing CLAUDE.md mapping,
    missing changelog reference, and missing manual detection.
@@ -235,16 +235,22 @@ def test_claude_md_standards_fidelity_mapping() -> None:
 
 
 def test_changelog_entry_unreleased_ppap_scaffold() -> None:
-    """Verify CHANGELOG.md documents the Issue #98 scaffold under [Unreleased]."""
+    """Verify CHANGELOG.md documents the Issue #98 scaffold.
+
+    Milestone 8 was released as ``## [0.8.0]`` by the #110 closeout, which moved the #98
+    scaffold bullet out of ``[Unreleased]``. The assertions are therefore scoped to the whole
+    document, matching how the already-closed-out #74 (v0.6.0) and #91 (v0.7.0) scaffold suites
+    read after their own release rolls. ``[Unreleased]`` must still exist as a section.
+    """
     assert _CHANGELOG_MD.is_file(), f"Missing CHANGELOG.md: {_CHANGELOG_MD}"
     content = _CHANGELOG_MD.read_text(encoding="utf-8")
-    unreleased = _extract_unreleased_changelog_section(content)
 
     assert "## [Unreleased]" in content
-    assert "#98" in unreleased, "CHANGELOG.md [Unreleased] must reference issue #98"
-    assert "quality_core/ppap/ASSUMPTIONS_LOG.md" in unreleased
-    assert "ppap/CITATIONS.tsv" in unreleased
-    assert "CLAUDE.md" in unreleased
+    assert "## [0.8.0]" in content, "CHANGELOG.md must carry the released [0.8.0] section"
+    assert "#98" in content, "CHANGELOG.md must reference issue #98"
+    assert "quality_core/ppap/ASSUMPTIONS_LOG.md" in content
+    assert "ppap/CITATIONS.tsv" in content
+    assert "CLAUDE.md" in content
 
 
 # ==============================================================================

@@ -2,8 +2,8 @@
 
 **Package:** `quality_core.ncr`
 **Standard References:**
-- ISO 9001:2015 Clause 8.7 "Control of nonconforming outputs": `/Users/sid/Documents/Upskill/SixSigma/ISO_9001_2015_Section_8_7.md` (or `/Users/sid/Documents/Upskill/SixSigma/ISO-9001-2015.pdf`)
-- IATF 16949:2016 Clause 8.7 "Control of nonconforming outputs": `/Users/sid/Documents/Upskill/SixSigma/IATF_16949_2016_Section_8_7.md` (or `/Users/sid/Documents/Upskill/SixSigma/pdfcoffee.com_iatf16949-2016-standard-pdf-free.pdf`)
+- ISO 9001:2015 Clause 8.7 "Control of nonconforming outputs": `/Users/sid/Documents/Upskill/SixSigma/NCR/ISO_9001_2015_Section_8_7.md` (or `/Users/sid/Documents/Upskill/SixSigma/NCR/ISO-9001-2015.pdf`)
+- IATF 16949:2016 Clause 8.7 "Control of nonconforming outputs": `/Users/sid/Documents/Upskill/SixSigma/NCR/IATF_16949_2016_Section_8_7.md` (or `/Users/sid/Documents/Upskill/SixSigma/NCR/pdfcoffee.com_iatf16949-2016-standard-pdf-free.pdf`)
 
 This document records every non-obvious engineering decision, published taxonomy, and architectural constraint used in the Nonconformance Reporting (NCR) Suite (`quality_core.ncr`).
 

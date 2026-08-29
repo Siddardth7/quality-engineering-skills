@@ -10,11 +10,19 @@ from unittest.mock import patch
 import quality_mcp
 from quality_mcp import __version__
 from quality_mcp.server import (
+    assess_ppap_capability,
+    audit_ppap_package,
     calculate_gage_rr,
+    calculate_otif,
     calculate_spc_chart,
+    calculate_supplier_ppm,
+    calculate_vendor_scorecard,
     categorize_fishbone,
     estimate_copq,
+    evaluate_escalation,
+    generate_scar,
     lookup_fmea_ap,
+    lookup_ppap_requirement,
     main,
     mcp,
     ping,
@@ -28,10 +36,13 @@ from quality_mcp.server import (
     render_isisnot_canvas,
     render_msa_canvas,
     render_ncr_canvas,
+    render_ppap_canvas,
     render_spc_canvas,
+    render_sqe_canvas,
     scope_is_is_not,
     validate_5why,
     validate_control_plan,
+    validate_psw,
     write_ncr,
 )
 
@@ -42,7 +53,7 @@ def test_ping_returns_correct_dict() -> None:
     expected = {
         "status": "ok",
         "server": "quality-mcp",
-        "version": "0.7.0",
+        "version": "0.9.0",
     }
     assert result == expected
     assert result["status"] == "ok"
@@ -77,6 +88,21 @@ def test_mcp_instance_configuration() -> None:
     assert "recommend_disposition" in tool_names
     assert "render_ncr_canvas" in tool_names
     assert "estimate_copq" in tool_names
+    assert "assess_ppap_capability" in tool_names
+    assert "audit_ppap_package" in tool_names
+    assert "lookup_ppap_requirement" in tool_names
+    assert "render_ppap_canvas" in tool_names
+    assert "validate_psw" in tool_names
+    assert "calculate_supplier_ppm" in tool_names
+    assert "calculate_otif" in tool_names
+    assert "calculate_vendor_scorecard" in tool_names
+    assert "evaluate_escalation" in tool_names
+    assert "generate_scar" in tool_names
+    assert "render_sqe_canvas" in tool_names
+
+    # Exactly 31 tools registered (25 baseline + 6 SQE), each name unique.
+    assert len(tool_names) == 31
+    assert len(set(tool_names)) == 31
 
     # Verify tool execution via FastMCP interface
     _, content = asyncio.run(mcp.call_tool("ping", {}))
@@ -219,6 +245,63 @@ def test_mcp_instance_configuration() -> None:
     assert "summary" in copq_canvas_content
     assert "html" in copq_canvas_content
 
+    _, audit_content = asyncio.run(mcp.call_tool("audit_ppap_package", {}))
+    assert audit_content["package_verdict"] == "INDETERMINATE"
+    assert "basis" in audit_content
+
+    _, req_content = asyncio.run(
+        mcp.call_tool("lookup_ppap_requirement", {"element_id": "2.2.4", "submission_level": 3})
+    )
+    assert req_content["requirement_code"] == "S"
+    assert req_content["element_id"] == "2.2.4"
+
+    _, psw_content = asyncio.run(mcp.call_tool("validate_psw", {}))
+    assert psw_content["verdict"] == "COMPLETE"
+    assert "basis" in psw_content
+
+    _, cap_content = asyncio.run(
+        mcp.call_tool(
+            "assess_ppap_capability",
+            {
+                "precomputed_index_type": "Ppk",
+                "precomputed_index_value": 1.85,
+                "precomputed_sample_size": 125,
+                "precomputed_subgroup_count": 25,
+            },
+        )
+    )
+    assert cap_content["verdict"] == "ACCEPTABLE"
+    assert "basis" in cap_content
+
+    _, ppap_canvas_content = asyncio.run(mcp.call_tool("render_ppap_canvas", {}))
+    assert ppap_canvas_content["rows_count"] == 18
+    assert "summary" in ppap_canvas_content
+    assert "html" in ppap_canvas_content
+
+    _, ppm_content = asyncio.run(mcp.call_tool("calculate_supplier_ppm", {}))
+    assert ppm_content["verdict"] == "MEASURED"
+    assert ppm_content["ppm"] == 400.0
+
+    _, otif_content = asyncio.run(mcp.call_tool("calculate_otif", {}))
+    assert otif_content["verdict"] == "MEASURED"
+    assert otif_content["on_time_pct"] == 100.0
+
+    _, scorecard_content = asyncio.run(mcp.call_tool("calculate_vendor_scorecard", {}))
+    assert scorecard_content["verdict"] == "RATED"
+    assert scorecard_content["band"] == "B"
+
+    _, escalation_content = asyncio.run(mcp.call_tool("evaluate_escalation", {}))
+    assert escalation_content["tier"] == "MONITOR"
+
+    _, scar_content = asyncio.run(mcp.call_tool("generate_scar", {}))
+    assert scar_content["status"] == "AWAITING_SUPPLIER_RESPONSE"
+    assert scar_content["root_cause"] is None
+
+    _, sqe_canvas_content = asyncio.run(mcp.call_tool("render_sqe_canvas", {}))
+    assert sqe_canvas_content["rows_count"] == 6
+    assert "summary" in sqe_canvas_content
+    assert "html" in sqe_canvas_content
+
 
 def test_main_invokes_mcp_run() -> None:
     """main() entry point must call mcp.run() once."""
@@ -260,14 +343,33 @@ def test_package_exports() -> None:
     assert quality_mcp.write_ncr is write_ncr
     assert quality_mcp.recommend_disposition is recommend_disposition
     assert quality_mcp.estimate_copq is estimate_copq
-    assert quality_mcp.__version__ == "0.7.0"
+    assert quality_mcp.assess_ppap_capability is assess_ppap_capability
+    assert quality_mcp.audit_ppap_package is audit_ppap_package
+    assert quality_mcp.lookup_ppap_requirement is lookup_ppap_requirement
+    assert quality_mcp.render_ppap_canvas is render_ppap_canvas
+    assert quality_mcp.validate_psw is validate_psw
+    assert quality_mcp.calculate_supplier_ppm is calculate_supplier_ppm
+    assert quality_mcp.calculate_otif is calculate_otif
+    assert quality_mcp.calculate_vendor_scorecard is calculate_vendor_scorecard
+    assert quality_mcp.evaluate_escalation is evaluate_escalation
+    assert quality_mcp.generate_scar is generate_scar
+    assert quality_mcp.render_sqe_canvas is render_sqe_canvas
+    assert quality_mcp.__version__ == "0.9.0"
     assert set(quality_mcp.__all__) == {
         "__version__",
+        "assess_ppap_capability",
+        "audit_ppap_package",
         "calculate_gage_rr",
+        "calculate_otif",
         "calculate_spc_chart",
+        "calculate_supplier_ppm",
+        "calculate_vendor_scorecard",
         "categorize_fishbone",
         "estimate_copq",
+        "evaluate_escalation",
+        "generate_scar",
         "lookup_fmea_ap",
+        "lookup_ppap_requirement",
         "mcp",
         "ping",
         "recommend_disposition",
@@ -280,19 +382,30 @@ def test_package_exports() -> None:
         "render_isisnot_canvas",
         "render_msa_canvas",
         "render_ncr_canvas",
+        "render_ppap_canvas",
         "render_spc_canvas",
+        "render_sqe_canvas",
         "scope_is_is_not",
         "validate_5why",
         "validate_control_plan",
+        "validate_psw",
         "write_ncr",
     }
     assert sorted(quality_mcp.__all__) == [
         "__version__",
+        "assess_ppap_capability",
+        "audit_ppap_package",
         "calculate_gage_rr",
+        "calculate_otif",
         "calculate_spc_chart",
+        "calculate_supplier_ppm",
+        "calculate_vendor_scorecard",
         "categorize_fishbone",
         "estimate_copq",
+        "evaluate_escalation",
+        "generate_scar",
         "lookup_fmea_ap",
+        "lookup_ppap_requirement",
         "mcp",
         "ping",
         "recommend_disposition",
@@ -305,10 +418,13 @@ def test_package_exports() -> None:
         "render_isisnot_canvas",
         "render_msa_canvas",
         "render_ncr_canvas",
+        "render_ppap_canvas",
         "render_spc_canvas",
+        "render_sqe_canvas",
         "scope_is_is_not",
         "validate_5why",
         "validate_control_plan",
+        "validate_psw",
         "write_ncr",
     ]
 

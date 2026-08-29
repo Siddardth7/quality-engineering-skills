@@ -1,0 +1,26 @@
+# Slack app manifest for a QE agent member.
+# Create app: https://api.slack.com/apps -> Create New App -> From a manifest ->
+#   pick workspace -> YAML -> paste this -> Continue -> Create -> Install to Workspace.
+# Change `name` and `display_name` per agent (QE-Claude-2, QE-Claude-3, ...).
+# No slash commands / events / socket mode: agents only make outbound Web API calls.
+display_information:
+  name: QE-Claude-2
+features:
+  bot_user:
+    display_name: qe_claude_2
+    always_online: true
+oauth_config:
+  scopes:
+    bot:
+      - chat:write
+      - channels:join
+      - channels:history
+      - channels:read
+      - groups:history
+      - groups:read
+      - files:write
+      - users:read
+settings:
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false

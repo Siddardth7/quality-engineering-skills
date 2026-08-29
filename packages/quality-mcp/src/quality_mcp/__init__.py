@@ -5,14 +5,22 @@ Exposes quality-core deterministic engines to AI agents via Model Context Protoc
 
 from __future__ import annotations
 
-__version__ = "0.7.0"
+__version__ = "0.9.0"
 
 from quality_mcp.server import (
+    assess_ppap_capability,
+    audit_ppap_package,
     calculate_gage_rr,
+    calculate_otif,
     calculate_spc_chart,
+    calculate_supplier_ppm,
+    calculate_vendor_scorecard,
     categorize_fishbone,
     estimate_copq,
+    evaluate_escalation,
+    generate_scar,
     lookup_fmea_ap,
+    lookup_ppap_requirement,
     mcp,
     ping,
     recommend_disposition,
@@ -25,20 +33,31 @@ from quality_mcp.server import (
     render_isisnot_canvas,
     render_msa_canvas,
     render_ncr_canvas,
+    render_ppap_canvas,
     render_spc_canvas,
+    render_sqe_canvas,
     scope_is_is_not,
     validate_5why,
     validate_control_plan,
+    validate_psw,
     write_ncr,
 )
 
 __all__ = [
     "__version__",
+    "assess_ppap_capability",
+    "audit_ppap_package",
     "calculate_gage_rr",
+    "calculate_otif",
     "calculate_spc_chart",
+    "calculate_supplier_ppm",
+    "calculate_vendor_scorecard",
     "categorize_fishbone",
     "estimate_copq",
+    "evaluate_escalation",
+    "generate_scar",
     "lookup_fmea_ap",
+    "lookup_ppap_requirement",
     "mcp",
     "ping",
     "recommend_disposition",
@@ -51,9 +70,12 @@ __all__ = [
     "render_isisnot_canvas",
     "render_msa_canvas",
     "render_ncr_canvas",
+    "render_ppap_canvas",
     "render_spc_canvas",
+    "render_sqe_canvas",
     "scope_is_is_not",
     "validate_5why",
     "validate_control_plan",
+    "validate_psw",
     "write_ncr",
 ]

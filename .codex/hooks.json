@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Glob|Grep|WebSearch|WebFetch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /Users/sid/Documents/Upskill/Projects/quality-engineering/tools/Quality engineering Skills/.hyperresearch/hook.js"
+          }
+        ]
+      }
+    ]
+  }
+}

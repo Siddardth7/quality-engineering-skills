@@ -36,6 +36,9 @@ _V040_MILESTONE = _MILESTONES_DIR / "v0.4.0.md"
 _V050_MILESTONE = _MILESTONES_DIR / "v0.5.0.md"
 _V060_MILESTONE = _MILESTONES_DIR / "v0.6.0.md"
 _V070_MILESTONE = _MILESTONES_DIR / "v0.7.0.md"
+_V080_MILESTONE = _MILESTONES_DIR / "v0.8.0.md"
+_V090_MILESTONE = _MILESTONES_DIR / "v0.9.0.md"
+_V100_MILESTONE = _MILESTONES_DIR / "v1.0.0.md"
 _ROADMAP = _REPO_ROOT / "ROADMAP.md"
 _CHANGELOG = _REPO_ROOT / "CHANGELOG.md"
 
@@ -705,6 +708,205 @@ def test_roadmap_links_v070_milestone() -> None:
     )
 
 
+def test_v080_milestone_epics_and_issues_traceability() -> None:
+    """Verify docs/milestones/v0.8.0.md defines Epics E0-E12 and links issues #98 through #110 with branch names."""
+    assert _V080_MILESTONE.is_file(), f"Missing milestone v0.8.0 file: {_V080_MILESTONE}"
+    content = _V080_MILESTONE.read_text(encoding="utf-8")
+
+    # Verify all 13 Epics are present (E0 through E12)
+    for epic_num in range(0, 13):
+        assert f"Epic {epic_num} (E{epic_num})" in content or f"E{epic_num}:" in content, (
+            f"Missing Epic {epic_num} in v0.8.0.md"
+        )
+
+    # Verify all 13 issues are present with canonical URLs and CORRECTED branch names.
+    # Issues #100/#101/#103/#104/#105 all merged via the combined PR #170
+    # (branch feat/ppap-combined-e2-e7), not the five separately-scoped branches.
+    issue_tuples = _extract_issue_urls(content)
+    issue_numbers = {num for _, num in issue_tuples}
+
+    expected_issues = {
+        98: "chore/ppap-literature-citations-98",
+        99: "feat/ppap-engine-scaffold-99",
+        100: "feat/ppap-combined-e2-e7",
+        101: "feat/ppap-combined-e2-e7",
+        102: "feat/ppap-completeness-auditor-102",
+        103: "feat/ppap-combined-e2-e7",
+        104: "feat/ppap-combined-e2-e7",
+        105: "feat/ppap-combined-e2-e7",
+        106: "feat/ppap-canvas-106",
+        107: "feat/ppap-fastmcp-tools-107",
+        108: "feat/ppap-checker-skill-108",
+        109: "feat/ppap-client-roundtrip-109",
+        110: "feat/ppap-closeout-110",
+    }
+
+    for expected_issue, branch_name in expected_issues.items():
+        assert expected_issue in issue_numbers, f"Missing issue #{expected_issue} in v0.8.0.md"
+        expected_url = f"https://github.com/Siddardth7/quality-engineering-skills/issues/{expected_issue}"
+        assert expected_url in content, f"Missing canonical URL for issue #{expected_issue}: {expected_url}"
+        assert branch_name in content, f"Missing branch {branch_name} for issue #{expected_issue} in v0.8.0.md"
+
+
+def test_v080_milestone_release_gate_and_artifacts() -> None:
+    """Verify v0.8.0.md specifies the release gate criteria and catalogs verification artifacts."""
+    assert _V080_MILESTONE.is_file(), f"Missing milestone v0.8.0 file: {_V080_MILESTONE}"
+    content = _V080_MILESTONE.read_text(encoding="utf-8")
+
+    # Release gate criteria
+    assert "audit_ppap_package" in content
+    assert "lookup_ppap_requirement" in content
+    assert "validate_psw" in content
+    assert "assess_ppap_capability" in content
+    assert "render_ppap_canvas" in content
+    assert "ppap-checker" in content
+    assert "AIAG" in content
+    assert "Section 5" in content
+    assert "100%" in content
+    assert "CITATIONS.tsv" in content
+
+    # Key verification artifacts cataloged — use the ACTUAL on-disk filenames,
+    # not the originally-planned split PSW pair.
+    expected_artifacts = [
+        "packages/quality-core/src/quality_core/ppap/schema.py",
+        "packages/quality-core/src/quality_core/ppap/table_4_1.py",
+        "packages/quality-core/src/quality_core/ppap/applicability.py",
+        "packages/quality-core/src/quality_core/ppap/auditor.py",
+        "packages/quality-core/src/quality_core/ppap/process_study.py",
+        "packages/quality-core/src/quality_core/ppap/psw.py",
+        "packages/quality-core/src/quality_core/ppap/linkage.py",
+        "packages/quality-core/src/quality_core/ppap/ASSUMPTIONS_LOG.md",
+        "packages/quality-core/src/quality_core/ppap/CITATIONS.tsv",
+        "packages/quality-core/src/quality_core/canvas/ppap.py",
+        "packages/quality-core/tests/test_ppap_schema.py",
+        "packages/quality-core/tests/test_ppap_applicability.py",
+        "packages/quality-core/tests/test_ppap_auditor_engine.py",
+        "packages/quality-core/tests/test_ppap_process_study_engine.py",
+        "packages/quality-core/tests/test_ppap_psw.py",
+        "packages/quality-core/tests/test_ppap_linkage_engine.py",
+        "packages/quality-core/tests/test_ppap_canvas.py",
+        "packages/quality-core/tests/test_ppap_citations.py",
+        "packages/quality-mcp/src/quality_mcp/tools/ppap.py",
+        "packages/quality-mcp/tests/test_ppap_tools.py",
+        "packages/quality-mcp/tests/test_ppap_client_roundtrip.py",
+        "skills/ppap-checker/SKILL.md",
+        "tests/test_ppap_scaffold.py",
+        "docs/mcp-client-setup.md",
+    ]
+    for artifact in expected_artifacts:
+        assert artifact in content, f"Missing expected verification artifact in v0.8.0.md: {artifact}"
+
+
+def test_roadmap_links_v080_milestone() -> None:
+    """Verify ROADMAP.md links v0.8.0 in Summary Release Matrix to docs/milestones/v0.8.0.md."""
+    assert _ROADMAP.is_file(), f"Missing ROADMAP: {_ROADMAP}"
+    content = _ROADMAP.read_text(encoding="utf-8")
+
+    assert "[**`v0.8.0`**](docs/milestones/v0.8.0.md)" in content or "[`v0.8.0`](docs/milestones/v0.8.0.md)" in content, (
+        "ROADMAP.md Summary Release Matrix must link v0.8.0 to docs/milestones/v0.8.0.md"
+    )
+
+
+def test_v090_milestone_epics_and_issues_traceability() -> None:
+    """Verify docs/milestones/v0.9.0.md defines Epics E0-E11 and links issues #114 through #125 with branch names."""
+    assert _V090_MILESTONE.is_file(), f"Missing milestone v0.9.0 file: {_V090_MILESTONE}"
+    content = _V090_MILESTONE.read_text(encoding="utf-8")
+
+    # Verify all 12 Epics are present (E0 through E11)
+    for epic_num in range(0, 12):
+        assert f"Epic {epic_num} (E{epic_num})" in content or f"E{epic_num}:" in content, (
+            f"Missing Epic {epic_num} in v0.9.0.md"
+        )
+
+    # Verify all 12 issues are present with canonical URLs and the ACTUAL merged
+    # head refs. Milestone 9 merged one PR per issue (no combined PR, unlike
+    # v0.8.0), but seven head refs diverged from the scoping-time branch names:
+    # #114, #116, #117, #120, #121, #122, #124.
+    issue_tuples = _extract_issue_urls(content)
+    issue_numbers = {num for _, num in issue_tuples}
+
+    expected_issues = {
+        114: "feat/sqe-references-114",
+        115: "feat/sqe-engine-scaffold-115",
+        116: "feat/sqe-supplier-ppm-116",
+        117: "feat/sqe-otif-delivery-117",
+        118: "feat/sqe-vendor-scorecard-118",
+        119: "feat/sqe-escalation-rules-119",
+        120: "feat/sqe-scar-120",
+        121: "feat/sqe-vendor-scorecard-canvas-121",
+        122: "feat/sqe-fastmcp-tools-122",
+        123: "feat/supplier-scar-skill-123",
+        124: "feat/sqe-client-roundtrip-124",
+        125: "feat/sqe-closeout-125",
+    }
+
+    for expected_issue, branch_name in expected_issues.items():
+        assert expected_issue in issue_numbers, f"Missing issue #{expected_issue} in v0.9.0.md"
+        expected_url = f"https://github.com/Siddardth7/quality-engineering-skills/issues/{expected_issue}"
+        assert expected_url in content, f"Missing canonical URL for issue #{expected_issue}: {expected_url}"
+        assert branch_name in content, f"Missing branch {branch_name} for issue #{expected_issue} in v0.9.0.md"
+
+
+def test_v090_milestone_release_gate_and_artifacts() -> None:
+    """Verify v0.9.0.md specifies the release gate criteria and catalogs verification artifacts."""
+    assert _V090_MILESTONE.is_file(), f"Missing milestone v0.9.0 file: {_V090_MILESTONE}"
+    content = _V090_MILESTONE.read_text(encoding="utf-8")
+
+    # Release gate criteria
+    assert "calculate_supplier_ppm" in content
+    assert "calculate_otif" in content
+    assert "calculate_vendor_scorecard" in content
+    assert "evaluate_escalation" in content
+    assert "generate_scar" in content
+    assert "render_sqe_canvas" in content
+    assert "supplier-scar" in content
+    assert "AIAG CQI-20" in content
+    assert "no-standard-implied" in content.lower()
+    assert "100%" in content
+    assert "CITATIONS.tsv" in content
+
+    # Key verification artifacts cataloged — use the ACTUAL on-disk filenames,
+    # not the originally-planned split PPM/escalation pairs or the planned
+    # test_sqe_citations.py name.
+    expected_artifacts = [
+        "packages/quality-core/src/quality_core/sqe/schema.py",
+        "packages/quality-core/src/quality_core/sqe/ppm.py",
+        "packages/quality-core/src/quality_core/sqe/otif.py",
+        "packages/quality-core/src/quality_core/sqe/scorecard.py",
+        "packages/quality-core/src/quality_core/sqe/escalation.py",
+        "packages/quality-core/src/quality_core/sqe/scar.py",
+        "packages/quality-core/src/quality_core/sqe/ASSUMPTIONS_LOG.md",
+        "packages/quality-core/src/quality_core/sqe/CITATIONS.tsv",
+        "packages/quality-core/src/quality_core/canvas/sqe.py",
+        "packages/quality-core/tests/test_sqe_schema.py",
+        "packages/quality-core/tests/test_sqe_ppm.py",
+        "packages/quality-core/tests/test_sqe_otif_engine.py",
+        "packages/quality-core/tests/test_sqe_scorecard_engine.py",
+        "packages/quality-core/tests/test_sqe_escalation_engine.py",
+        "packages/quality-core/tests/test_sqe_scar_engine.py",
+        "packages/quality-core/tests/test_sqe_canvas.py",
+        "packages/quality-core/tests/test_sqe_scar_citations.py",
+        "packages/quality-mcp/src/quality_mcp/tools/sqe.py",
+        "packages/quality-mcp/tests/test_sqe_tools.py",
+        "packages/quality-mcp/tests/test_sqe_client_roundtrip.py",
+        "skills/supplier-scar/SKILL.md",
+        "tests/test_sqe_scaffold.py",
+        "docs/mcp-client-setup.md",
+    ]
+    for artifact in expected_artifacts:
+        assert artifact in content, f"Missing expected verification artifact in v0.9.0.md: {artifact}"
+
+
+def test_roadmap_links_v090_milestone() -> None:
+    """Verify ROADMAP.md links v0.9.0 in Summary Release Matrix to docs/milestones/v0.9.0.md."""
+    assert _ROADMAP.is_file(), f"Missing ROADMAP: {_ROADMAP}"
+    content = _ROADMAP.read_text(encoding="utf-8")
+
+    assert "[**`v0.9.0`**](docs/milestones/v0.9.0.md)" in content or "[`v0.9.0`](docs/milestones/v0.9.0.md)" in content, (
+        "ROADMAP.md Summary Release Matrix must link v0.9.0 to docs/milestones/v0.9.0.md"
+    )
+
+
 def test_milestones_markdown_links_resolve() -> None:
     """Verify all relative markdown links in docs/milestones/*.md resolve to existing repository files."""
     for md_file in _MILESTONES_DIR.glob("*.md"):
@@ -717,7 +919,7 @@ def test_milestones_markdown_links_resolve() -> None:
 
 
 def test_changelog_entry_unreleased() -> None:
-    """Verify CHANGELOG.md contains the issue #7, #21, #34, #41, #48, #80, and #96 entries."""
+    """Verify CHANGELOG.md contains the issue #7, #21, #34, #41, #48, #80, #96, #110, and #125 entries."""
     assert _CHANGELOG.is_file(), f"Missing CHANGELOG file: {_CHANGELOG}"
     content = _CHANGELOG.read_text(encoding="utf-8")
 
@@ -728,6 +930,8 @@ def test_changelog_entry_unreleased() -> None:
     assert "#48" in content, "CHANGELOG.md must reference issue #48"
     assert "#80" in content, "CHANGELOG.md must reference issue #80"
     assert "#96" in content, "CHANGELOG.md must reference issue #96"
+    assert "#110" in content, "CHANGELOG.md must reference issue #110"
+    assert "#125" in content, "CHANGELOG.md must reference issue #125"
     assert "docs/milestones/README.md" in content
     assert "docs/milestones/v0.1.0.md" in content
     assert "docs/milestones/v0.2.0.md" in content
@@ -736,6 +940,8 @@ def test_changelog_entry_unreleased() -> None:
     assert "docs/milestones/v0.5.0.md" in content
     assert "docs/milestones/v0.6.0.md" in content
     assert "docs/milestones/v0.7.0.md" in content
+    assert "docs/milestones/v0.8.0.md" in content
+    assert "docs/milestones/v0.9.0.md" in content
     assert "tests/test_milestones_convention.py" in content
 
 
@@ -884,3 +1090,218 @@ def test_negative_control_changelog_missing_issue_96_rejected() -> None:
     content = _CHANGELOG.read_text(encoding="utf-8")
     mutated = content.replace("#96", "#999")
     assert "#96" not in mutated
+
+
+def test_negative_control_v080_missing_epic_or_issue_rejected() -> None:
+    """Negative control: assert missing Epic or Issue in v0.8.0.md content is detected."""
+    content = _V080_MILESTONE.read_text(encoding="utf-8")
+
+    mutated_no_e0 = content.replace("Epic 0 (E0)", "Removed Epic 0")
+    assert "Epic 0 (E0)" not in mutated_no_e0
+
+    mutated_no_issue110 = content.replace(
+        "https://github.com/Siddardth7/quality-engineering-skills/issues/110", ""
+    )
+    extracted = _extract_issue_urls(mutated_no_issue110)
+    issue_nums = {num for _, num in extracted}
+    assert 110 not in issue_nums
+
+
+def test_negative_control_v080_corrupted_branch_name_rejected() -> None:
+    """Negative control: assert altered or corrupted feature branch name in v0.8.0.md is detected."""
+    content = _V080_MILESTONE.read_text(encoding="utf-8")
+    mutated = content.replace("feat/ppap-closeout-110", "feat/ppap-corrupted-branch-99")
+    assert "feat/ppap-closeout-110" not in mutated
+
+
+def test_negative_control_v080_missing_artifact_rejected() -> None:
+    """Negative control: assert missing critical verification artifact in v0.8.0.md is detected."""
+    content = _V080_MILESTONE.read_text(encoding="utf-8")
+    mutated = content.replace("packages/quality-mcp/tests/test_ppap_client_roundtrip.py", "")
+    assert "packages/quality-mcp/tests/test_ppap_client_roundtrip.py" not in mutated
+
+
+def test_negative_control_roadmap_missing_v080_rejected() -> None:
+    """Negative control: assert ROADMAP missing v0.8.0 link is detected."""
+    content = _ROADMAP.read_text(encoding="utf-8")
+    mutated = content.replace("[**`v0.8.0`**](docs/milestones/v0.8.0.md)", "**`v0.8.0`**")
+    assert "[**`v0.8.0`**](docs/milestones/v0.8.0.md)" not in mutated
+
+
+def test_negative_control_changelog_missing_issue_110_rejected() -> None:
+    """Negative control: assert CHANGELOG missing #110 reference is detected."""
+    content = _CHANGELOG.read_text(encoding="utf-8")
+    mutated = content.replace("#110", "#999")
+    assert "#110" not in mutated
+
+
+def test_negative_control_v090_missing_epic_or_issue_rejected() -> None:
+    """Negative control: assert missing Epic or Issue in v0.9.0.md content is detected."""
+    content = _V090_MILESTONE.read_text(encoding="utf-8")
+
+    mutated_no_e0 = content.replace("Epic 0 (E0)", "Removed Epic 0")
+    assert "Epic 0 (E0)" not in mutated_no_e0
+
+    mutated_no_issue125 = content.replace(
+        "https://github.com/Siddardth7/quality-engineering-skills/issues/125", ""
+    )
+    extracted = _extract_issue_urls(mutated_no_issue125)
+    issue_nums = {num for _, num in extracted}
+    assert 125 not in issue_nums
+
+
+def test_negative_control_v090_corrupted_branch_name_rejected() -> None:
+    """Negative control: assert altered or corrupted feature branch name in v0.9.0.md is detected."""
+    content = _V090_MILESTONE.read_text(encoding="utf-8")
+    mutated = content.replace("feat/sqe-closeout-125", "feat/sqe-corrupted-branch-99")
+    assert "feat/sqe-closeout-125" not in mutated
+
+
+def test_negative_control_v090_missing_artifact_rejected() -> None:
+    """Negative control: assert missing critical verification artifact in v0.9.0.md is detected."""
+    content = _V090_MILESTONE.read_text(encoding="utf-8")
+    mutated = content.replace("packages/quality-mcp/tests/test_sqe_client_roundtrip.py", "")
+    assert "packages/quality-mcp/tests/test_sqe_client_roundtrip.py" not in mutated
+
+
+def test_negative_control_roadmap_missing_v090_rejected() -> None:
+    """Negative control: assert ROADMAP missing v0.9.0 link is detected."""
+    content = _ROADMAP.read_text(encoding="utf-8")
+    mutated = content.replace("[**`v0.9.0`**](docs/milestones/v0.9.0.md)", "**`v0.9.0`**")
+    assert "[**`v0.9.0`**](docs/milestones/v0.9.0.md)" not in mutated
+
+
+def test_negative_control_changelog_missing_issue_125_rejected() -> None:
+    """Negative control: assert CHANGELOG missing #125 reference is detected."""
+    content = _CHANGELOG.read_text(encoding="utf-8")
+    mutated = content.replace("#125", "#999")
+    assert "#125" not in mutated
+
+
+# ---------------------------------------------------------------------------
+# Milestone 10 (v1.0.0) — Production Hardening & Release
+# Scoped ahead of implementation. The CHANGELOG roll and doc status-flip land
+# in the E11 closeout (#151); the CHANGELOG issue-ref test is added then.
+# ---------------------------------------------------------------------------
+
+_V100_EXPECTED_ISSUES = {
+    140: "chore/standards-audit-140",
+    141: "feat/export-core-141",
+    142: "feat/export-fmea-142",
+    143: "feat/export-spc-143",
+    144: "feat/export-msa-144",
+    145: "feat/export-controlplan-145",
+    146: "feat/export-rca-146",
+    147: "feat/export-ncr-copq-147",
+    148: "feat/export-ppap-148",
+    149: "feat/export-sqe-149",
+    150: "test/e2e-skill-regression-150",
+    151: "feat/milestone-10-closeout-151",
+}
+
+
+def test_v100_milestone_epics_and_issues_traceability() -> None:
+    """Verify docs/milestones/v1.0.0.md defines Epics E0-E11 and links issues #140-#151 with branch names."""
+    assert _V100_MILESTONE.is_file(), f"Missing milestone v1.0.0 file: {_V100_MILESTONE}"
+    content = _V100_MILESTONE.read_text(encoding="utf-8")
+
+    # Verify all 12 Epics are present (E0 through E11)
+    for epic_num in range(0, 12):
+        assert f"Epic {epic_num} (E{epic_num})" in content or f"E{epic_num}:" in content, (
+            f"Missing Epic {epic_num} in v1.0.0.md"
+        )
+
+    # Verify all 12 issues are present with canonical URLs and branch names
+    issue_tuples = _extract_issue_urls(content)
+    issue_numbers = {num for _, num in issue_tuples}
+
+    for expected_issue, branch_name in _V100_EXPECTED_ISSUES.items():
+        assert expected_issue in issue_numbers, f"Missing issue #{expected_issue} in v1.0.0.md"
+        expected_url = f"https://github.com/Siddardth7/quality-engineering-skills/issues/{expected_issue}"
+        assert expected_url in content, f"Missing canonical URL for issue #{expected_issue}: {expected_url}"
+        assert branch_name in content, f"Missing branch {branch_name} for issue #{expected_issue} in v1.0.0.md"
+
+
+def test_v100_milestone_release_gate_and_artifacts() -> None:
+    """Verify v1.0.0.md specifies the release gate criteria and catalogs verification artifacts."""
+    assert _V100_MILESTONE.is_file(), f"Missing milestone v1.0.0 file: {_V100_MILESTONE}"
+    content = _V100_MILESTONE.read_text(encoding="utf-8")
+
+    # Release gate criteria: existing tools, skills, standards, and the hardening keywords
+    for token in (
+        "lookup_fmea_ap",
+        "calculate_spc_chart",
+        "calculate_gage_rr",
+        "validate_control_plan",
+        "write_ncr",
+        "estimate_copq",
+        "fmea-reviewer",
+        "copq-estimator",
+        "ppap-checker",
+        "supplier-scar",
+        "AIAG",
+        "ISO 9001",
+        "ASQ",
+        "openpyxl",
+        "sanitize_cell",
+        "100%",
+        "CITATIONS.tsv",
+    ):
+        assert token in content, f"Missing release-gate token in v1.0.0.md: {token}"
+
+    # Key verification artifacts cataloged
+    expected_artifacts = [
+        "packages/quality-core/src/quality_core/io/export.py",
+        "packages/quality-core/tests/test_copq_citations.py",
+        "tests/test_milestones_convention.py",
+        "docs/milestones/v1.0.0.md",
+        "TRIAL_",
+    ]
+    for artifact in expected_artifacts:
+        assert artifact in content, f"Missing expected verification artifact in v1.0.0.md: {artifact}"
+
+
+def test_roadmap_links_v100_milestone() -> None:
+    """Verify ROADMAP.md links v1.0.0 in Summary Release Matrix to docs/milestones/v1.0.0.md."""
+    assert _ROADMAP.is_file(), f"Missing ROADMAP: {_ROADMAP}"
+    content = _ROADMAP.read_text(encoding="utf-8")
+
+    assert "[**`v1.0.0`**](docs/milestones/v1.0.0.md)" in content or "[`v1.0.0`](docs/milestones/v1.0.0.md)" in content, (
+        "ROADMAP.md Summary Release Matrix must link v1.0.0 to docs/milestones/v1.0.0.md"
+    )
+
+
+def test_negative_control_v100_missing_epic_or_issue_rejected() -> None:
+    """Negative control: assert missing Epic or Issue in v1.0.0.md content is detected."""
+    content = _V100_MILESTONE.read_text(encoding="utf-8")
+
+    # Mutate by removing Epic 0
+    mutated_no_e0 = content.replace("Epic 0 (E0)", "Removed Epic 0")
+    assert "Epic 0 (E0)" not in mutated_no_e0
+
+    # Mutate by removing issue #151
+    mutated_no_issue151 = content.replace("https://github.com/Siddardth7/quality-engineering-skills/issues/151", "")
+    extracted = _extract_issue_urls(mutated_no_issue151)
+    issue_nums = {num for _, num in extracted}
+    assert 151 not in issue_nums
+
+
+def test_negative_control_v100_corrupted_branch_name_rejected() -> None:
+    """Negative control: assert altered or corrupted feature branch name in v1.0.0.md is detected."""
+    content = _V100_MILESTONE.read_text(encoding="utf-8")
+    mutated = content.replace("feat/milestone-10-closeout-151", "feat/corrupted-branch-99")
+    assert "feat/milestone-10-closeout-151" not in mutated
+
+
+def test_negative_control_v100_missing_artifact_rejected() -> None:
+    """Negative control: assert missing critical verification artifact in v1.0.0.md is detected."""
+    content = _V100_MILESTONE.read_text(encoding="utf-8")
+    mutated = content.replace("packages/quality-core/tests/test_copq_citations.py", "")
+    assert "packages/quality-core/tests/test_copq_citations.py" not in mutated
+
+
+def test_negative_control_roadmap_missing_v100_rejected() -> None:
+    """Negative control: assert ROADMAP missing v1.0.0 link is detected."""
+    content = _ROADMAP.read_text(encoding="utf-8")
+    mutated = content.replace("[**`v1.0.0`**](docs/milestones/v1.0.0.md)", "**`v1.0.0`**")
+    assert "[**`v1.0.0`**](docs/milestones/v1.0.0.md)" not in mutated

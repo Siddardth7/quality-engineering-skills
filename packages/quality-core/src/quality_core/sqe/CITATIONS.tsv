@@ -1,0 +1,7 @@
+site	src_line	quote
+RULE-SQE-011	2003	Essentially, this involves asking "why" of the root cause until the cause is established.
+RULE-SQE-011	2004	root of the root cause. The question can be asked more or less 5 times, it doesn't have to be 5!
+RULE-SQE-011	1685	The systemic root cause(s) addresses, "Why did the system or planning process fail to identify the cause of the problem and the non-discovery?" The systemic root cause typically is understood last and diligence is required to address thoroughly.
+RULE-SQE-012	1991	there is normally a procedure, a policy, or a (systemic) practice that has allowed you pass. We call this the 'root cause of the root cause.' This must be established and resolved.
+RULE-SQE-012	2026	These systemic problems need to be fixed. The goal is to change the system that allowed the problem to occur in the first place and prevent problems from arising similar.
+RULE-SQE-013	2026	These systemic problems need to be fixed. The goal is to change the system that allowed the problem to occur in the first place and prevent problems from arising similar.

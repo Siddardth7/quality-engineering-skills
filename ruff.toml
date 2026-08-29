@@ -2,7 +2,7 @@
 target-version = "py311"
 line-length = 100
 
-extend-exclude = [".venv", "**/__pycache__"]
+extend-exclude = [".venv", "**/__pycache__", "voice"]
 
 [lint]
 select = ["E", "F", "W", "I"]

@@ -7,8 +7,8 @@ from quality_mcp import __version__
 
 
 def test_version_ssot_matches_pyproject() -> None:
-    """quality_mcp.__version__ must equal '0.7.0' and match pyproject.toml."""
-    assert __version__ == "0.7.0"
+    """quality_mcp.__version__ must equal '0.9.0' and match pyproject.toml."""
+    assert __version__ == "0.9.0"
     pyproject = Path(__file__).resolve().parents[1] / "pyproject.toml"
     data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
     assert __version__ == data["project"]["version"]

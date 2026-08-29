@@ -37,35 +37,35 @@ _CHANGELOG_MD = _REPO_ROOT / "CHANGELOG.md"
 
 _EXPECTED_MANUALS: dict[str, dict[str, str]] = {
     "ISO 9001:2015 Section 8.7": {
-        "path": "/Users/sid/Documents/Upskill/SixSigma/ISO_9001_2015_Section_8_7.md",
+        "path": "/Users/sid/Documents/Upskill/SixSigma/NCR/ISO_9001_2015_Section_8_7.md",
         "marker": "8.7",
     },
     "ISO 9001:2015 Full PDF": {
-        "path": "/Users/sid/Documents/Upskill/SixSigma/ISO-9001-2015.pdf",
+        "path": "/Users/sid/Documents/Upskill/SixSigma/NCR/ISO-9001-2015.pdf",
         "marker": "9001",
     },
     "IATF 16949:2016 Section 8.7": {
-        "path": "/Users/sid/Documents/Upskill/SixSigma/IATF_16949_2016_Section_8_7.md",
+        "path": "/Users/sid/Documents/Upskill/SixSigma/NCR/IATF_16949_2016_Section_8_7.md",
         "marker": "16949",
     },
     "IATF 16949:2016 Full PDF": {
-        "path": "/Users/sid/Documents/Upskill/SixSigma/pdfcoffee.com_iatf16949-2016-standard-pdf-free.pdf",
+        "path": "/Users/sid/Documents/Upskill/SixSigma/NCR/pdfcoffee.com_iatf16949-2016-standard-pdf-free.pdf",
         "marker": "16949",
     },
     "ASQ CSSGB Handbook": {
-        "path": "/Users/sid/Documents/Upskill/SixSigma/ASQ_six_sigma_green_belt_handb.pdf",
+        "path": "/Users/sid/Documents/Upskill/SixSigma/COPQ/ASQ_six_sigma_green_belt_handb.pdf",
         "marker": "ASQ",
     },
     "ASQ CSSGB BoK 2014": {
-        "path": "/Users/sid/Documents/Upskill/SixSigma/_new/ASQ-CSSGB-BoK-2014.pdf",
+        "path": "/Users/sid/Documents/Upskill/SixSigma/COPQ/_new/ASQ-CSSGB-BoK-2014.pdf",
         "marker": "ASQ",
     },
     "CSSC Lean Six Sigma Green Belt Manual": {
-        "path": "/Users/sid/Documents/Upskill/SixSigma/Lean-Six-Sigma-Green-Belt-Certification-Training-Manual-CSSC-2018-06b.pdf",
+        "path": "/Users/sid/Documents/Upskill/SixSigma/COPQ/Lean-Six-Sigma-Green-Belt-Certification-Training-Manual-CSSC-2018-06b.pdf",
         "marker": "Six Sigma",
     },
     "Lumafield Cost of Quality Report": {
-        "path": "/Users/sid/Documents/Upskill/SixSigma/TheLumafieldCostofQualityReportpdf.pdf",
+        "path": "/Users/sid/Documents/Upskill/SixSigma/COPQ/TheLumafieldCostofQualityReportpdf.pdf",
         "marker": "Cost of Quality",
     },
 }
@@ -101,9 +101,9 @@ def test_ncr_assumptions_log_exists_and_metadata() -> None:
     assert "**Package:** `quality_core.ncr`" in content
     assert "**Standard References:**" in content
     assert "ISO 9001:2015 Clause 8.7" in content
-    assert "/Users/sid/Documents/Upskill/SixSigma/ISO_9001_2015_Section_8_7.md" in content
+    assert "/Users/sid/Documents/Upskill/SixSigma/NCR/ISO_9001_2015_Section_8_7.md" in content
     assert "IATF 16949:2016 Clause 8.7" in content
-    assert "/Users/sid/Documents/Upskill/SixSigma/IATF_16949_2016_Section_8_7.md" in content
+    assert "/Users/sid/Documents/Upskill/SixSigma/NCR/IATF_16949_2016_Section_8_7.md" in content
 
     # Governance and qualitative notes
     assert "## Note on Qualitative NCR Governance and Engineering Heuristics" in content
@@ -122,10 +122,10 @@ def test_copq_assumptions_log_exists_and_metadata() -> None:
     assert "# Engineering Assumptions Log — Cost of Poor Quality (COPQ) Suite" in content
     assert "**Package:** `quality_core.copq`" in content
     assert "**Standard References:**" in content
-    assert "/Users/sid/Documents/Upskill/SixSigma/ASQ_six_sigma_green_belt_handb.pdf" in content
-    assert "/Users/sid/Documents/Upskill/SixSigma/_new/ASQ-CSSGB-BoK-2014.pdf" in content
-    assert "/Users/sid/Documents/Upskill/SixSigma/Lean-Six-Sigma-Green-Belt-Certification-Training-Manual-CSSC-2018-06b.pdf" in content
-    assert "/Users/sid/Documents/Upskill/SixSigma/TheLumafieldCostofQualityReportpdf.pdf" in content
+    assert "/Users/sid/Documents/Upskill/SixSigma/COPQ/ASQ_six_sigma_green_belt_handb.pdf" in content
+    assert "/Users/sid/Documents/Upskill/SixSigma/COPQ/_new/ASQ-CSSGB-BoK-2014.pdf" in content
+    assert "/Users/sid/Documents/Upskill/SixSigma/COPQ/Lean-Six-Sigma-Green-Belt-Certification-Training-Manual-CSSC-2018-06b.pdf" in content
+    assert "/Users/sid/Documents/Upskill/SixSigma/COPQ/TheLumafieldCostofQualityReportpdf.pdf" in content
 
     # PAF cost model and arithmetic definitions
     assert "## Note on the PAF Cost Model and Arithmetic Rollup Definitions" in content
@@ -201,11 +201,11 @@ def test_claude_md_standards_fidelity_mapping() -> None:
     assert "**NCR:**" in content
     assert "**COPQ:**" in content
     assert "ISO 9001:2015 §8.7" in content
-    assert "/Users/sid/Documents/Upskill/SixSigma/ISO_9001_2015_Section_8_7.md" in content
+    assert "/Users/sid/Documents/Upskill/SixSigma/NCR/ISO_9001_2015_Section_8_7.md" in content
     assert "IATF 16949:2016 §8.7" in content
-    assert "/Users/sid/Documents/Upskill/SixSigma/IATF_16949_2016_Section_8_7.md" in content
-    assert "/Users/sid/Documents/Upskill/SixSigma/ASQ_six_sigma_green_belt_handb.pdf" in content
-    assert "/Users/sid/Documents/Upskill/SixSigma/TheLumafieldCostofQualityReportpdf.pdf" in content
+    assert "/Users/sid/Documents/Upskill/SixSigma/NCR/IATF_16949_2016_Section_8_7.md" in content
+    assert "/Users/sid/Documents/Upskill/SixSigma/COPQ/ASQ_six_sigma_green_belt_handb.pdf" in content
+    assert "/Users/sid/Documents/Upskill/SixSigma/COPQ/TheLumafieldCostofQualityReportpdf.pdf" in content
 
 
 def test_changelog_entry_unreleased_ncr_copq_scaffold() -> None:

@@ -9,6 +9,15 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- Shared live-formula Excel export core in `quality_core.io`: a `Formula` marker type
+  (formula string + optional number format) and `write_formula_cell()`, which write a real
+  OOXML `<f>` element instead of a cached literal so exported workbooks recalculate in Excel.
+  `write_table_sheet` recognises `Formula`-valued cells and writes them live; every other
+  cell still goes through the unchanged `sanitize_cell` escaping, so the opt-in is the
+  call site's *type*, never the data's content — an untrusted `"=1+1"` string stays
+  apostrophe-prefixed inert. Ships with a reusable `tests/_xlsx_formula_audit.py`
+  `<f>`-presence verifier (raw-XML, sheet resolved via `workbook.xml` rels) and its
+  negative control proving it fails on a hardcoded literal (#141).
 - Backfilled co-located `ASSUMPTIONS_LOG.md` standards declarations for every previously
   uncovered `quality_core` module, closing the E0 audit gap (#140): `io/` (RULE-IO-001/002 —
   `FORMULA_PREFIXES` is an OWASP CSV-injection convention, not a licensed standard),

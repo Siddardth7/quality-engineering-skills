@@ -7,14 +7,17 @@ against the core sanitizer, so every app that reuses `export_csv` inherits the
 protection (and the guard travels with the code).
 """
 
+import io
 import re
 
 import numpy as np
 import openpyxl
 import pandas as pd
 import pytest
+from _xlsx_formula_audit import assert_cell_is_formula
 from quality_core.io.export import (
     FORMULA_PREFIXES,
+    Formula,
     add_image_page,
     export_csv,
     fmt,
@@ -28,6 +31,7 @@ from quality_core.io.export import (
     safe_text,
     sanitize_cell,
     sanitize_for_export,
+    write_formula_cell,
     write_keyvalue_sheet,
     write_table_sheet,
 )
@@ -441,3 +445,152 @@ def test_numeric_exemption_is_narrow():
     # because a leading Tab/CR is itself a formula trigger.
     for spaced in ("\t-3.0", "\r-3.0", " -3.0", "-3.0 "):
         assert sanitize_cell(spaced) == f"'{spaced}", repr(spaced)
+
+
+# --- #141 · live-formula export core -----------------------------------------
+#
+# The bypass is the mirror image of the #198 guarantee above, so each test below is
+# paired with its negative control: the escaping still owns every data cell, the
+# opt-in is by TYPE at the call site (never by sniffing a string for a leading "="),
+# and the verifier itself is proven to fail on a hardcoded literal — otherwise a
+# "live formula" assertion could pass against an exporter that writes constants.
+
+
+def _saved(wb) -> bytes:
+    """Serialize a workbook to .xlsx bytes (tests never touch disk)."""
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def test_formula_namedtuple_construction():
+    assert Formula("=SUM(A1:A2)") == ("=SUM(A1:A2)", None)
+    assert Formula("=B2/C2", number_format="0.00%").number_format == "0.00%"
+
+
+def test_write_formula_cell_writes_live_formula_and_returns_cell():
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Calc"
+    cell = write_formula_cell(ws, 2, 2, "=1+1")
+    assert cell is ws.cell(2, 2)
+    assert cell.value == "=1+1"  # NOT apostrophe-escaped
+    assert cell.number_format == "General"  # number_format=None leaves the default
+    # ...and it is live in the saved file, not a literal.
+    assert_cell_is_formula(_saved(wb), "Calc", "B2")
+
+
+def test_write_formula_cell_applies_number_format():
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    cell = write_formula_cell(ws, 1, 1, "=B1/C1", number_format="0.0000")
+    assert cell.number_format == "0.0000"
+
+
+def test_write_formula_cell_rejects_non_formula_string():
+    """The '=' guard catches a plain data string routed through the bypass by mistake."""
+    wb = openpyxl.Workbook()
+    with pytest.raises(ValueError, match="must start with"):
+        write_formula_cell(wb.active, 1, 1, "SUM(A1:A2)")
+
+
+def test_write_table_sheet_writes_formula_values_live():
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    df = pd.DataFrame([{"Rate": Formula("=2/4", number_format="0.00%")}])
+    write_table_sheet(ws, df, title="Calc", columns=["Rate"], col_widths={})
+    assert ws.cell(2, 1).value == "=2/4"
+    assert ws.cell(2, 1).number_format == "0.00%"
+    assert_cell_is_formula(_saved(wb), "Calc", "A2")
+
+
+def test_write_table_sheet_bypass_is_per_cell_and_untrusted_strings_stay_inert():
+    """NEGATIVE CONTROL: the opt-in is the Formula TYPE, never the string's content.
+
+    The same row carries an untrusted ``"=1+1"`` string next to a real Formula. The
+    string must still be apostrophe-escaped by the unchanged ``sanitize_cell`` path,
+    proving the bypass does not leak across cells.
+    """
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    df = pd.DataFrame([{"Untrusted": "=1+1", "Computed": Formula("=SUM(A2:A2)")}])
+    write_table_sheet(ws, df, title="Mixed", columns=["Untrusted", "Computed"], col_widths={})
+    assert ws.cell(2, 1).value == "'=1+1"  # inert
+    assert ws.cell(2, 2).value == "=SUM(A2:A2)"  # live
+    saved = _saved(wb)
+    assert_cell_is_formula(saved, "Mixed", "B2")
+    with pytest.raises(AssertionError, match="literal, not a live formula"):
+        assert_cell_is_formula(saved, "Mixed", "A2")
+
+
+def test_write_table_sheet_mixes_formula_and_data_within_one_column():
+    """A column may hold data rows and a formula total row — the check is per-cell."""
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    df = pd.DataFrame([{"Qty": 4}, {"Qty": 6}, {"Qty": Formula("=SUM(A2:A3)")}])
+    write_table_sheet(ws, df, title="T", columns=["Qty"], col_widths={})
+    assert [ws.cell(r, 1).value for r in (2, 3, 4)] == [4, 6, "=SUM(A2:A3)"]
+
+
+def test_write_table_sheet_applies_row_fill_to_formula_cells():
+    """The shared styling tail must run for the formula branch too (fill + no fill)."""
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    df = pd.DataFrame([{"V": Formula("=1+1")}])
+    write_table_sheet(ws, df, title="T", columns=["V"], col_widths={}, row_fill_hex=lambda r: "FF0000")
+    assert ws.cell(2, 1).fill.fgColor.rgb.endswith("FF0000")
+
+    ws2 = wb.create_sheet()
+    write_table_sheet(ws2, df, title="T2", columns=["V"], col_widths={}, row_fill_hex=lambda r: None)
+    assert ws2.cell(2, 1).fill.fill_type in (None, "none")
+    assert ws2.cell(2, 1).font.size == 10
+
+
+def test_write_table_sheet_rejects_formula_without_equals():
+    wb = openpyxl.Workbook()
+    df = pd.DataFrame([{"V": Formula("1+1")}])
+    with pytest.raises(ValueError, match="must start with"):
+        write_table_sheet(wb.active, df, title="T", columns=["V"], col_widths={})
+
+
+# --- #141 · the verifier's own controls ---------------------------------------
+
+
+def test_assert_cell_is_formula_fails_on_hardcoded_literal():
+    """NEGATIVE CONTROL: an exporter that writes a computed *constant* must not pass.
+
+    Without this, every "live formula" assertion in E2-E9 could be satisfied by a
+    hardcoded value — the check would be theatre.
+    """
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Calc"
+    ws.cell(2, 2, 42)  # the "computed" cell, hardcoded
+    ws.cell(3, 2, sanitize_cell("=1+1"))  # an escaped, inert string
+    saved = _saved(wb)
+    with pytest.raises(AssertionError, match="literal, not a live formula"):
+        assert_cell_is_formula(saved, "Calc", "B2")
+    with pytest.raises(AssertionError, match="literal, not a live formula"):
+        assert_cell_is_formula(saved, "Calc", "B3")
+
+
+def test_assert_cell_is_formula_fails_on_absent_cell():
+    wb = openpyxl.Workbook()
+    wb.active.title = "Calc"
+    write_formula_cell(wb.active, 1, 1, "=1+1")
+    with pytest.raises(AssertionError, match="absent from the saved worksheet XML"):
+        assert_cell_is_formula(_saved(wb), "Calc", "Z99")
+
+
+def test_assert_cell_is_formula_resolves_renamed_and_reordered_sheets():
+    """Sheets are resolved through workbook.xml's name→r:id map, not by filename guess."""
+    wb = openpyxl.Workbook()
+    first = wb.active
+    first.title = "Cover & Notes"
+    second = wb.create_sheet("Metrics")
+    write_formula_cell(second, 2, 3, "=1+1")
+    wb.move_sheet(second, offset=-1)  # reorder: sheet2.xml is now displayed first
+    saved = _saved(wb)
+    assert_cell_is_formula(saved, "Metrics", "C2")
+    with pytest.raises(AssertionError, match="not found in workbook"):
+        assert_cell_is_formula(saved, "No Such Sheet", "A1")

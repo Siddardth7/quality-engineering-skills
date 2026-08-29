@@ -25,6 +25,28 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
   standard deviations, moving ranges, defect proportions, rates, centerlines, and control limits;
   process capability studies (`Cp`, `Cpk`, `Pp`, `Ppk`, process mean, overall dispersion, within-subgroup
   dispersion); and run-rule violation findings and metadata tables, re-exported in `quality_core.io` (#143).
+- Control Plan live-formula Excel exporter `quality_core.controlplan.export`
+  (`export_controlplan_workbook`, `benchmark_controlplan_dataset`), a two-sheet workbook
+  built on the E1 core. It lives in the domain package, not beside the `quality_core.io`
+  primitives it consumes: `controlplan.schema` already imports `io` for the ingest
+  boundary, and `io` sits structurally below every domain engine, so an exporter inside
+  `io` would close that arrow into an import cycle. The matrix sheet carries every `ControlPlanRow` field as plain
+  sanitized data plus two derived `"Yes"`/`"No"` display columns
+  (`Sample_Plan_Placeholder`, `PFMEA_Linked`); the only live cells in the workbook are the
+  three linkage roll-ups on a dedicated `Coverage` sheet, at fixed addresses that never
+  move with the row count — `B2` `=COUNTA(...)` (total characteristics), `B3`
+  `=COUNTIF(...,"Yes")` (linked characteristics) and `B4` `=IF(B2=0,0,B3/B2)` (coverage,
+  rendered `0.0%`), whose `IF` guard is unconditional so an empty dataset shows `0` rather
+  than `#DIV/0!`. "Linked" here is *declared* linkage (`source_cause_id is not None`), a
+  deliberately weaker claim than `validate_pfmea_linkage`'s *validated* linkage, which
+  needs a `RelationalFMEA` an exporter does not have. The `<f>` elements are proven by
+  `assert_cell_is_formula`, with a hardcoded-literal build as the negative control and an
+  injection-safety control showing a free-text `"="` payload stays apostrophe-escaped
+  while the same workbook's roll-ups stay live and correct; recorded as RULE 4 in
+  `controlplan/ASSUMPTIONS_LOG.md`, which adds no citation (elementary counting). Column
+  letters are derived
+  from `CONTROLPLAN_EXPORT_COLUMNS` rather than hand-typed, and rows export in
+  `dataset.rows` order, never re-sorted (#145).
 - Shared live-formula Excel export core in `quality_core.io`: a `Formula` marker type
   (formula string + optional number format) and `write_formula_cell()`, which write a real
   OOXML `<f>` element instead of a cached literal so exported workbooks recalculate in Excel.

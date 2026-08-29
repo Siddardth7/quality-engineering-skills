@@ -44,3 +44,17 @@ This document records every non-obvious engineering decision, published constant
 > "Evidence for the implementation of process controls for Special Characteristics should be monitored, documented, and accessible." (Line 5100)
 
 **Applied In:** `quality_core.controlplan.connector::validate_pfmea_linkage`.
+
+---
+
+## RULE 4 — Excel Exporter Introduces No Standards Constant; Coverage Roll-Up Counts *Declared* Linkage
+
+**Decision:** `export.py` writes a Control Plan dataset to `.xlsx` without defining, deriving, or transcribing any AIAG/VDA value. Its three roll-up cells (`Coverage!B2`/`B3`/`B4`) are live spreadsheet formulas — `COUNTA`, `COUNTIF`, and a ratio of the two — counting rows already present in the exported matrix. Column letters are derived from `CONTROLPLAN_EXPORT_COLUMNS` via `get_column_letter`, never hand-typed.
+
+**Declared linkage, not validated linkage:** the `PFMEA_Linked` column the roll-ups count against is a plain presence check (`source_cause_id is not None`). It is **not** RULE 3's `validate_pfmea_linkage` check, which additionally verifies the ID resolves against a specific `RelationalFMEA` — that needs both objects and is out of reach of a dataset-only exporter call. The exported "Linkage Coverage %" is therefore a strictly weaker claim than RULE 3's `linked_rows`, and must never be read as a validated-linkage number.
+
+**Source:** None. `COUNTA`/`COUNTIF`/ratio are elementary spreadsheet arithmetic; no published standard specifies them, so this rule adds no row to `CITATIONS.tsv`. The underlying linkage/orphan concept remains governed by RULE 3 above (AIAG-VDA FMEA Handbook 2019, §1.4 & §5) — that citation is unchanged.
+
+**Rationale:** An exporter is a presentation boundary. Re-deriving a standards claim inside it would create a second copy that could drift from the engine's, so the roll-up is kept to elementary counting against exporter-controlled column letters and the stronger, standards-governed check stays solely in `connector.py`.
+
+**Applied In:** `quality_core.controlplan.export` (`CONTROLPLAN_EXPORT_COLUMNS`, `_coverage_formulas`, `_row_record`, `export_controlplan_workbook`).

@@ -62,33 +62,56 @@ def _csv_buf(rows: list[dict[str, Any]], name: str = "upload.csv") -> io.BytesIO
 
 def test_rca_module_all_exports() -> None:
     expected_exports = {
+        # 5-Why
         "AntiPatternFinding",
-        "CandidateCause",
+        "FIVE_WHY_COLUMN_WIDTHS",
+        "FIVE_WHY_EXPORT_COLUMNS",
         "FIVE_WHY_SCHEMA",
+        "FIVE_WHY_SHEET_TITLE",
         "FiveWhyChain",
         "FiveWhyLinkEval",
         "FiveWhyStep",
         "FiveWhyValidationResult",
         "SystemicAssessment",
+        "benchmark_five_why_chain",
+        "export_five_why_workbook",
         "load_five_why_csv",
         "validate_five_why",
         "validate_five_why_chain",
+        # Fishbone
         "Category6M",
+        "FISHBONE_COLUMN_WIDTHS",
+        "FISHBONE_EXPORT_COLUMNS",
         "FISHBONE_SCHEMA",
+        "FISHBONE_SHEET_TITLE",
         "FishboneCategorizationResult",
         "FishboneCause",
         "FishboneDataset",
+        "benchmark_fishbone_dataset",
         "categorize_fishbone",
+        "export_fishbone_workbook",
         "load_fishbone_csv",
         "validate_fishbone",
+        # Is/Is-Not
+        "CandidateCause",
+        "IS_IS_NOT_COLUMN_WIDTHS",
+        "IS_IS_NOT_EXPORT_COLUMNS",
         "IS_IS_NOT_SCHEMA",
+        "IS_IS_NOT_SHEET_TITLE",
         "IsIsNotMatrix",
         "IsIsNotRow",
         "IsIsNotScopingResult",
         "KTDimension",
+        "benchmark_is_is_not_matrix",
+        "export_is_is_not_workbook",
         "load_is_is_not_csv",
         "scope_is_is_not",
         "validate_is_is_not",
+        # Combined RCA Exporters & Benchmarks
+        "benchmark_rca_datasets",
+        "build_rca_workbook",
+        "export_rca_workbook",
+        # Error
         "IngestError",
     }
 

@@ -23,6 +23,11 @@ from quality_core.ppap.auditor import (
     PPAPAuditResult,
     audit_ppap_package,
 )
+from quality_core.ppap.export import (
+    benchmark_ppap_package,
+    build_ppap_workbook,
+    export_ppap_workbook,
+)
 from quality_core.ppap.linkage import (
     LINKABLE_ELEMENTS,
     LinkageElementResult,
@@ -158,7 +163,10 @@ __all__ = [
     "assess_applicability",
     "assess_initial_process_study",
     "audit_ppap_package",
+    "benchmark_ppap_package",
+    "build_ppap_workbook",
     "elements_required_at_level",
+    "export_ppap_workbook",
     "find_blanket_statements",
     "load_ppap_csv",
     "lookup_requirement",

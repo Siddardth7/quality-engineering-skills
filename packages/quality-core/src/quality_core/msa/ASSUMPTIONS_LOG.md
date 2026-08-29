@@ -1092,6 +1092,30 @@ beyond the generic `method` / `method_note` rows they already carry; any UI sele
 
 ---
 
+## RULE 18 — Live-Formula Excel Exporter Conventions & Injection Defense
+
+**Decision:** `export.py` generates multi-sheet `.xlsx` workbooks for crossed Gage R&R studies per AIAG MSA (4th Edition) supporting both Average-and-Range and ANOVA methods. Computed variance component metrics (%EV, %AV, %GRR, %PV, %TV vs study variation; %EV, %AV, %GRR, %PV, %TV vs tolerance when tolerance is supplied; 6×SD spread; GRR SD; TV SD; ndc categories; and ANOVA MS/F/Sums) are written as true recalculating openpyxl live formulas (`Formula(...)` emitting `<f>` elements). Qualitative AIAG verdicts remain structured strings ("Accept", "Marginal", "Reject"), and all user-supplied free text, appraiser names, part IDs, and study titles route through `sanitize_cell` / `write_table_sheet` (prefixing `'` to prevent formula injection).
+
+**Source:** AIAG MSA (4th Edition), Chapter III Section B (Average-and-Range and ANOVA methods), Appendix A (ANOVA Table decomposition), Chapter II Section D (Table II-D 1 acceptance bands), and OWASP CSV-injection guidelines.
+
+**Coordinate Mapping:**
+- `$B$8`: Tolerance value cell on `Gage R&R Summary` sheet.
+- `B10`: `ndc` cell (`=MAX(1, INT(1.41 * (B{pv_row} / B{grr_row})))`).
+- Variance Component rows (EV, AV, [INT], GRR, PV, TV) on `Gage R&R Summary` sheet:
+  - 6×SD spread: `=B{row}*6`
+  - % Study Variation (%SV): `=(B{row}/$B${tv_row})*100`
+  - % Tolerance (%Tol): `=(C{row}/$B$8)*100`
+  - GRR SD: `=SQRT(B{ev_row}^2 + B{av_row}^2)` (Average-and-Range) or `=SQRT(B{ev_row}^2 + B{av_row}^2 + B{int_row}^2)` (ANOVA)
+  - TV SD: `=SQRT(B{grr_row}^2 + B{pv_row}^2)`
+- `ANOVA Table` sheet:
+  - MS cells: `=C{row}/B{row}` (`=SS / DF`)
+  - Interaction F-statistic cell: `=D4/D5` (`=MS_int / MS_err`)
+  - Total DF and SS cells: `=SUM(B2:B5)` and `=SUM(C2:C5)`
+
+**Applied In:** `quality_core.msa.export` (`build_msa_workbook`, `export_msa_workbook`).
+
+---
+
 ## Summary of Files & Code Pointers
 
 | Assumption | Implemented In |
@@ -1113,3 +1137,5 @@ beyond the generic `method` / `method_note` rows they already carry; any UI sele
 | Edge cases | `compute_gage_rr()`, error handling + `_compute_verdict()` |
 | %EV / %AV / %PV vs study variation | `compute_gage_rr()`, keys `pev_study` / `pav_study` / `ppv_study` |
 | %EV / %AV / %PV vs tolerance | `compute_gage_rr()`, keys `pev_tolerance` / `pav_tolerance` / `ppv_tolerance` (each `* _STUDY_VARIATION_SIGMA / tolerance`) |
+| Live-formula Excel export & injection safety | `export.py`, `build_msa_workbook()`, `export_msa_workbook()` |
+

@@ -5,6 +5,9 @@ and the future Control Plan write export *config* (columns, colors, layout) and
 reuse the cross-cutting machinery — formula-injection escaping, openpyxl styling,
 Latin-1 PDF text, repeating table headers with page breaks.
 
+`export_fmea` is the first domain exporter built on those primitives: it writes an
+FMEA dataset to .xlsx with a live `=S*O*D` RPN formula per row.
+
 `validate` holds the mirror-image *ingest* boundary: each app supplies a
 `TableSchema` (its Pydantic row model + required columns), and `load_table`
 reads a CSV/Excel upload and validates it, raising a user-safe `IngestError`
@@ -30,6 +33,12 @@ from quality_core.io.export import (
     write_formula_cell,
     write_keyvalue_sheet,
     write_table_sheet,
+)
+from quality_core.io.export_fmea import (
+    FMEA_COL_WIDTHS,
+    FMEA_EXPORT_COLUMNS,
+    benchmark_fmea_dataset,
+    export_fmea_workbook,
 )
 from quality_core.io.validate import (
     DEFAULT_MAX_COLUMNS,
@@ -64,6 +73,11 @@ __all__ = [
     "pdf_title",
     "pdf_subheader",
     "pdf_summary_cells",
+    # export_fmea
+    "FMEA_EXPORT_COLUMNS",
+    "FMEA_COL_WIDTHS",
+    "export_fmea_workbook",
+    "benchmark_fmea_dataset",
     # validate
     "IngestError",
     "TableSchema",

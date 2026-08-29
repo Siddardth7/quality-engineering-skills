@@ -9,6 +9,16 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- FMEA live-formula Excel exporter `quality_core.io.export_fmea` (`export_fmea_workbook`,
+  `benchmark_fmea_dataset`), the first domain exporter built on the E1 core. The RPN column
+  is the only live cell — a real `=S*O*D` formula referencing that row's own Severity /
+  Occurrence / Detection cells, so editing a rating in Excel recalculates RPN instead of
+  reading a stale number; its `<f>` element is proven by `assert_cell_is_formula`, with a
+  hardcoded-literal build as the negative control. The Action Priority column is a
+  structured lookup value from `quality_core.scoring.action_priority` (not a formula, and
+  never re-derived here), and every free-text field stays inert through the unchanged
+  `sanitize_cell` escaping. Column letters are derived from `FMEA_EXPORT_COLUMNS` rather
+  than hand-typed, and rows export in `dataset.rows` order, never re-sorted (#142).
 - Shared live-formula Excel export core in `quality_core.io`: a `Formula` marker type
   (formula string + optional number format) and `write_formula_cell()`, which write a real
   OOXML `<f>` element instead of a cached literal so exported workbooks recalculate in Excel.

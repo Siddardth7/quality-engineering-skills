@@ -40,6 +40,10 @@ from quality_core.io.export_fmea import (
     benchmark_fmea_dataset,
     export_fmea_workbook,
 )
+from quality_core.io.export_spc import (
+    export_spc_excel,
+    export_spc_to_workbook,
+)
 from quality_core.io.validate import (
     DEFAULT_MAX_COLUMNS,
     DEFAULT_MAX_ROWS,
@@ -78,6 +82,9 @@ __all__ = [
     "FMEA_COL_WIDTHS",
     "export_fmea_workbook",
     "benchmark_fmea_dataset",
+    # export_spc
+    "export_spc_excel",
+    "export_spc_to_workbook",
     # validate
     "IngestError",
     "TableSchema",

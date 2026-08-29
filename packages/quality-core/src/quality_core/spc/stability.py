@@ -1,4 +1,4 @@
-"""Stability gate for capability studies (docs/ASSUMPTIONS_LOG.md RULE 7).
+"""Stability gate for capability studies (spc/ASSUMPTIONS_LOG.md RULE-SPC-004).
 
 Capability indices presuppose a process in statistical control, so this module
 assembles a stream's control chart, runs Western Electric rule detection on it,

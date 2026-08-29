@@ -6,10 +6,15 @@ schema validation models, and core constants.
 `gage_rr` contains `compute_gage_rr` and the underlying calculation engines.
 `schema` contains `GageStudyRow`, `GageStudyDataset`, `GAGE_STUDY_SCHEMA`,
 and `load_gage_study_csv`.
+`export` contains `export_msa_workbook` and `build_msa_workbook`.
 """
 
 from __future__ import annotations
 
+from quality_core.msa.export import (
+    build_msa_workbook,
+    export_msa_workbook,
+)
 from quality_core.msa.gage_rr import (
     _ANOVA_ALPHA,
     _K1,
@@ -42,6 +47,8 @@ __all__ = [
     "METHOD_NOTE",
     "METHOD_NOTE_ANOVA",
     "compute_gage_rr",
+    "build_msa_workbook",
+    "export_msa_workbook",
     "_K1",
     "_K2",
     "_K3",

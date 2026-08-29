@@ -80,6 +80,13 @@ def test_ncr_module_all_exports() -> None:
         "recommend_disposition",
         "NonconformanceWriteResult",
         "DispositionRecommendation",
+        "DISPOSITION_SUMMARY_COLUMNS",
+        "NCR_COL_WIDTHS",
+        "NCR_EXPORT_COLUMNS",
+        "benchmark_ncr_dataset",
+        "build_ncr_workbook",
+        "export_ncr_excel",
+        "export_ncr_workbook",
     }
     assert set(ncr.__all__) == expected_exports
     for symbol in expected_exports:

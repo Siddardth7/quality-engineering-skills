@@ -9,6 +9,7 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- Nonconformance Reporting (NCR) and Cost of Poor Quality (COPQ) live-formula Excel exporters in `quality_core.ncr.export` (`build_ncr_workbook`, `export_ncr_workbook`, `export_ncr_excel`, `benchmark_ncr_dataset`) and `quality_core.copq.export` (`build_copq_workbook`, `export_copq_workbook`, `export_copq_excel`, `benchmark_copq_dataset`). The NCR exporter produces a 3-sheet workbook with live roll-up formulas for disposition counts (`=COUNTIF`), quantity sums (`=SUMIF`), quantity percentages (`=IF($C$8=0, 0, C{r}/$C$8)`), and total counts/sums (`=COUNTA`, `=SUM`) per ISO 9001:2015 Clause 8.7 and IATF 16949:2016 Clause 8.7. The COPQ exporter produces a 3-sheet workbook with live per-line calculation formulas (`=(C{r}*D{r})+E{r}`), PAF category subtotal rollups (`=SUMIF`), Total CoQ (`=SUM`), CoGQ/COPQ failure-to-conformance ratios, and COPQ %-of-revenue metrics per ASQ CSSGB BoK and the PAF model. Both exporters live in their respective domain packages to maintain downward-only architecture, preserve injection safety via `sanitize_cell`, and re-export public symbols in `quality_core.ncr` and `quality_core.copq` (#147).
 - FMEA live-formula Excel exporter `quality_core.io.export_fmea` (`export_fmea_workbook`,
   `benchmark_fmea_dataset`), the first domain exporter built on the E1 core. The RPN column
   is the only live cell — a real `=S*O*D` formula referencing that row's own Severity /

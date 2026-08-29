@@ -19,6 +19,12 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
   never re-derived here), and every free-text field stays inert through the unchanged
   `sanitize_cell` escaping. Column letters are derived from `FMEA_EXPORT_COLUMNS` rather
   than hand-typed, and rows export in `dataset.rows` order, never re-sorted (#142).
+- Live-formula SPC Excel exporter in `quality_core.io.export_spc` (`export_spc_excel`,
+  `export_spc_to_workbook`) supporting all 6 AIAG SPC Shewhart variable (`Xbar-R`, `Xbar-S`, `I-MR`)
+  and attribute (`p`, `c`, `u`) control chart types with live formulas for subgroup means, ranges,
+  standard deviations, moving ranges, defect proportions, rates, centerlines, and control limits;
+  process capability studies (`Cp`, `Cpk`, `Pp`, `Ppk`, process mean, overall dispersion, within-subgroup
+  dispersion); and run-rule violation findings and metadata tables, re-exported in `quality_core.io` (#143).
 - Shared live-formula Excel export core in `quality_core.io`: a `Formula` marker type
   (formula string + optional number format) and `write_formula_cell()`, which write a real
   OOXML `<f>` element instead of a cached literal so exported workbooks recalculate in Excel.

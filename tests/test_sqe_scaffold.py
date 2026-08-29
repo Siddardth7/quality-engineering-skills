@@ -7,7 +7,8 @@ Validates:
 4. The five no-standard-implied declarations recorded verbatim
 5. Presence, tab-delimiter, and canonical header of sqe/CITATIONS.tsv
 6. Per-domain reference manual mapping in CLAUDE.md under ## Standards fidelity for Supplier Quality
-7. CHANGELOG.md entry under [Unreleased] (#114, #162)
+7. CHANGELOG.md entry for the #114 scaffold and #162 guard, released under [0.9.0] by the
+   #125 closeout
 8. Negative controls: invalid TSV delimiters, malformed/permuted TSV headers, non-zero TSV data rows,
    missing manual paths, missing declarations, missing CLAUDE.md mapping, missing changelog reference,
    uncited standard-backed rules rejected
@@ -264,17 +265,24 @@ def test_claude_md_standards_fidelity_mapping() -> None:
 
 
 def test_changelog_entry_unreleased_sqe_scaffold() -> None:
-    """Verify CHANGELOG.md documents the Issue #114 scaffold and Issue #162 guard under [Unreleased]."""
+    """Verify CHANGELOG.md documents the Issue #114 scaffold and Issue #162 guard.
+
+    Milestone 9 was released as ``## [0.9.0]`` by the #125 closeout, which moved the #114
+    scaffold bullet (and the #162 fix bullet) out of ``[Unreleased]``. The assertions are
+    therefore scoped to the whole document, matching how the already-closed-out #98 (v0.8.0)
+    scaffold suite reads after its own release roll. ``[Unreleased]`` must still exist as a
+    section.
+    """
     assert _CHANGELOG_MD.is_file(), f"Missing CHANGELOG.md: {_CHANGELOG_MD}"
     content = _CHANGELOG_MD.read_text(encoding="utf-8")
-    unreleased = _extract_unreleased_changelog_section(content)
 
     assert "## [Unreleased]" in content
-    assert "#114" in unreleased, "CHANGELOG.md [Unreleased] must reference issue #114"
-    assert "#162" in unreleased, "CHANGELOG.md [Unreleased] must reference issue #162"
-    assert "quality_core/sqe/ASSUMPTIONS_LOG.md" in unreleased
-    assert "sqe/CITATIONS.tsv" in unreleased
-    assert "CLAUDE.md" in unreleased
+    assert "## [0.9.0]" in content, "CHANGELOG.md must carry the released [0.9.0] section"
+    assert "#114" in content, "CHANGELOG.md must reference issue #114"
+    assert "#162" in content, "CHANGELOG.md must reference issue #162"
+    assert "quality_core/sqe/ASSUMPTIONS_LOG.md" in content
+    assert "sqe/CITATIONS.tsv" in content
+    assert "CLAUDE.md" in content
 
 
 # ==============================================================================

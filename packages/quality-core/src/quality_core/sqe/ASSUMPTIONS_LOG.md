@@ -14,6 +14,16 @@ The first two references above are **forward references**: the excerpt files are
 SME from the licensed standards and are not on-machine at the time this scaffold lands. Recording the
 path here does not assert the file exists.
 
+**PROCUREMENT-GAP (ISO 9001:2015 §8.4/§10.2 and IATF 16949:2016 §8.4):** the licensed excerpt
+files for these two clauses were never procured and are on no machine, so **no verbatim quotation
+from §8.4/§10.2 backs any statement in this log**. Every reference to what these clauses "require"
+(including the "No-Standard-Implied Invariant" section below) is a good-faith paraphrase of the
+clause intent, **not** a manual-verified quotation, and must not be presented as one. The rows that
+`sqe/CITATIONS.tsv` *does* carry (RULE-SQE-011..013) are backed by the on-machine AIAG CQI-20 and
+Ford Global 8D manuals — the SCAR corrective-action discipline — and are verified by
+`tests/test_sqe_scar_citations.py`; the ISO/IATF §8.4 excerpts remain a tracked gap for the E0 follow-up.
+Per `CLAUDE.md`, these clauses will **never** be verified by web search.
+
 ---
 
 ## Note on the No-Standard-Implied Invariant

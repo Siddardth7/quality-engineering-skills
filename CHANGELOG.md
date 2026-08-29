@@ -8,6 +8,37 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 
 ## [Unreleased]
 
+### Added
+- Backfilled co-located `ASSUMPTIONS_LOG.md` standards declarations for every previously
+  uncovered `quality_core` module, closing the E0 audit gap (#140): `io/` (RULE-IO-001/002 —
+  `FORMULA_PREFIXES` is an OWASP CSV-injection convention, not a licensed standard),
+  `schema/` (RULE-SCHEMA-001 — AIAG/VDA S/O/D placement is structural, not a scored
+  constant), `canvas/` and `theme/` (presentation-only `NO-STANDARD-DECLARATION`s), plus
+  co-located `scoring_ASSUMPTIONS_LOG.md` (RULE-SCORING-001..003 — AIAG-VDA 2019 Action
+  Priority table, RPN, 1–10 scale) and `spc/ASSUMPTIONS_LOG.md` (RULE-SPC-001..004 —
+  chart constants, WE/Nelson run-rules, capability stability gate) (#140).
+- The one genuinely-missing per-domain citation test `tests/test_copq_citations.py` (COPQ had
+  manifest rows but no verifying test), sharing a new non-collected `tests/_citation_audit.py`
+  helper. COPQ's declared sources are PDF-only, so its rows are bound to the log per row
+  (`assert_manifest_rows_present_in_log`) — corrupting any single COPQ citation fails on every
+  machine, without needing a manual — while manual line-matching stays skip-safe (#140).
+- Package-wide anti-vacuity meta-test `tests/test_citation_coverage.py`: every engine module
+  carries an assumptions log, every non-empty `CITATIONS.tsv` is referenced by a verifying
+  test, and every empty/absent manifest must carry an explicit `NO-STANDARD-DECLARATION` or
+  `PROCUREMENT-GAP` token — an empty manifest can no longer pass silently (#140).
+- Negative-control self-test `tests/test_citation_audit_selftest.py` proving the citation
+  matcher and the log↔manifest blockquote binding are load-bearing without a licensed manual
+  present: a corrupted quote, a wrong line, and an unbacked blockquote each fail (#140).
+- Explicit `PROCUREMENT-GAP` declarations recording, honestly rather than by vacuity, that
+  the AIAG-VDA FMEA Handbook (scoring), the AIAG SPC / WE / Nelson manuals (spc), and the
+  ISO 9001 §8.4/§10.2 + IATF 16949 §8.4 excerpts (sqe) are not on-machine, so their verbatim
+  citation rows are deferred to an E0 follow-up once the manuals are provisioned (#140).
+
+### Fixed
+- Repointed the stale module-docstring citation in `quality_core.spc.stability` from the
+  nonexistent `docs/ASSUMPTIONS_LOG.md RULE 7` to the real `spc/ASSUMPTIONS_LOG.md
+  RULE-SPC-004` (#140).
+
 ## [0.9.0] - 2026-08-28
 
 ### Added

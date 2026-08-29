@@ -10,6 +10,17 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 
 ### Added
 - Six cited SCAR headings in D2–D7 order, backed by local Ford Global 8D / AIAG CQI-20 rules and three new `quality_core/sqe/CITATIONS.tsv` rows (`RULE-SQE-014` through `RULE-SQE-016`) (#181).
+- Supplier Quality Engineering (SQE) vendor-rating live-formula Excel exporter
+  `quality_core.sqe.export` (`build_sqe_workbook`, `export_sqe_workbook`, `export_sqe_excel`,
+  `benchmark_sqe_vendor_rows`), a one-sheet-plus-metadata workbook with live formulas for PPM
+  (`=defects/total*1000000`), OTIF (`=on_time_in_full/total_deliveries`), and the weighted
+  vendor composite score (`=SUMPRODUCT(weights, metrics)`), each guarded so an
+  INDETERMINATE/NOT_SCORED row still renders a live formula that resolves to `"N/A"` rather than
+  a `#DIV/0!` error. Carries forward the v0.9.0 no-standard-implied invariant: every PPM/OTIF/
+  scorecard/escalation heuristic value the workbook renders is copied verbatim from the source
+  engine's own `is_heuristic`/`basis` disclosure and is visibly labelled `(HEURISTIC)`, never
+  implied to be a standard. Sited in `quality_core.sqe.export` (not `io/`) to keep imports
+  downward-only, since `sqe/schema.py` already imports `quality_core.io` (#149).
 - Nonconformance Reporting (NCR) and Cost of Poor Quality (COPQ) live-formula Excel exporters in `quality_core.ncr.export` (`build_ncr_workbook`, `export_ncr_workbook`, `export_ncr_excel`, `benchmark_ncr_dataset`) and `quality_core.copq.export` (`build_copq_workbook`, `export_copq_workbook`, `export_copq_excel`, `benchmark_copq_dataset`). The NCR exporter produces a 3-sheet workbook with live roll-up formulas for disposition counts (`=COUNTIF`), quantity sums (`=SUMIF`), quantity percentages (`=IF($C$8=0, 0, C{r}/$C$8)`), and total counts/sums (`=COUNTA`, `=SUM`) per ISO 9001:2015 Clause 8.7 and IATF 16949:2016 Clause 8.7. The COPQ exporter produces a 3-sheet workbook with live per-line calculation formulas (`=(C{r}*D{r})+E{r}`), PAF category subtotal rollups (`=SUMIF`), Total CoQ (`=SUM`), CoGQ/COPQ failure-to-conformance ratios, and COPQ %-of-revenue metrics per ASQ CSSGB BoK and the PAF model. Both exporters live in their respective domain packages to maintain downward-only architecture, preserve injection safety via `sanitize_cell`, and re-export public symbols in `quality_core.ncr` and `quality_core.copq` (#147).
 - Root Cause Analysis (RCA) Suite structured Excel exporter `quality_core.rca.export`
   (`export_rca_workbook`, `build_rca_workbook`, `export_five_why_workbook`, `export_fishbone_workbook`,

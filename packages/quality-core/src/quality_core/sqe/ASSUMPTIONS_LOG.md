@@ -405,6 +405,29 @@ existing `CLOSABLE` gate remains an engineering closure policy; this section doe
 
 ---
 
+## RULE-SQE-018: Vendor-rating Excel export renders no new standard or threshold (`export.py`, #149)
+
+**Decision:** `quality_core.sqe.export` (`build_sqe_workbook` / `export_sqe_workbook`)
+presents the already-computed PPM, OTIF, and vendor-scorecard results as a live-formula
+`.xlsx` workbook. It introduces no new numeric constant: PPM (`=defects/total*1000000`),
+OTIF (`=on_time_in_full/total_deliveries`), and the weighted composite
+(`=SUMPRODUCT(weights, metrics)`) are the same arithmetic `ppm.py`/`otif.py`/`scorecard.py`
+already perform, re-expressed as live Excel formulas over cells populated from each engine's
+own result payload. Every heuristic value the workbook renders (PPM sample-adequacy minimum,
+OTIF window/tolerance, scorecard weights/curves/bands, escalation thresholds) is copied
+verbatim from that engine payload's own `is_heuristic`/`basis` disclosure and is never
+re-typed or re-derived in the exporter, and every such column/row is visibly labelled
+`(HEURISTIC)` — carrying forward the v0.9.0 no-standard-implied invariant into the export
+surface.
+
+**Source:** None new. See the "Note on the No-Standard-Implied Invariant" section above this
+log and `RULE-SQE-001`/`RULE-SQE-004`/`RULE-SQE-007`/`RULE-SQE-014`.
+
+**Applied In:** `packages/quality-core/src/quality_core/sqe/export.py`
+(`build_sqe_workbook`, `_row_record`, `_metadata_rows`).
+
+---
+
 ## Process Design Decisions (no standard implied)
 
 These are engineering and process decisions taken while building `scar.py` (#120). **None of them

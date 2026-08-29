@@ -10,6 +10,15 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 
 ### Added
 - Nonconformance Reporting (NCR) and Cost of Poor Quality (COPQ) live-formula Excel exporters in `quality_core.ncr.export` (`build_ncr_workbook`, `export_ncr_workbook`, `export_ncr_excel`, `benchmark_ncr_dataset`) and `quality_core.copq.export` (`build_copq_workbook`, `export_copq_workbook`, `export_copq_excel`, `benchmark_copq_dataset`). The NCR exporter produces a 3-sheet workbook with live roll-up formulas for disposition counts (`=COUNTIF`), quantity sums (`=SUMIF`), quantity percentages (`=IF($C$8=0, 0, C{r}/$C$8)`), and total counts/sums (`=COUNTA`, `=SUM`) per ISO 9001:2015 Clause 8.7 and IATF 16949:2016 Clause 8.7. The COPQ exporter produces a 3-sheet workbook with live per-line calculation formulas (`=(C{r}*D{r})+E{r}`), PAF category subtotal rollups (`=SUMIF`), Total CoQ (`=SUM`), CoGQ/COPQ failure-to-conformance ratios, and COPQ %-of-revenue metrics per ASQ CSSGB BoK and the PAF model. Both exporters live in their respective domain packages to maintain downward-only architecture, preserve injection safety via `sanitize_cell`, and re-export public symbols in `quality_core.ncr` and `quality_core.copq` (#147).
+- Root Cause Analysis (RCA) Suite structured Excel exporter `quality_core.rca.export`
+  (`export_rca_workbook`, `build_rca_workbook`, `export_five_why_workbook`, `export_fishbone_workbook`,
+  `export_is_is_not_workbook`, and benchmark constructors `benchmark_five_why_chain`, `benchmark_fishbone_dataset`,
+  `benchmark_is_is_not_matrix`, `benchmark_rca_datasets`), generating structured multi-sheet `.xlsx` workbooks
+  for 5-Why causal progression (`"5-Why Analysis"`), 6M Fishbone cause-and-effect diagrams (`"6M Fishbone"`),
+  and Kepner-Tregoe problem boundary scoping (`"Kepner-Tregoe Is-Is Not"`). Sited in `quality_core.rca` to prevent
+  import cycles with `quality_core.io`, reusing shared table styling and OWASP formula-injection defenses.
+  Explicitly declares RCA as a qualitative problem-solving domain where arithmetic live-formula verification
+  is N/A (`RULE 6` in `rca/ASSUMPTIONS_LOG.md`) (#146).
 - FMEA live-formula Excel exporter `quality_core.io.export_fmea` (`export_fmea_workbook`,
   `benchmark_fmea_dataset`), the first domain exporter built on the E1 core. The RPN column
   is the only live cell — a real `=S*O*D` formula referencing that row's own Severity /
@@ -48,7 +57,6 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
   letters are derived
   from `CONTROLPLAN_EXPORT_COLUMNS` rather than hand-typed, and rows export in
   `dataset.rows` order, never re-sorted (#145).
-- Measurement Systems Analysis (MSA) live-formula Excel exporter in `quality_core.io.export_msa` (`export_msa_workbook` and `build_msa_workbook`) generating multi-sheet `.xlsx` workbooks for crossed Gage R&R studies per AIAG MSA (4th Edition) supporting Average-and-Range and ANOVA methods. Writes live openpyxl formulas (`Formula(...)`) for %EV, %AV, %GRR, %PV, %TV vs study variation; %EV, %AV, %GRR, %PV, %TV vs tolerance; 6×SD spread; GRR SD; TV SD; ndc categories; and ANOVA MS/F/Sums, keeping qualitative AIAG verdicts as structured strings and sanitizing untrusted inputs against formula injection. Re-exported at `quality_core.io` and `quality_core.msa` with assumptions documented in `quality_core.io.ASSUMPTIONS_LOG.md` (RULE-IO-003) (#144).
 - Measurement Systems Analysis (MSA) live-formula Excel exporter in `quality_core.msa.export` (`export_msa_workbook` and `build_msa_workbook`) generating multi-sheet `.xlsx` workbooks for crossed Gage R&R studies per AIAG MSA (4th Edition) supporting Average-and-Range and ANOVA methods. Writes live openpyxl formulas (`Formula(...)`) for %EV, %AV, %GRR, %PV, %TV vs study variation; %EV, %AV, %GRR, %PV, %TV vs tolerance; 6×SD spread; GRR SD; TV SD; ndc categories; and ANOVA MS/F/Sums, keeping qualitative AIAG verdicts as structured strings and sanitizing untrusted inputs against formula injection. Re-exported at `quality_core.msa` with assumptions documented in `quality_core.msa.ASSUMPTIONS_LOG.md` (RULE 18) (#144).
 - Shared live-formula Excel export core in `quality_core.io`: a `Formula` marker type
   (formula string + optional number format) and `write_formula_cell()`, which write a real

@@ -13,6 +13,7 @@ instead of a stack trace.
 
 from quality_core.io.export import (
     FORMULA_PREFIXES,
+    Formula,
     add_image_page,
     export_csv,
     fmt,
@@ -26,6 +27,7 @@ from quality_core.io.export import (
     safe_text,
     sanitize_cell,
     sanitize_for_export,
+    write_formula_cell,
     write_keyvalue_sheet,
     write_table_sheet,
 )
@@ -45,6 +47,7 @@ from quality_core.io.validate import (
 __all__ = [
     # export
     "FORMULA_PREFIXES",
+    "Formula",
     "now",
     "generated_line",
     "fmt",
@@ -55,6 +58,7 @@ __all__ = [
     "safe_text",
     "write_table_sheet",
     "write_keyvalue_sheet",
+    "write_formula_cell",
     "render_table",
     "add_image_page",
     "pdf_title",

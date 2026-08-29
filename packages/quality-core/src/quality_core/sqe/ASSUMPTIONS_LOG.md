@@ -19,7 +19,7 @@ files for these two clauses were never procured and are on no machine, so **no v
 from §8.4/§10.2 backs any statement in this log**. Every reference to what these clauses "require"
 (including the "No-Standard-Implied Invariant" section below) is a good-faith paraphrase of the
 clause intent, **not** a manual-verified quotation, and must not be presented as one. The rows that
-`sqe/CITATIONS.tsv` *does* carry (RULE-SQE-011..013) are backed by the on-machine AIAG CQI-20 and
+`sqe/CITATIONS.tsv` *does* carry (RULE-SQE-011..016) are backed by the on-machine AIAG CQI-20 and
 Ford Global 8D manuals — the SCAR corrective-action discipline — and are verified by
 `tests/test_sqe_scar_citations.py`; the ISO/IATF §8.4 excerpts remain a tracked gap for the E0 follow-up.
 Per `CLAUDE.md`, these clauses will **never** be verified by web search.
@@ -51,7 +51,7 @@ will ever carry.
 
 ## RULE Entries
 
-## RULE-SQE-014: Escalation tiers are evidence recommendations, not commercial decisions (`escalation.py`, #119)
+## RULE-SQE-017: Escalation tiers are evidence recommendations, not commercial decisions (`escalation.py`, #119)
 
 **Decision:** `evaluate_escalation` recommends only one quality-engineering tier: `NONE`,
 `MONITOR`, `SCAR_REQUIRED`, `CONTAINMENT_REQUIRED`, or `EXECUTIVE_REVIEW`. It retains every
@@ -356,6 +356,55 @@ duplicate check is on the `(site, quote)` pair, not on the quote alone.
 
 ---
 
+## RULE-SQE-014: SCAR "Problem Definition" section heading (`scar.py`, #181)
+
+**Decision.** The generated SCAR carries a **Problem Definition** section requiring the supplier
+to describe the stated problem factually and in quantifiable terms by identifying what is wrong
+with what. It does not infer or state a cause.
+
+**Source.** Ford Global 8D Manual src_line 277:
+
+> Describe the internal/external problem by identifying 'what is wrong with what', and detail the problem in quantifiable terms (Description of the problem).
+
+**Applied In:** `packages/quality-core/src/quality_core/sqe/scar.py`
+(`_build_sections`, `SCARSection(rule_id="RULE-SQE-014")`). Manifest row: `CITATIONS.tsv`
+`RULE-SQE-014` at Ford Global 8D src_line 277.
+
+---
+
+## RULE-SQE-015: SCAR "Interim Containment Requirement" section heading (`scar.py`, #181)
+
+**Decision.** The generated SCAR carries an **Interim Containment Requirement** section requiring
+the supplier to define, verify, and implement interim containment while permanent corrective
+action is pending, and to validate the containment's effectiveness. A supplied `due_date` is
+caller-provided SCAR data, not a Ford or CQI-20 deadline mandate.
+
+**Source.** Ford Global 8D Manual src_line 282:
+
+> Define, verify, and implement the Interim Containment Action (AIC) to isolate the effects of the problem of any internal/external client until they are implemented Permanent Corrective Actions (PCAs). Validate the effectiveness of the measures of containment.
+
+**Applied In:** `packages/quality-core/src/quality_core/sqe/scar.py`
+(`_build_sections`, `SCARSection(rule_id="RULE-SQE-015")`). Manifest row: `CITATIONS.tsv`
+`RULE-SQE-015` at Ford Global 8D src_line 282.
+
+---
+
+## RULE-SQE-016: SCAR "Verification-of-Effectiveness Requirement" section heading (`scar.py`, #181)
+
+**Decision.** The generated SCAR carries a **Verification-of-Effectiveness Requirement** section
+requiring the supplier to provide an effectiveness statement supported by measured results. The
+existing `CLOSABLE` gate remains an engineering closure policy; this section does not alter it.
+
+**Source.** AIAG CQI-20 Effective Problem Solving (2nd Edition, 2018) src_line 2287:
+
+> Success of corrective actions is to be validated by gathering and analyzing quantifiable data.
+
+**Applied In:** `packages/quality-core/src/quality_core/sqe/scar.py`
+(`_build_sections`, `SCARSection(rule_id="RULE-SQE-016")`). Manifest row: `CITATIONS.tsv`
+`RULE-SQE-016` at AIAG CQI-20 src_line 2287.
+
+---
+
 ## Process Design Decisions (no standard implied)
 
 These are engineering and process decisions taken while building `scar.py` (#120). **None of them
@@ -363,15 +412,13 @@ is a standards claim**, none is backed by a `CITATIONS.tsv` row, and none may be
 by any engine, MCP tool, canvas, or skill layer. They are recorded separately from the cited RULE
 entries above for exactly that reason.
 
-1. **Three SCAR section headings are withheld pending citation.** The E6 issue names six sections;
-   only three (root cause, corrective action, prevention/read-across) have a verified quotation
-   available in this repository. Heading text for problem definition (Ford 8D D2), containment
-   (D3), and verification of effectiveness (D6) is **not emitted**, because writing a heading
-   before its `RULE-SQE-0NN` row exists is fabrication. Their *mechanisms* remain fully wired:
-   `SCARRequest.due_date` is carried onto `SCARResult.due_date` and its absence raises a warning
-   (no date is ever invented), and `verification_of_effectiveness` gates the `CLOSABLE` status. A
-   follow-up issue tracks extracting the three missing quotations; adding a section then means
-   adding its `RULE-SQE-0NN` row first and one entry to `_build_sections`.
+1. **All six SCAR section headings carry citations.** The generator renders the D2–D7 sequence:
+   problem definition, interim containment, root cause, corrective action, verification of
+   effectiveness, and prevention/read-across. `SCARRequest.due_date` remains caller-provided SCAR
+   data: it is carried onto `SCARResult.due_date`, may be presented with containment when supplied,
+   and its absence raises a warning rather than inventing a date. The `CLOSABLE` gate remains the
+   existing engineering closure policy; the D6 citation does not turn a supplier statement into an
+   authoritative closure verdict.
 
 2. **The root-cause authorship invariant is not configurable.** `generate_scar` never authors,
    infers, or synthesizes a root cause. `SCARResult.root_cause` is assigned only by
@@ -417,5 +464,5 @@ entries above for exactly that reason.
 - **OTIF has no published standard.** The on-time window, the in-full tolerance, and whether early delivery counts as on-time are all **engineering heuristics** and must be caller-configurable. As implemented in `quality_core.sqe.otif` (E3, #117), the five `OTIFConfig` defaults — `early_tolerance_days=0`, `late_tolerance_days=2`, `early_counts_as_on_time=False`, `in_full_tolerance_pct=0.0`, `over_delivery_counts_as_in_full=True` — are declared engineering defaults carrying **no citation**; each is labelled `is_heuristic: True` in every result payload and is documented in RULE-SQE-002 above. Neither the on-time/in-full/OTIF arithmetic itself (RULE-SQE-001) nor these values may be presented as a standards requirement by any engine, MCP tool, canvas, or skill layer.
 - **Vendor scorecard weights and A/B/C rating-band boundaries have no published standard.** The 0.60 / 0.40 / 0.0 weights, 0-to-10,000 PPM and 100%-to-0% OTIF curves, and 90 / 75 band boundaries are declared caller-configurable engineering heuristics labelled individually in every payload (RULE-SQE-007/008). Weighted undecided evidence suppresses the composite and band (RULE-SQE-009); COPQ remains omitted at zero weight and requires an explicit curve when weighted (RULE-SQE-010).
 - **Escalation trigger levels have no published standard.** The escalation *ladder* is informed by CQI-20's problem-solving escalation discipline; the numeric triggers are not.
-- **The SCAR status vocabulary and closure criteria have no published standard.** ISO 9001:2015 §8.4/§10.2 and IATF 16949:2016 §8.4 require that nonconformity drive corrective action; they name no status set and no closure test. `DRAFT`/`ISSUABLE`/`AWAITING_SUPPLIER_RESPONSE`/`RESPONSE_REJECTED`/`CLOSABLE`/`INDETERMINATE`, the order the status rules are evaluated in, and the rule that `CLOSABLE` requires a stated verification of effectiveness are engineering decisions recorded under "Process Design Decisions" above (#120). Only the three SCAR section headings (RULE-SQE-011/012/013) carry a citation.
+- **The SCAR status vocabulary, closure criteria, and deadline semantics have no published standard.** ISO 9001:2015 §8.4/§10.2 and IATF 16949:2016 §8.4 require that nonconformity drive corrective action; they name no status set, no closure test, and no package deadline semantics. `DRAFT`/`ISSUABLE`/`AWAITING_SUPPLIER_RESPONSE`/`RESPONSE_REJECTED`/`CLOSABLE`/`INDETERMINATE`, the order the status rules are evaluated in, and the rule that `CLOSABLE` requires a stated verification of effectiveness are engineering decisions recorded under "Process Design Decisions" above (#120). All six SCAR section headings (RULE-SQE-011/012/013/014/015/016) carry citations.
 - Any constant introduced later without a published source behind it is to be labelled an **engineering heuristic**, never implied to be a standard.

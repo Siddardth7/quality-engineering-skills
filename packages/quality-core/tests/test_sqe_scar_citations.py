@@ -59,6 +59,15 @@ def _resolve_manual_key(site: str, src_line: int) -> str:
     elif site == "RULE-SQE-013":
         if src_line in (2026,):
             return "Ford_8D"
+    elif site == "RULE-SQE-014":
+        if src_line in (277,):
+            return "Ford_8D"
+    elif site == "RULE-SQE-015":
+        if src_line in (282,):
+            return "Ford_8D"
+    elif site == "RULE-SQE-016":
+        if src_line in (2287,):
+            return "AIAG_CQI20"
     raise ValueError(f"Unmapped citation site/line: {site} at line {src_line}")
 
 

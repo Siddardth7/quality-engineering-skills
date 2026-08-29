@@ -8,9 +8,9 @@ description: Deterministic supplier PPM/OTIF/vendor-scorecard measurement, thres
 ## Overview
 The `supplier-scar` skill guides AI agents in measuring supplier performance, rating a supplier against organization-determined criteria, recommending an escalation tier, and issuing a structured Supplier Corrective Action Request. Five deterministic quantities are produced, and every one of them is produced by a tool on `quality-mcp`, never in prompt text: a supplier defect rate (PPM, and separately-named DPMO) via `calculate_supplier_ppm`; delivery performance (on-time, in-full, and the strict-conjunction OTIF) via `calculate_otif`; a weighted A/B/C vendor scorecard via `calculate_vendor_scorecard`; a threshold-triggered escalation tier via `evaluate_escalation`; and a CQI-20/Ford Global 8D SCAR via `generate_scar`. The already-evaluated results are presented as a supplier × dimension HTML matrix by `render_sqe_canvas`.
 
-**ISO 9001:2015 §8.4** ("Control of externally provided processes, products and services"), **ISO 9001:2015 §10.2** ("Nonconformity and corrective action"), and **IATF 16949:2016 §8.4** require that external providers be evaluated, selected, monitored, and re-evaluated against *criteria the organization itself determines*, and that nonconformity drive corrective action — and they name **no** PPM threshold, no OTIF window, no in-full tolerance, no scorecard weight, no rating-band boundary, and no escalation trigger. Every such number in this platform is the platform's own declared **engineering heuristic**, caller-configurable, labelled `is_heuristic: true` in the tool payload, and recorded in `quality_core/sqe/ASSUMPTIONS_LOG.md` (RULE-SQE-001 through RULE-SQE-013). Presenting any of them to a supplier or an auditor as an ISO 9001 or IATF 16949 requirement is a fabrication.
+**ISO 9001:2015 §8.4** ("Control of externally provided processes, products and services"), **ISO 9001:2015 §10.2** ("Nonconformity and corrective action"), and **IATF 16949:2016 §8.4** require that external providers be evaluated, selected, monitored, and re-evaluated against *criteria the organization itself determines*, and that nonconformity drive corrective action — and they name **no** PPM threshold, no OTIF window, no in-full tolerance, no scorecard weight, no rating-band boundary, and no escalation trigger. Every such number in this platform is the platform's own declared **engineering heuristic**, caller-configurable, labelled `is_heuristic: true` in the tool payload, and recorded in `quality_core/sqe/ASSUMPTIONS_LOG.md` (RULE-SQE-001 through RULE-SQE-017). Presenting any of them to a supplier or an auditor as an ISO 9001 or IATF 16949 requirement is a fabrication.
 
-**AIAG CQI-20 Effective Problem Solving Guide (2nd Edition, 2018)** and the **Ford Global 8D Manual** back the *structure* of the corrective-action ladder and the three rendered SCAR sections — **Root-Cause Requirement**, **Corrective-Action Requirement**, and **Prevention / Read-Across** — and nothing else. They do not supply the escalation ladder's numeric triggers, which are heuristics like every other threshold here.
+**AIAG CQI-20 Effective Problem Solving Guide (2nd Edition, 2018)** and the **Ford Global 8D Manual** back the *structure* of the corrective-action ladder and the six rendered SCAR sections — **Problem Definition**, **Interim Containment Requirement**, **Root-Cause Requirement**, **Corrective-Action Requirement**, **Verification-of-Effectiveness Requirement**, and **Prevention / Read-Across** — and nothing else. They do not supply the escalation ladder's numeric triggers, which are heuristics like every other threshold here.
 
 **The supplier owns the root cause.** This skill and `generate_scar` never author, infer, or paraphrase one — they request it and validate the supplier's own response by dispatching it to `quality_core.rca`'s reversible 5-Why validator. A SCAR with no supplier response carries `root_cause: null` and can never reach `CLOSABLE`.
 
@@ -197,7 +197,7 @@ Follow the 5-step supplier rating and corrective-action methodology:
 - **Return Schema:**
   - `supplier_id`, `scar_id`, `issue_description`: Echoed request identity.
   - `status` (`string`): `"DRAFT"`, `"ISSUABLE"`, `"AWAITING_SUPPLIER_RESPONSE"`, `"RESPONSE_REJECTED"`, `"CLOSABLE"`, or `"INDETERMINATE"`. `CLOSABLE` requires an accepted supplier root cause **and** a stated `verification_of_effectiveness` **and** no other linkage resolving `EVIDENCE_INVALID`.
-  - `sections` (`list[dict]`): The three rendered sections — **Root-Cause Requirement** (`RULE-SQE-011`), **Corrective-Action Requirement** (`RULE-SQE-012`), **Prevention / Read-Across** (`RULE-SQE-013`) — each with `heading`, `rule_id`, `content`.
+  - `sections` (`list[dict]`): The six rendered sections — **Problem Definition** (`RULE-SQE-014`), **Interim Containment Requirement** (`RULE-SQE-015`), **Root-Cause Requirement** (`RULE-SQE-011`), **Corrective-Action Requirement** (`RULE-SQE-012`), **Verification-of-Effectiveness Requirement** (`RULE-SQE-016`), and **Prevention / Read-Across** (`RULE-SQE-013`) — each with `heading`, `rule_id`, `content`. A supplied `due_date` may appear in containment prose as caller-provided SCAR data; it is never inferred.
   - `linkage` (`dict`): Keyed `linked_ncr`, `supplier_root_cause`, `cost_impact`, `vendor_scorecard`; each slot carries `linkage_key`, `verdict` (`EVIDENCE_VALID` / `EVIDENCE_INVALID` / `EVIDENCE_NOT_SUPPLIED` / `LINKAGE_NOT_AVAILABLE`), `engine`, `findings` (the sub-engine's own text, verbatim), `rationale`, `raw_result`.
   - `root_cause` (`string | null`): The supplier's own words, or `null` until a chain `quality_core.rca` accepts is supplied.
   - `verification_of_effectiveness`, `due_date`, `date_issued` (`string | null`).
@@ -563,6 +563,16 @@ Report the returned `tier` of `"MONITOR"`, show the full `evaluated_triggers` li
   "status": "AWAITING_SUPPLIER_RESPONSE",
   "sections": [
     {
+      "heading": "Problem Definition",
+      "rule_id": "RULE-SQE-014",
+      "content": "Describe the stated problem factually and in quantifiable terms. ..."
+    },
+    {
+      "heading": "Interim Containment Requirement",
+      "rule_id": "RULE-SQE-015",
+      "content": "Define, verify, and implement interim containment. The caller-provided supplier response due date for this SCAR is 2026-08-31."
+    },
+    {
       "heading": "Root-Cause Requirement",
       "rule_id": "RULE-SQE-011",
       "content": "State the systemic root cause of this nonconformity. ... The root cause is stated by the supplier and validated here; this generator never authors, infers, or substitutes one."
@@ -571,6 +581,11 @@ Report the returned `tier` of `"MONITOR"`, show the full `evaluated_triggers` li
       "heading": "Corrective-Action Requirement",
       "rule_id": "RULE-SQE-012",
       "content": "Define and implement the permanent corrective action(s) that resolve the established systemic root cause. ..."
+    },
+    {
+      "heading": "Verification-of-Effectiveness Requirement",
+      "rule_id": "RULE-SQE-016",
+      "content": "Provide a verification-of-effectiveness statement supported by gathered and analyzed quantifiable data."
     },
     {
       "heading": "Prevention / Read-Across",
@@ -619,7 +634,7 @@ Report the returned `tier` of `"MONITOR"`, show the full `evaluated_triggers` li
   "reason": "this SCAR has been issued and no supplier root-cause response has been received.",
   "warnings": [],
   "recommendations": [],
-  "standards_basis": "AIAG CQI-20 Effective Problem Solving (2nd Edition, 2018) and the Ford Global 8D Manual back the three rendered section headings only ..."
+  "standards_basis": "AIAG CQI-20 Effective Problem Solving (2nd Edition, 2018) and the Ford Global 8D Manual back the six rendered SCAR section headings only ..."
 }
 ```
 

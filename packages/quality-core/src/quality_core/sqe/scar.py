@@ -29,16 +29,17 @@ Imports run downward only (``sqe`` -> ``ncr``/``rca``/``copq``); none of those p
 
 Standards basis
 ---------------
-Only the three rendered section headings trace to a published source, each through its own
-``ASSUMPTIONS_LOG.md`` entry and ``CITATIONS.tsv`` row: **Root-Cause Requirement**
-(RULE-SQE-011), **Corrective-Action Requirement** (RULE-SQE-012), and **Prevention /
-Read-Across** (RULE-SQE-013), reusing sources already verified for the RCA milestone.
+All six rendered section headings trace to a published source, each through its own
+``ASSUMPTIONS_LOG.md`` entry and ``CITATIONS.tsv`` row: **Problem Definition**
+(RULE-SQE-014), **Interim Containment Requirement** (RULE-SQE-015), **Root-Cause Requirement**
+(RULE-SQE-011), **Corrective-Action Requirement** (RULE-SQE-012),
+**Verification-of-Effectiveness Requirement** (RULE-SQE-016), and **Prevention / Read-Across**
+(RULE-SQE-013). Ford Global 8D supplies the D2/D3/D5/D7 discipline; AIAG CQI-20 supplies the
+quantifiable effectiveness-validation requirement.
 
-Headings for problem definition (Ford 8D D2), containment (D3), and verification of effectiveness
-(D6) are **deliberately withheld**: no verified quotation for them exists in this repository, and
-writing heading text ahead of its citation is the fabrication the citation gate exists to prevent.
-Their *mechanisms* are fully wired regardless — ``SCARRequest.due_date`` is carried and its absence
-is warned about, and ``verification_of_effectiveness`` gates ``CLOSABLE``.
+The caller-supplied ``SCARRequest.due_date`` is carried as SCAR data and is never imputed; its
+absence remains a warning. ``verification_of_effectiveness`` continues to gate ``CLOSABLE``;
+neither the heading nor a supplier statement bypasses that state-machine rule.
 
 The status state machine, the linkage dispatch, and ``SCARConfig`` assert **no** published
 standard; ISO 9001:2015 §8.4/§10.2 and IATF 16949:2016 §8.4 require that nonconformity drive
@@ -117,7 +118,8 @@ _ENGINE_COPQ: str = "quality_core.copq"
 
 _STANDARDS_BASIS: str = (
     "AIAG CQI-20 Effective Problem Solving (2nd Edition, 2018) and the Ford Global 8D Manual back "
-    "the three rendered section headings only (ASSUMPTIONS_LOG.md RULE-SQE-011/008/009). The "
+    "the six rendered SCAR section headings only (ASSUMPTIONS_LOG.md RULE-SQE-011/012/013/014/"
+    "015/016). The "
     "status state machine, the linkage dispatch, and SCARConfig assert no published standard: "
     "ISO 9001:2015 §8.4/§10.2 and IATF 16949:2016 §8.4 require corrective action but supply no "
     "status vocabulary and no closure criteria."
@@ -471,20 +473,40 @@ def _root_cause_from_linkage(linkage_result: SCARLinkageResult) -> str | None:
 
 
 def _build_sections(request: SCARRequest) -> list[SCARSection]:
-    """Render the SCAR sections that currently carry a verified citation.
+    """Render the six cited SCAR sections in D2–D7 order.
 
-    Only three sections ship: each is authorized by a ``RULE-SQE-0NN`` entry in
-    ``ASSUMPTIONS_LOG.md`` with matching ``CITATIONS.tsv`` rows. Their text is a standing
-    requirement on the supplier and does not vary with the request payload, so nothing from
-    ``request`` is interpolated — the withheld Containment section is the one that would carry
-    ``request.due_date``, and until it has a citation that date is surfaced through
-    ``SCARResult.due_date`` and its absence through a warning instead.
-
-    Problem-definition (Ford 8D D2), containment (D3), and verification-of-effectiveness (D6)
-    headings are withheld pending verified quotations; adding one means adding its
-    ``RULE-SQE-0NN`` row first, then one entry to this list.
+    Each section is authorized by a ``RULE-SQE-0NN`` entry in ``ASSUMPTIONS_LOG.md`` with a
+    matching ``CITATIONS.tsv`` row. The containment section presents a supplied ``due_date`` as
+    caller-provided SCAR data only; it neither invents a date nor changes the result-level date,
+    warning, or status semantics.
     """
+    containment_deadline = (
+        " The caller-provided supplier response due date for this SCAR is "
+        f"{request.due_date.isoformat()}."
+        if request.due_date is not None
+        else ""
+    )
     return [
+        SCARSection(
+            heading="Problem Definition",
+            rule_id="RULE-SQE-014",
+            content=(
+                "Describe the stated problem factually and in quantifiable terms, identifying "
+                "what is wrong with what. Do not substitute a cause for the problem description "
+                "(Ford Global 8D — ASSUMPTIONS_LOG.md RULE-SQE-014)."
+            ),
+        ),
+        SCARSection(
+            heading="Interim Containment Requirement",
+            rule_id="RULE-SQE-015",
+            content=(
+                "Define, verify, and implement interim containment to isolate the effects of "
+                "the problem while permanent corrective actions are pending, and validate the "
+                "containment's effectiveness (Ford Global 8D — ASSUMPTIONS_LOG.md "
+                "RULE-SQE-015)."
+                + containment_deadline
+            ),
+        ),
         SCARSection(
             heading="Root-Cause Requirement",
             rule_id="RULE-SQE-011",
@@ -504,6 +526,14 @@ def _build_sections(request: SCARRequest) -> list[SCARSection]:
                 "established systemic root cause. Changing only the affected product is not a "
                 "corrective action: the system that allowed the problem must itself be changed "
                 "(Ford Global 8D — ASSUMPTIONS_LOG.md RULE-SQE-012)."
+            ),
+        ),
+        SCARSection(
+            heading="Verification-of-Effectiveness Requirement",
+            rule_id="RULE-SQE-016",
+            content=(
+                "Provide a verification-of-effectiveness statement supported by gathered and "
+                "analyzed quantifiable data (AIAG CQI-20 — ASSUMPTIONS_LOG.md RULE-SQE-016)."
             ),
         ),
         SCARSection(

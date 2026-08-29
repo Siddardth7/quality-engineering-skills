@@ -5,3 +5,6 @@ RULE-SQE-011	1685	The systemic root cause(s) addresses, "Why did the system or p
 RULE-SQE-012	1991	there is normally a procedure, a policy, or a (systemic) practice that has allowed you pass. We call this the 'root cause of the root cause.' This must be established and resolved.
 RULE-SQE-012	2026	These systemic problems need to be fixed. The goal is to change the system that allowed the problem to occur in the first place and prevent problems from arising similar.
 RULE-SQE-013	2026	These systemic problems need to be fixed. The goal is to change the system that allowed the problem to occur in the first place and prevent problems from arising similar.
+RULE-SQE-014	277	Describe the internal/external problem by identifying 'what is wrong with what', and detail the problem in quantifiable terms (Description of the problem).
+RULE-SQE-015	282	Define, verify, and implement the Interim Containment Action (AIC) to isolate the effects of the problem of any internal/external client until they are implemented Permanent Corrective Actions (PCAs). Validate the effectiveness of the measures of containment.
+RULE-SQE-016	2287	Success of corrective actions is to be validated by gathering and analyzing quantifiable data.

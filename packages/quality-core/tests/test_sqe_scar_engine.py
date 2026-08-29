@@ -340,14 +340,38 @@ def test_root_cause_from_linkage_copies_verbatim() -> None:
 # ===========================================================================
 
 
-def test_build_sections_are_the_three_cited_headings() -> None:
-    sections = _build_sections(_request())
-    assert [s.rule_id for s in sections] == ["RULE-SQE-011", "RULE-SQE-012", "RULE-SQE-013"]
+def test_build_sections_are_the_six_cited_headings() -> None:
+    sections = _build_sections(_request(due_date=datetime.date(2026, 2, 1)))
+    assert [s.rule_id for s in sections] == [
+        "RULE-SQE-014",
+        "RULE-SQE-015",
+        "RULE-SQE-011",
+        "RULE-SQE-012",
+        "RULE-SQE-016",
+        "RULE-SQE-013",
+    ]
     assert [s.heading for s in sections] == [
+        "Problem Definition",
+        "Interim Containment Requirement",
         "Root-Cause Requirement",
         "Corrective-Action Requirement",
+        "Verification-of-Effectiveness Requirement",
         "Prevention / Read-Across",
     ]
+    assert "2026-02-01" in sections[1].content
+
+
+def test_containment_due_date_is_presentation_only_and_never_invented() -> None:
+    """A caller's deadline may be displayed but cannot change SCAR semantics."""
+    supplied = generate_scar(_request(due_date=datetime.date(2026, 2, 1)))
+    absent = generate_scar(_request(due_date=None))
+
+    assert supplied.sections[1].content.count("2026-02-01") == 1
+    assert supplied.due_date == "2026-02-01"
+    assert absent.due_date is None
+    assert "2026-02-01" not in absent.sections[1].content
+    assert supplied.status == absent.status == "ISSUABLE"
+    assert supplied.linkage == absent.linkage
 
 
 # ===========================================================================
@@ -473,6 +497,7 @@ def test_warnings_due_date_missing_and_ncr_id_unbacked() -> None:
     r = generate_scar(req)
     assert any("No due_date" in w for w in r.warnings)
     assert any("NCR-9" in w for w in r.warnings)
+    assert not any("supplier response due date" in section.content for section in r.sections)
 
 
 def test_warnings_due_date_present_and_invalid_evidence_quoted() -> None:
@@ -562,7 +587,7 @@ def test_result_to_dict_isolation() -> None:
     d["warnings"].append("mutated")
     d["linkage"]["linked_ncr"]["raw_result"]["records"].append("mutated")
     # Internal state untouched.
-    assert len(r.sections) == 3
+    assert len(r.sections) == 6
     assert "mutated" not in r.warnings
     assert r.linkage["linked_ncr"].raw_result is not None
     assert "mutated" not in r.linkage["linked_ncr"].raw_result["records"]

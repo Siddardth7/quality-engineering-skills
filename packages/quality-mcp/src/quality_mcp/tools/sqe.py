@@ -21,7 +21,7 @@ echoes the ``standards_basis`` its own engine result carries as that payload's `
 - ``evaluate_escalation`` — cites AIAG CQI-20 corrective-action discipline for the tier
   *structure* only, never for a numeric threshold.
 - ``generate_scar`` — cites AIAG CQI-20 (2nd Edition, 2018) and the Ford Global 8D Manual for
-  three rendered section headings only.
+  six rendered SCAR section headings only.
 - ``render_sqe_canvas`` — renders already-computed results rather than computing any, so it
   carries a canvas-local disclosure constant instead of an engine basis.
 
@@ -109,7 +109,7 @@ _COMMERCIAL_AUTHORITY_NOTE = (
     "Note on Commercial Authority: this tool's output is never a commercial hold, de-sourcing "
     "action, or charge-back recommendation. Those remain decisions made by an authorized business "
     "owner; this tool returns only a quality-engineering figure or tier (sqe/ASSUMPTIONS_LOG.md "
-    "RULE-SQE-014)."
+    "RULE-SQE-017)."
 )
 
 _ROOT_CAUSE_AUTHORITY_NOTE = (

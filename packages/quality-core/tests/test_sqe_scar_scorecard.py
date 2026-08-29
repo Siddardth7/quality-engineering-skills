@@ -89,7 +89,7 @@ def test_full_valid_scenario_is_closable() -> None:
     assert r.linkage["supplier_root_cause"].verdict == "EVIDENCE_VALID"
     assert r.linkage["cost_impact"].verdict == "EVIDENCE_VALID"
     assert r.root_cause == SYSTEMIC_ROOT_CAUSE
-    assert len(r.sections) == 3
+    assert len(r.sections) == 6
     assert r.linkage["cost_impact"].raw_result is not None
     assert r.linkage["cost_impact"].raw_result["total_copq"] == COST_TOTAL
 

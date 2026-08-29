@@ -57,6 +57,36 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
   letters are derived
   from `CONTROLPLAN_EXPORT_COLUMNS` rather than hand-typed, and rows export in
   `dataset.rows` order, never re-sorted (#145).
+- PPAP live-formula Excel exporter `quality_core.ppap.export` (`build_ppap_workbook`,
+  `export_ppap_workbook`, `benchmark_ppap_package`), a three-sheet submission-readiness
+  workbook built on the E1 core. Like the Control Plan exporter it lives in the domain
+  package, not beside the `quality_core.io` primitives it consumes, because `io` sits
+  structurally below every domain engine and an exporter inside it would close that arrow
+  into an import cycle. The checklist sheet carries all 18 AIAG elements in canonical
+  `PPAP_ELEMENT_IDS` order (§2.2.1 → §2.2.18, never re-sorted) as plain sanitized audit
+  data — requirement code, applicability verdict, audit verdict, evidence status,
+  document reference and the auditor's own rationale. The only live cells are four
+  roll-ups on a `Completeness` sheet at fixed addresses that never move, because the
+  checklist is always exactly 18 rows — `B6` `=COUNTA(...)` over `Element_ID` and `B7`/`B8`/`B9`
+  `=COUNTIF(...,"SUBMITTED"|"RETAINED_ON_FILE"|"MISSING")` over `Audit_Verdict` — plus
+  `Capability Gate!B4`, the §2.2.11.3 acceptance-band `IF`/`IF` cascade over the `B3`
+  index literal. That gate is the numeric band comparison *only*, and is written solely
+  when the engine's own `ProcessStudyResult.band is not None` proves the attribute-data,
+  sample-adequacy and stability gates were already cleared upstream; otherwise it renders
+  an inert `"N/A"`, as does the whole sheet when no study is supplied. Its two thresholds
+  are imported from `quality_core.ppap.process_study`, never re-typed, so the exporter
+  cannot drift a copy of a standards value. **The authority invariant travels to the
+  export boundary:** the workbook reports supplier submission readiness only and can
+  never emit a Section 5 customer disposition (`Approved` / `Interim Approval` /
+  `Rejected`), guarded by a sheet-wide regression test. `<f>` elements are proven by
+  `assert_cell_is_formula`, with a hardcoded-literal build as the negative control and an
+  injection-safety control showing a free-text `"="` payload stays apostrophe-escaped
+  while the same workbook's roll-ups stay live and count that row correctly; recorded as
+  the `EXPORT BOUNDARY` entry in `ppap/ASSUMPTIONS_LOG.md`, deliberately not numbered as
+  a RULE because it declares the *absence* of a standards value and so adds no
+  `CITATIONS.tsv` row (elementary counting and comparison). Column letters are derived from `PPAP_EXPORT_COLUMNS` rather than
+  hand-typed (#148).
+- Measurement Systems Analysis (MSA) live-formula Excel exporter in `quality_core.io.export_msa` (`export_msa_workbook` and `build_msa_workbook`) generating multi-sheet `.xlsx` workbooks for crossed Gage R&R studies per AIAG MSA (4th Edition) supporting Average-and-Range and ANOVA methods. Writes live openpyxl formulas (`Formula(...)`) for %EV, %AV, %GRR, %PV, %TV vs study variation; %EV, %AV, %GRR, %PV, %TV vs tolerance; 6×SD spread; GRR SD; TV SD; ndc categories; and ANOVA MS/F/Sums, keeping qualitative AIAG verdicts as structured strings and sanitizing untrusted inputs against formula injection. Re-exported at `quality_core.io` and `quality_core.msa` with assumptions documented in `quality_core.io.ASSUMPTIONS_LOG.md` (RULE-IO-003) (#144).
 - Measurement Systems Analysis (MSA) live-formula Excel exporter in `quality_core.msa.export` (`export_msa_workbook` and `build_msa_workbook`) generating multi-sheet `.xlsx` workbooks for crossed Gage R&R studies per AIAG MSA (4th Edition) supporting Average-and-Range and ANOVA methods. Writes live openpyxl formulas (`Formula(...)`) for %EV, %AV, %GRR, %PV, %TV vs study variation; %EV, %AV, %GRR, %PV, %TV vs tolerance; 6×SD spread; GRR SD; TV SD; ndc categories; and ANOVA MS/F/Sums, keeping qualitative AIAG verdicts as structured strings and sanitizing untrusted inputs against formula injection. Re-exported at `quality_core.msa` with assumptions documented in `quality_core.msa.ASSUMPTIONS_LOG.md` (RULE 18) (#144).
 - Shared live-formula Excel export core in `quality_core.io`: a `Formula` marker type
   (formula string + optional number format) and `write_formula_cell()`, which write a real

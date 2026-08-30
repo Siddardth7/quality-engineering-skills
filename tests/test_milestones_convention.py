@@ -1190,17 +1190,17 @@ def test_negative_control_changelog_missing_issue_125_rejected() -> None:
 # ---------------------------------------------------------------------------
 
 _V100_EXPECTED_ISSUES = {
-    140: "chore/standards-audit-140",
-    141: "feat/export-core-141",
-    142: "feat/export-fmea-142",
-    143: "feat/export-spc-143",
-    144: "feat/export-msa-144",
-    145: "feat/export-controlplan-145",
-    146: "feat/export-rca-146",
-    147: "feat/export-ncr-copq-147",
-    148: "feat/export-ppap-148",
-    149: "feat/export-sqe-149",
-    150: "test/e2e-skill-regression-150",
+    140: "feat/standards-audit-140",
+    141: "feat/io-excel-export-core-141",
+    142: "feat/fmea-excel-exporter-142",
+    143: "feat/spc-excel-export-143",
+    144: "feat/msa-live-formula-exporter-144",
+    145: "feat/controlplan-excel-exporter-145",
+    146: "feat/rca-excel-exporter-146",
+    147: "feat/ncr-copq-excel-export-147",
+    148: "feat/ppap-excel-exporter-148",
+    149: "feat/sqe-excel-exporter-149",
+    150: "feat/skill-regression-e2e-150",
     151: "feat/milestone-10-closeout-151",
 }
 

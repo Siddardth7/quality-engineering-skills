@@ -17,7 +17,7 @@ from typing import Annotated, Any, BinaryIO, Literal, cast
 import pandas as pd
 import pydantic
 
-from quality_core.io import IngestError, TableSchema, load_table, load_table_from_path
+from quality_core.io.validate import IngestError, TableSchema, load_table, load_table_from_path
 
 __all__ = [
     "COPQ_SCHEMA",

@@ -8,6 +8,142 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-08-29
+
+Milestone 10 implementation is complete and ready for the human release handoff. The closeout reconciles the [v1.0.0 milestone](docs/milestones/v1.0.0.md), all five version SSOTs and the workspace lock, and the 11-skill / 8-domain catalog. Promotion `test → main` and creation of the `v1.0.0` tag remain human-owner actions (#151).
+
+### Added
+- End-to-end skill-catalog regression suite `packages/quality-mcp/tests/test_e2e_catalog_regression.py` (E10), plus the dated live-validation record `TRIAL_2026-08-29_v1.0.0_regression.md`. One in-process FastMCP client session walks all 31 registered tools across the eight domains (FMEA, SPC, MSA, Control Plan, RCA, NCR+COPQ, PPAP, SQE) over their shipped benchmark inputs, asserting the exercised tool set equals the set the server advertises. Each domain's `quality_core` exporter is then invoked directly — no exporter is an MCP tool — and put through the E1 verifier `assert_cell_is_formula`: the eight live-formula workbooks must pass on the coords their own `test_*_export.py` already proved, while RCA, a qualitative structured-only domain by design (`rca/ASSUMPTIONS_LOG.md` RULE 6), must make the verifier **raise**, so its "N/A" declaration is enforced rather than claimed. A negative control feeds `calculate_spc_chart` a malformed dataset and asserts `isError` plus an unpoisoned session. Tests and documentation only — no engine, tool, canvas, or skill source changed; the quality-mcp coverage gate stays at 100% line+branch (#150).
+- Six cited SCAR headings in D2–D7 order, backed by local Ford Global 8D / AIAG CQI-20 rules and three new `quality_core/sqe/CITATIONS.tsv` rows (`RULE-SQE-014` through `RULE-SQE-016`) (#181).
+- Supplier Quality Engineering (SQE) vendor-rating live-formula Excel exporter
+  `quality_core.sqe.export` (`build_sqe_workbook`, `export_sqe_workbook`, `export_sqe_excel`,
+  `benchmark_sqe_vendor_rows`), a one-sheet-plus-metadata workbook with live formulas for PPM
+  (`=defects/total*1000000`), OTIF (`=on_time_in_full/total_deliveries`), and the weighted
+  vendor composite score (`=SUMPRODUCT(weights, metrics)`), each guarded so an
+  INDETERMINATE/NOT_SCORED row still renders a live formula that resolves to `"N/A"` rather than
+  a `#DIV/0!` error. Carries forward the v0.9.0 no-standard-implied invariant: every PPM/OTIF/
+  scorecard/escalation heuristic value the workbook renders is copied verbatim from the source
+  engine's own `is_heuristic`/`basis` disclosure and is visibly labelled `(HEURISTIC)`, never
+  implied to be a standard. Sited in `quality_core.sqe.export` (not `io/`) to keep imports
+  downward-only, since `sqe/schema.py` already imports `quality_core.io` (#149).
+- Nonconformance Reporting (NCR) and Cost of Poor Quality (COPQ) live-formula Excel exporters in `quality_core.ncr.export` (`build_ncr_workbook`, `export_ncr_workbook`, `export_ncr_excel`, `benchmark_ncr_dataset`) and `quality_core.copq.export` (`build_copq_workbook`, `export_copq_workbook`, `export_copq_excel`, `benchmark_copq_dataset`). The NCR exporter produces a 3-sheet workbook with live roll-up formulas for disposition counts (`=COUNTIF`), quantity sums (`=SUMIF`), quantity percentages (`=IF($C$8=0, 0, C{r}/$C$8)`), and total counts/sums (`=COUNTA`, `=SUM`) per ISO 9001:2015 Clause 8.7 and IATF 16949:2016 Clause 8.7. The COPQ exporter produces a 3-sheet workbook with live per-line calculation formulas (`=(C{r}*D{r})+E{r}`), PAF category subtotal rollups (`=SUMIF`), Total CoQ (`=SUM`), CoGQ/COPQ failure-to-conformance ratios, and COPQ %-of-revenue metrics per ASQ CSSGB BoK and the PAF model. Both exporters live in their respective domain packages to maintain downward-only architecture, preserve injection safety via `sanitize_cell`, and re-export public symbols in `quality_core.ncr` and `quality_core.copq` (#147).
+- Root Cause Analysis (RCA) Suite structured Excel exporter `quality_core.rca.export`
+  (`export_rca_workbook`, `build_rca_workbook`, `export_five_why_workbook`, `export_fishbone_workbook`,
+  `export_is_is_not_workbook`, and benchmark constructors `benchmark_five_why_chain`, `benchmark_fishbone_dataset`,
+  `benchmark_is_is_not_matrix`, `benchmark_rca_datasets`), generating structured multi-sheet `.xlsx` workbooks
+  for 5-Why causal progression (`"5-Why Analysis"`), 6M Fishbone cause-and-effect diagrams (`"6M Fishbone"`),
+  and Kepner-Tregoe problem boundary scoping (`"Kepner-Tregoe Is-Is Not"`). Sited in `quality_core.rca` to prevent
+  import cycles with `quality_core.io`, reusing shared table styling and OWASP formula-injection defenses.
+  Explicitly declares RCA as a qualitative problem-solving domain where arithmetic live-formula verification
+  is N/A (`RULE 6` in `rca/ASSUMPTIONS_LOG.md`) (#146).
+- FMEA live-formula Excel exporter `quality_core.io.export_fmea` (`export_fmea_workbook`,
+  `benchmark_fmea_dataset`), the first domain exporter built on the E1 core. The RPN column
+  is the only live cell — a real `=S*O*D` formula referencing that row's own Severity /
+  Occurrence / Detection cells, so editing a rating in Excel recalculates RPN instead of
+  reading a stale number; its `<f>` element is proven by `assert_cell_is_formula`, with a
+  hardcoded-literal build as the negative control. The Action Priority column is a
+  structured lookup value from `quality_core.scoring.action_priority` (not a formula, and
+  never re-derived here), and every free-text field stays inert through the unchanged
+  `sanitize_cell` escaping. Column letters are derived from `FMEA_EXPORT_COLUMNS` rather
+  than hand-typed, and rows export in `dataset.rows` order, never re-sorted (#142).
+- Live-formula SPC Excel exporter in `quality_core.io.export_spc` (`export_spc_excel`,
+  `export_spc_to_workbook`) supporting all 6 AIAG SPC Shewhart variable (`Xbar-R`, `Xbar-S`, `I-MR`)
+  and attribute (`p`, `c`, `u`) control chart types with live formulas for subgroup means, ranges,
+  standard deviations, moving ranges, defect proportions, rates, centerlines, and control limits;
+  process capability studies (`Cp`, `Cpk`, `Pp`, `Ppk`, process mean, overall dispersion, within-subgroup
+  dispersion); and run-rule violation findings and metadata tables, re-exported in `quality_core.io` (#143).
+- Control Plan live-formula Excel exporter `quality_core.controlplan.export`
+  (`export_controlplan_workbook`, `benchmark_controlplan_dataset`), a two-sheet workbook
+  built on the E1 core. It lives in the domain package, not beside the `quality_core.io`
+  primitives it consumes: `controlplan.schema` already imports `io` for the ingest
+  boundary, and `io` sits structurally below every domain engine, so an exporter inside
+  `io` would close that arrow into an import cycle. The matrix sheet carries every `ControlPlanRow` field as plain
+  sanitized data plus two derived `"Yes"`/`"No"` display columns
+  (`Sample_Plan_Placeholder`, `PFMEA_Linked`); the only live cells in the workbook are the
+  three linkage roll-ups on a dedicated `Coverage` sheet, at fixed addresses that never
+  move with the row count — `B2` `=COUNTA(...)` (total characteristics), `B3`
+  `=COUNTIF(...,"Yes")` (linked characteristics) and `B4` `=IF(B2=0,0,B3/B2)` (coverage,
+  rendered `0.0%`), whose `IF` guard is unconditional so an empty dataset shows `0` rather
+  than `#DIV/0!`. "Linked" here is *declared* linkage (`source_cause_id is not None`), a
+  deliberately weaker claim than `validate_pfmea_linkage`'s *validated* linkage, which
+  needs a `RelationalFMEA` an exporter does not have. The `<f>` elements are proven by
+  `assert_cell_is_formula`, with a hardcoded-literal build as the negative control and an
+  injection-safety control showing a free-text `"="` payload stays apostrophe-escaped
+  while the same workbook's roll-ups stay live and correct; recorded as RULE 4 in
+  `controlplan/ASSUMPTIONS_LOG.md`, which adds no citation (elementary counting). Column
+  letters are derived
+  from `CONTROLPLAN_EXPORT_COLUMNS` rather than hand-typed, and rows export in
+  `dataset.rows` order, never re-sorted (#145).
+- PPAP live-formula Excel exporter `quality_core.ppap.export` (`build_ppap_workbook`,
+  `export_ppap_workbook`, `benchmark_ppap_package`), a three-sheet submission-readiness
+  workbook built on the E1 core. Like the Control Plan exporter it lives in the domain
+  package, not beside the `quality_core.io` primitives it consumes, because `io` sits
+  structurally below every domain engine and an exporter inside it would close that arrow
+  into an import cycle. The checklist sheet carries all 18 AIAG elements in canonical
+  `PPAP_ELEMENT_IDS` order (§2.2.1 → §2.2.18, never re-sorted) as plain sanitized audit
+  data — requirement code, applicability verdict, audit verdict, evidence status,
+  document reference and the auditor's own rationale. The only live cells are four
+  roll-ups on a `Completeness` sheet at fixed addresses that never move, because the
+  checklist is always exactly 18 rows — `B6` `=COUNTA(...)` over `Element_ID` and `B7`/`B8`/`B9`
+  `=COUNTIF(...,"SUBMITTED"|"RETAINED_ON_FILE"|"MISSING")` over `Audit_Verdict` — plus
+  `Capability Gate!B4`, the §2.2.11.3 acceptance-band `IF`/`IF` cascade over the `B3`
+  index literal. That gate is the numeric band comparison *only*, and is written solely
+  when the engine's own `ProcessStudyResult.band is not None` proves the attribute-data,
+  sample-adequacy and stability gates were already cleared upstream; otherwise it renders
+  an inert `"N/A"`, as does the whole sheet when no study is supplied. Its two thresholds
+  are imported from `quality_core.ppap.process_study`, never re-typed, so the exporter
+  cannot drift a copy of a standards value. **The authority invariant travels to the
+  export boundary:** the workbook reports supplier submission readiness only and can
+  never emit a Section 5 customer disposition (`Approved` / `Interim Approval` /
+  `Rejected`), guarded by a sheet-wide regression test. `<f>` elements are proven by
+  `assert_cell_is_formula`, with a hardcoded-literal build as the negative control and an
+  injection-safety control showing a free-text `"="` payload stays apostrophe-escaped
+  while the same workbook's roll-ups stay live and count that row correctly; recorded as
+  the `EXPORT BOUNDARY` entry in `ppap/ASSUMPTIONS_LOG.md`, deliberately not numbered as
+  a RULE because it declares the *absence* of a standards value and so adds no
+  `CITATIONS.tsv` row (elementary counting and comparison). Column letters are derived from `PPAP_EXPORT_COLUMNS` rather than
+  hand-typed (#148).
+- Measurement Systems Analysis (MSA) live-formula Excel exporter in `quality_core.io.export_msa` (`export_msa_workbook` and `build_msa_workbook`) generating multi-sheet `.xlsx` workbooks for crossed Gage R&R studies per AIAG MSA (4th Edition) supporting Average-and-Range and ANOVA methods. Writes live openpyxl formulas (`Formula(...)`) for %EV, %AV, %GRR, %PV, %TV vs study variation; %EV, %AV, %GRR, %PV, %TV vs tolerance; 6×SD spread; GRR SD; TV SD; ndc categories; and ANOVA MS/F/Sums, keeping qualitative AIAG verdicts as structured strings and sanitizing untrusted inputs against formula injection. Re-exported at `quality_core.io` and `quality_core.msa` with assumptions documented in `quality_core.io.ASSUMPTIONS_LOG.md` (RULE-IO-003) (#144).
+- Measurement Systems Analysis (MSA) live-formula Excel exporter in `quality_core.msa.export` (`export_msa_workbook` and `build_msa_workbook`) generating multi-sheet `.xlsx` workbooks for crossed Gage R&R studies per AIAG MSA (4th Edition) supporting Average-and-Range and ANOVA methods. Writes live openpyxl formulas (`Formula(...)`) for %EV, %AV, %GRR, %PV, %TV vs study variation; %EV, %AV, %GRR, %PV, %TV vs tolerance; 6×SD spread; GRR SD; TV SD; ndc categories; and ANOVA MS/F/Sums, keeping qualitative AIAG verdicts as structured strings and sanitizing untrusted inputs against formula injection. Re-exported at `quality_core.msa` with assumptions documented in `quality_core.msa.ASSUMPTIONS_LOG.md` (RULE 18) (#144).
+- Shared live-formula Excel export core in `quality_core.io`: a `Formula` marker type
+  (formula string + optional number format) and `write_formula_cell()`, which write a real
+  OOXML `<f>` element instead of a cached literal so exported workbooks recalculate in Excel.
+  `write_table_sheet` recognises `Formula`-valued cells and writes them live; every other
+  cell still goes through the unchanged `sanitize_cell` escaping, so the opt-in is the
+  call site's *type*, never the data's content — an untrusted `"=1+1"` string stays
+  apostrophe-prefixed inert. Ships with a reusable `tests/_xlsx_formula_audit.py`
+  `<f>`-presence verifier (raw-XML, sheet resolved via `workbook.xml` rels) and its
+  negative control proving it fails on a hardcoded literal (#141).
+- Backfilled co-located `ASSUMPTIONS_LOG.md` standards declarations for every previously
+  uncovered `quality_core` module, closing the E0 audit gap (#140): `io/` (RULE-IO-001/002 —
+  `FORMULA_PREFIXES` is an OWASP CSV-injection convention, not a licensed standard),
+  `schema/` (RULE-SCHEMA-001 — AIAG/VDA S/O/D placement is structural, not a scored
+  constant), `canvas/` and `theme/` (presentation-only `NO-STANDARD-DECLARATION`s), plus
+  co-located `scoring_ASSUMPTIONS_LOG.md` (RULE-SCORING-001..003 — AIAG-VDA 2019 Action
+  Priority table, RPN, 1–10 scale) and `spc/ASSUMPTIONS_LOG.md` (RULE-SPC-001..004 —
+  chart constants, WE/Nelson run-rules, capability stability gate) (#140).
+- The one genuinely-missing per-domain citation test `tests/test_copq_citations.py` (COPQ had
+  manifest rows but no verifying test), sharing a new non-collected `tests/_citation_audit.py`
+  helper. COPQ's declared sources are PDF-only, so its rows are bound to the log per row
+  (`assert_manifest_rows_present_in_log`) — corrupting any single COPQ citation fails on every
+  machine, without needing a manual — while manual line-matching stays skip-safe (#140).
+- Package-wide anti-vacuity meta-test `tests/test_citation_coverage.py`: every engine module
+  carries an assumptions log, every non-empty `CITATIONS.tsv` is referenced by a verifying
+  test, and every empty/absent manifest must carry an explicit `NO-STANDARD-DECLARATION` or
+  `PROCUREMENT-GAP` token — an empty manifest can no longer pass silently (#140).
+- Negative-control self-test `tests/test_citation_audit_selftest.py` proving the citation
+  matcher and the log↔manifest blockquote binding are load-bearing without a licensed manual
+  present: a corrupted quote, a wrong line, and an unbacked blockquote each fail (#140).
+- Explicit `PROCUREMENT-GAP` declarations recording, honestly rather than by vacuity, that
+  the AIAG-VDA FMEA Handbook (scoring), the AIAG SPC / WE / Nelson manuals (spc), and the
+  ISO 9001 §8.4/§10.2 + IATF 16949 §8.4 excerpts (sqe) are not on-machine, so their verbatim
+  citation rows are deferred to an E0 follow-up once the manuals are provisioned (#140).
+
+### Fixed
+- Repointed the stale module-docstring citation in `quality_core.spc.stability` from the
+  nonexistent `docs/ASSUMPTIONS_LOG.md RULE 7` to the real `spc/ASSUMPTIONS_LOG.md
+  RULE-SPC-004` (#140).
+
 ## [0.9.0] - 2026-08-28
 
 ### Added

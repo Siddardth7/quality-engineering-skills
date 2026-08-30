@@ -21,7 +21,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
-from typing import Any
+from typing import Any, NamedTuple
 
 import pandas as pd
 from openpyxl.styles import Alignment, Font, PatternFill
@@ -144,6 +144,57 @@ _BOLD_FONT = Font(bold=True, size=10)
 _NORMAL_FONT = Font(size=10)
 
 
+class Formula(NamedTuple):
+    """Marks a cell value as a **live** Excel formula, bypassing :func:`sanitize_cell`.
+
+    ``formula`` is the full formula string and MUST start with ``"="``.
+    ``number_format`` is an optional openpyxl number format (e.g. ``"0.0000"``,
+    ``"0.00%"``); ``None`` leaves the cell's default format untouched.
+
+    Construct this ONLY from exporter-authored strings — constants, or f-strings
+    built from cell coordinates the exporter itself controls ("B2"/"C2") — never
+    from ingested or otherwise untrusted data. :func:`write_table_sheet` and
+    :func:`write_formula_cell` special-case this type and write ``.formula``
+    straight to ``cell.value``, skipping the injection escaping every other cell
+    gets. Wrapping untrusted text in ``Formula`` does not "authorize" it; it writes
+    it verbatim as a real formula, which is exactly the risk this module exists to
+    prevent. The opt-in is the call site choosing to construct a ``Formula`` at
+    all — never an inspection of a string's content, so a plain data string such
+    as ``"=1+1"`` arriving from an upload still goes through ``sanitize_cell``.
+    """
+
+    formula: str
+    number_format: str | None = None
+
+
+def write_formula_cell(
+    ws: Any,
+    row: int,
+    column: int,
+    formula: str,
+    *,
+    number_format: str | None = None,
+) -> Any:
+    """Write a live Excel formula into ``ws`` at (``row``, ``column``); return the cell.
+
+    ``formula`` MUST start with ``"="`` — otherwise :class:`ValueError` is raised, a
+    guard against accidentally routing a plain data string through this bypass path
+    (it is a typo guard, not a security boundary). The exact string is written to
+    ``cell.value``; openpyxl serializes a string cell value starting with ``"="`` as
+    an OOXML ``<f>`` formula element rather than a literal, so nothing further is
+    needed to make it live. ``number_format`` is applied only when given.
+
+    Callers MUST pass only exporter-authored formula strings: this function performs
+    no content inspection and applies none of :func:`sanitize_cell`'s escaping.
+    """
+    if not formula.startswith("="):
+        raise ValueError(f"formula must start with '=': {formula!r}")
+    cell = ws.cell(row=row, column=column, value=formula)
+    if number_format is not None:
+        cell.number_format = number_format
+    return cell
+
+
 def write_table_sheet(
     ws: Any,
     df: pd.DataFrame,
@@ -165,7 +216,9 @@ def write_table_sheet(
     openpyxl compatibility. Fills are cached per color so repeated colours produce
     identical ``PatternFill`` objects. The header row and string body cells are run
     through ``sanitize_cell`` (formula-injection escaping), so callers no longer depend
-    on their own ``columns=`` allow-list for safety.
+    on their own ``columns=`` allow-list for safety. A cell whose value is a
+    :class:`Formula` instance is written as a live formula instead — per cell, so a
+    column may mix formulas and sanitized data (e.g. a formula total row).
     """
     ws.title = title
     cols = [c for c in columns if c in df.columns]
@@ -191,8 +244,15 @@ def write_table_sheet(
             val = row[col_name]
             if hasattr(val, "item"):  # numpy bool/int -> native
                 val = val.item()
-            val = sanitize_cell(val)
-            cell = ws.cell(row=row_idx, column=col_idx, value=val)
+            if isinstance(val, Formula):
+                # Explicit, type-based opt-in at the call site — the ONLY way a cell
+                # becomes a live formula. Never inferred from string content.
+                cell = write_formula_cell(
+                    ws, row_idx, col_idx, val.formula, number_format=val.number_format
+                )
+            else:
+                val = sanitize_cell(val)
+                cell = ws.cell(row=row_idx, column=col_idx, value=val)
             if fill is not None:
                 cell.fill = fill
             cell.font = _NORMAL_FONT

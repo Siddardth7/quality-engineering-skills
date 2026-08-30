@@ -79,6 +79,14 @@ def test_copq_module_all_exports() -> None:
         "load_copq_csv",
         "validate_copq",
         "IngestError",
+        "COPQ_COL_WIDTHS",
+        "COPQ_LEDGER_COLUMNS",
+        "PAF_SUMMARY_COLUMNS",
+        "PAF_SUMMARY_COL_WIDTHS",
+        "benchmark_copq_dataset",
+        "build_copq_workbook",
+        "export_copq_excel",
+        "export_copq_workbook",
     }
     assert set(copq.__all__) == expected_exports
     for symbol in expected_exports:

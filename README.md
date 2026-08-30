@@ -73,7 +73,7 @@ Setup     FMEA      SPC       MSA      Control    RCA       NCR &     PPAP      
 | **v0.7.0** | NCR & COPQ Financial Estimator | ✅ **Completed** | [docs/milestones/v0.7.0.md](docs/milestones/v0.7.0.md) |
 | **v0.8.0** | PPAP Core (18-Element AIAG Base Standard) | ✅ **Completed** | [docs/milestones/v0.8.0.md](docs/milestones/v0.8.0.md) |
 | **v0.9.0** | Supplier SCAR & Vendor Rating | ✅ **Completed** | [docs/milestones/v0.9.0.md](docs/milestones/v0.9.0.md) |
-| **v1.0.0** | Production Hardening & Live-Formula Exporters | ⏳ **Up Next** | [docs/milestones/v1.0.0.md](docs/milestones/v1.0.0.md) |
+| **v1.0.0** | Production Hardening & Live-Formula Exporters | ✅ **Complete · human release pending** | [docs/milestones/v1.0.0.md](docs/milestones/v1.0.0.md) |
 
 Everything else — 8D, APQP/DVP&R, full ISO/IATF + VDA 6.3 audit, OEM CSR overlays, desktop packaging — is the named **v2 backlog** in **[ROADMAP.md](ROADMAP.md)**. Versions are milestone-driven, not date-driven.
 
@@ -134,7 +134,7 @@ uv run mypy             # strict static types
 uv run pip-audit        # dependency vulnerability audit
 ```
 
-Plus a **core dependency contract** (no UI chain in `quality-core` or `quality-mcp`) and two **100%** line+branch coverage gates — `quality-core` (io / schema / scoring / spc) and `quality-mcp` — followed by the `tests/` governance suites. Each suite runs once. Every new engine module added in `v0.6`–`v0.9` ships with its own gate, in the same style.
+Plus a **core dependency contract** (no UI chain in `quality-core` or `quality-mcp`) and two **100%** line+branch coverage gates — `quality-core` (`io`, `schema`, `scoring`, `spc`, `canvas`, `msa`, `controlplan`, `rca`, `ncr`, `copq`, `sqe`, and `ppap`) and `quality-mcp` — followed by the `tests/` governance suites. Each suite runs once.
 
 > **Standards fidelity.** Every AIAG / ISO / VDA constant, threshold, and quotation is cited in that domain's `docs/ASSUMPTIONS_LOG.md`, verified against the licensed reference manual — never against a web search.
 

@@ -130,3 +130,22 @@ Where internal platform choices or heuristics are adopted, they are explicitly d
 
 **Applied In:** `packages/quality-core/src/quality_core/rca/fishbone.py` (`categorize_fishbone`), `packages/quality-core/src/quality_core/canvas/rca.py` (`FishboneCanvas`).
 
+---
+
+## RULE 6: Qualitative RCA Excel Exporter, Multi-Sheet Workbook Layout, and Formula Injection Defense
+
+**Decision:** Implement a structured multi-sheet Excel export pipeline for Root Cause Analysis (`quality_core.rca.export`) generating workbooks across 5-Why causal chains (`"5-Why Analysis"`), 6M Fishbone diagrams (`"6M Fishbone"`), and Kepner-Tregoe Is/Is-Not matrices (`"Kepner-Tregoe Is-Is Not"`). Formally declare that live formula arithmetic verification is explicitly N/A for qualitative RCA methodologies. Route all user-supplied text through `write_table_sheet` and `sanitize_cell` to guarantee CSV/formula-injection safety against OWASP trigger characters (`"="`, `"+"`, `"-"`, `"@"`, `"\t"`, `"\r"`).
+
+**Source:**
+- AIAG CQI-20 *Effective Problem Solving Guide* (2nd Edition, 2018), Section 4 (Problem Definition & Boundary Specification), Section 5 (Why-Why Analysis), and Section G1 (Fishbone Diagram).
+- Kaoru Ishikawa, *Guide to Quality Control* (2nd Revised Edition, 1986), Chapter 3 (Cause-and-Effect Diagrams).
+- Charles H. Kepner & Benjamin B. Tregoe, *The New Rational Manager* (Updated Edition, 1997), Chapters 2 & 3 (Problem Analysis).
+- Ford Motor Company, *Global 8D (G8D) Problem Solving Manual*, Sections D2, D4 & D7.
+- Nancy R. Tague, *The Quality Toolbox* (2nd Edition, ASQ Quality Press, 2005), Chapter 5.
+- OWASP CSV Injection Defense Guidelines.
+- Absence of Published Arithmetic Formula Standard: No published AIAG, ISO, ASQ, or Kepner-Tregoe standard specifies spreadsheet calculation formulas or arithmetic constants for qualitative RCA tools.
+
+**Rationale:** Root Cause Analysis methods are qualitative deductive problem-solving methodologies and structural scoping frameworks. Unlike quantitative engines (e.g. MSA variance components or SPC Shewhart control limits), RCA workbooks function as structured qualitative documentation of problem boundaries, causal chains, and categorized failure mechanisms rather than dynamic numerical calculators. The multi-sheet layout mirrors the standard 8D/RCA problem-solving progression (Is/Is-Not problem boundary scoping $\to$ Fishbone brainstormed categorization $\to$ 5-Why root cause isolation). Strict formula-injection defense ensures that any problem statements or cause descriptions containing spreadsheet trigger characters are safely escaped with apostrophe prefixes and preserved as inert text strings in saved XML representations.
+
+**Applied In:** `packages/quality-core/src/quality_core/rca/export.py` (`build_rca_workbook`, `export_rca_workbook`, `export_five_why_workbook`, `export_fishbone_workbook`, `export_is_is_not_workbook`), `packages/quality-core/src/quality_core/rca/__init__.py`.
+

@@ -6,10 +6,16 @@ test_schema and test_relational.
 """
 from __future__ import annotations
 
+import os
+import sys
 from collections.abc import Callable
 
 import pytest
 from quality_core.schema import FMEADataset, FMEARow
+
+# Make this directory importable so the citation-audit test modules can share the
+# non-collected `_citation_audit` helper regardless of pytest's import mode / rootdir.
+sys.path.insert(0, os.path.dirname(__file__))
 
 VALID_ROW: dict[str, object] = {
     "ID": 1,

@@ -318,3 +318,21 @@ All remaining 13 elements (§2.2.1, §2.2.2, §2.2.5–§2.2.12, §2.2.14, §2.2
 **Rationale:** The auditor evaluates whether the package contains all required items and evidence for the requested submission level before transmitting to the customer. Assigning customer dispositions (Approved, Interim Approval, Rejected) belongs strictly to the customer's authorized representative; supplier tooling must evaluate and report readiness verdicts (`SUBMISSION_READY`, `NOT_READY`, `INDETERMINATE`).
 
 **Applied In:** `packages/quality-core/src/quality_core/ppap/auditor.py` (`audit_ppap_package`, `PPAPAuditResult`, `ElementAuditResult`, `ElementAuditVerdict`, `PackageAuditVerdict`, `AUDIT_ELEMENT_VERDICTS`, `AUDIT_PACKAGE_VERDICTS`).
+
+---
+
+## EXPORT BOUNDARY: Excel Exporter Introduces No Standards Constant; The Authority Invariant at the Sheet Level
+
+**Why this is not numbered as a RULE:** every `## RULE N` entry in this log asserts a standards value and is required by `tests/test_ppap_scaffold.py` to carry a matching `CITATIONS.tsv` row. This entry asserts the *opposite* — that the export boundary introduces **no** standards value of its own — so it has no quotation to cite and adds no manifest row. Numbering it would either break that invariant or force a fabricated citation. The values the exporter displays stay governed by RULES 10, 11 and 12 above.
+
+**Decision:** `export.py` writes a PPAP audit to `.xlsx` without defining, deriving, or transcribing any AIAG value. Every value it displays is one an engine already computed: Table 4.1 requirement codes come from `ElementAuditResult.requirement_code` (RULE 10), the §2.2.11 thresholds are **imported** from `process_study.py` as `ACCEPTANCE_THRESHOLD_CAPABLE` / `ACCEPTANCE_THRESHOLD_POTENTIALLY_CAPABLE` and interpolated into the gate formula rather than re-typed (RULE 11), the verbatim §2.2.11 `required_action` text is passed through unchanged, and the readiness verdicts are the auditor's own (RULE 12). The workbook's five live cells are elementary spreadsheet arithmetic: `Completeness!B6` `COUNTA`, `Completeness!B7`/`B8`/`B9` `COUNTIF`, and `Capability Gate!B4`, an `IF`/`IF` cascade over the `B3` index literal and the two imported thresholds. Column letters are derived from `PPAP_EXPORT_COLUMNS` via `get_column_letter`, never hand-typed.
+
+**Gate scope is the numeric band only:** `Capability Gate!B4` reproduces the §2.2.11.3 acceptance-band comparison and nothing else. The attribute-data guard (§2.2.11.1 Note 2), sample-adequacy gate (§2.2.11.1 Note 5) and stability gate (§2.2.11.4) stay solely in `process_study.py`; the formula is written only when the engine's own `ProcessStudyResult.band is not None` proves those gates were already cleared, and renders an inert `"N/A"` otherwise.
+
+**Authority invariant at the export boundary:** the workbook reports supplier submission readiness only. No column, metric label, or literal in `export.py` can carry `Approved`, `Interim Approval`, or `Rejected`, and none may be added — RULE 12's Section 5 boundary is unchanged and is enforced at the sheet level by a dedicated regression test.
+
+**Source:** None. `COUNTA`, `COUNTIF`, and a two-branch `IF` comparison are elementary spreadsheet arithmetic; no published standard specifies them, so this rule adds no row to `CITATIONS.tsv`. The values displayed remain governed by RULE 10 (Table 4.1/4.2 codes), RULE 11 (§2.2.11 thresholds and actions) and RULE 12 (readiness verdicts and the authority invariant) — those citations are unchanged.
+
+**Rationale:** An exporter is a presentation boundary. Re-deriving a standards claim inside it would create a second copy that could drift from the engine's, so the exporter consumes computed results and keeps its own authored cells to elementary counting and comparison against exporter-controlled coordinates.
+
+**Applied In:** `packages/quality-core/src/quality_core/ppap/export.py` (`PPAP_EXPORT_COLUMNS`, `_completeness_rows`, `_band_gate_formula`, `_capability_rows`, `build_ppap_workbook`, `export_ppap_workbook`, `benchmark_ppap_package`).

@@ -124,11 +124,18 @@ def _is_rule_valid(heading: str, block: str, cited_sites: set[str]) -> bool:
     is_cited = any(rule_id in site for site in cited_sites) or any(site in heading for site in cited_sites)
     return is_cited or _is_declared_heuristic_or_unstandardized(heading, block)
 
-# The SCAR generator (#120) added the first real citation rows to sqe/CITATIONS.tsv: three rows for
-# RULE-SQE-011, two for RULE-SQE-012, one for RULE-SQE-013.
-_EXPECTED_CITATION_ROW_COUNT = 6
+# The SCAR generator (#120) added the first real citation rows to sqe/CITATIONS.tsv; #181 expands
+# its cited D2–D7 sections with one row each for RULE-SQE-014 through RULE-SQE-016.
+_EXPECTED_CITATION_ROW_COUNT = 9
 _EXPECTED_CITATION_SITES: frozenset[str] = frozenset(
-    {"RULE-SQE-011", "RULE-SQE-012", "RULE-SQE-013"}
+    {
+        "RULE-SQE-011",
+        "RULE-SQE-012",
+        "RULE-SQE-013",
+        "RULE-SQE-014",
+        "RULE-SQE-015",
+        "RULE-SQE-016",
+    }
 )
 
 
@@ -179,7 +186,7 @@ def test_assumptions_log_rules_cited() -> None:
     assert "## RULE Entries" in content
 
     rule_blocks = _extract_rule_blocks(content)
-    assert len(rule_blocks) == 14, f"Expected 14 RULE entries in SQE assumptions log, found {len(rule_blocks)}"
+    assert len(rule_blocks) == 18, f"Expected 18 RULE entries in SQE assumptions log, found {len(rule_blocks)}"
 
     _, rows = _validate_citations_tsv_format(_CITATIONS_TSV.read_text(encoding="utf-8"))
     cited_sites = {row["site"] for row in rows}
@@ -215,9 +222,9 @@ def test_citations_tsv_data_rows_are_the_expected_sqe_rules() -> None:
     """Verify sqe/CITATIONS.tsv carries exactly the rows the shipped SQE RULEs cite.
 
     E0 (#114) left this manifest header-only, and PPM/OTIF (#116/#117) added no rows because those
-    engines assert no standard. E6 (#120) adds the first real rows: the three cited SCAR section
-    headings, reusing quotations already verified in ``rca/CITATIONS.tsv``. Pinning the exact row
-    count and site set keeps this a real gate — an uncited row or a dropped one still fails.
+    engines assert no standard. E6 (#120) added the first real rows, and #181 adds the three
+    remaining cited SCAR section headings. Pinning the exact row count and site set keeps this a
+    real gate — an uncited row or a dropped one still fails.
     """
     _, rows = _validate_citations_tsv_format(_CITATIONS_TSV.read_text(encoding="utf-8"))
     assert len(rows) == _EXPECTED_CITATION_ROW_COUNT, (

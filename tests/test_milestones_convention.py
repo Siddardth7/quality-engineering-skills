@@ -41,6 +41,11 @@ _V090_MILESTONE = _MILESTONES_DIR / "v0.9.0.md"
 _V100_MILESTONE = _MILESTONES_DIR / "v1.0.0.md"
 _ROADMAP = _REPO_ROOT / "ROADMAP.md"
 _CHANGELOG = _REPO_ROOT / "CHANGELOG.md"
+_README = _REPO_ROOT / "README.md"
+_SKILLS_README = _REPO_ROOT / "skills" / "README.md"
+_ROOT_PYPROJECT = _REPO_ROOT / "pyproject.toml"
+_CORE_PYPROJECT = _REPO_ROOT / "packages" / "quality-core" / "pyproject.toml"
+_MCP_PYPROJECT = _REPO_ROOT / "packages" / "quality-mcp" / "pyproject.toml"
 
 _SEMVER_FILENAME_PATTERN = re.compile(r"^v\d+\.\d+\.\d+\.md$")
 _CANONICAL_ISSUE_URL_PATTERN = re.compile(
@@ -1305,3 +1310,95 @@ def test_negative_control_roadmap_missing_v100_rejected() -> None:
     content = _ROADMAP.read_text(encoding="utf-8")
     mutated = content.replace("[**`v1.0.0`**](docs/milestones/v1.0.0.md)", "**`v1.0.0`**")
     assert "[**`v1.0.0`**](docs/milestones/v1.0.0.md)" not in mutated
+
+
+def _assert_v100_closeout_facts(milestone: str) -> None:
+    """Assert the factual v1.0.0 implementation-complete release handoff."""
+    assert "Status:** Complete · ready for human release" in milestone
+    assert "Completed:** 2026-08-29" in milestone
+    assert "11 domain skills" in milestone
+    assert "eight domains" in milestone
+    assert "Promotion `test → main`" in milestone
+    assert "`v1.0.0` tag remain human-owner actions" in milestone
+    assert "TRIAL_2026-08-29_v1.0.0_regression.md" in milestone
+    artifacts = milestone.split("## Verification Artifacts & Test Evidence", maxsplit=1)[1]
+    artifacts = artifacts.split("## Retrospective & Status", maxsplit=1)[0]
+    assert artifacts.count("| Verified |") == 15
+    assert "| Planned |" not in artifacts
+    assert "Verification pending" not in artifacts
+    merged = {
+        189: "8338ca6d2a67b7fee737b66390111ee4528a3258",
+        190: "b3528fa5b1451b0a65e39116206dfe864224138e",
+        191: "811db7ea136b7792d79a1c7bf3958194327d7dc1",
+        192: "d2f536380830a347ba3fa71f45efe1d4e3942e35",
+        194: "5b6e96dd6492137fb2e8dd3e516451507dfb65a7",
+        193: "2227dd021c3ef041c9ca4a08abd2a8f230104428",
+        196: "816d55e09be6448c06fe6e40d6d07a79ade8b0d1",
+        195: "9f02e97fa6df6f8c60f0e1ca071e06d5d2f72ab8",
+        197: "9c8a38b92559d4310d013287e667bab2f3ecda5e",
+        199: "c4b8819125b4d608564212d71788946abf376a38",
+        201: "22c0a4164951ab829ee962bf8e3b3a51d63db413",
+    }
+    for pr, sha in merged.items():
+        assert f"PR #{pr}" in milestone
+        assert sha in milestone
+
+
+def _assert_v100_public_release_facts(content: str) -> None:
+    """Assert the approved implementation-complete, publication-pending boundary."""
+    assert "Complete" in content
+    assert "human release pending" in content
+
+
+def test_v100_closeout_completion_and_release_boundary() -> None:
+    """Verify completed implementation without fabricating promotion or a tag."""
+    _assert_v100_closeout_facts(_V100_MILESTONE.read_text(encoding="utf-8"))
+    for path in (_ROADMAP, _MILESTONES_README, _README, _SKILLS_README):
+        _assert_v100_public_release_facts(path.read_text(encoding="utf-8"))
+    skills = _SKILLS_README.read_text(encoding="utf-8")
+    assert "`supplier-scar`" in skills and "| Active |" in skills
+
+
+def _assert_v100_changelog_facts(changelog: str) -> None:
+    """Assert the dated release section and closeout traceability."""
+    assert "## [Unreleased]\n\n## [1.0.0] - 2026-08-29" in changelog
+    release = changelog.split("## [0.9.0]", maxsplit=1)[0]
+    assert "#151" in release
+    assert "docs/milestones/v1.0.0.md" in release
+
+
+def test_v100_versions_and_changelog_are_reconciled() -> None:
+    """Verify metadata, lockfile, and release history agree on 1.0.0."""
+    for path in (_ROOT_PYPROJECT, _CORE_PYPROJECT, _MCP_PYPROJECT):
+        assert 'version = "1.0.0"' in path.read_text(encoding="utf-8")
+    lock = (_REPO_ROOT / "uv.lock").read_text(encoding="utf-8")
+    assert lock.count('version = "1.0.0"') >= 3
+    _assert_v100_changelog_facts(_CHANGELOG.read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        ("PR #189", "PR #999"),
+        ("8338ca6d2a67b7fee737b66390111ee4528a3258", "0" * 40),
+        ("| Verified |", "| Planned |"),
+    ],
+)
+def test_negative_control_v100_closeout_fact_mutations(old: str, new: str) -> None:
+    """Negative control: corrupting traceability or proof is rejected."""
+    content = _V100_MILESTONE.read_text(encoding="utf-8")
+    with pytest.raises(AssertionError):
+        _assert_v100_closeout_facts(content.replace(old, new, 1))
+
+
+def test_negative_control_v100_release_and_changelog_mutations() -> None:
+    """Negative control: release-state and changelog linkage are load-bearing."""
+    roadmap = _ROADMAP.read_text(encoding="utf-8")
+    with pytest.raises(AssertionError):
+        _assert_v100_public_release_facts(
+            roadmap.replace("human release pending", "Planned", 1)
+        )
+    changelog = _CHANGELOG.read_text(encoding="utf-8")
+    for old in ("## [1.0.0] - 2026-08-29", "#151"):
+        with pytest.raises(AssertionError):
+            _assert_v100_changelog_facts(changelog.replace(old, "", 1))

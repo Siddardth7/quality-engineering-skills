@@ -52,7 +52,7 @@ Where:
 | `v0.7.0` | [`docs/milestones/v0.7.0.md`](v0.7.0.md) | NCR & COPQ Financial Estimator | Complete |
 | `v0.8.0` | [`docs/milestones/v0.8.0.md`](v0.8.0.md) | PPAP Core (18-Element AIAG Base Standard) | Complete |
 | `v0.9.0` | [`docs/milestones/v0.9.0.md`](v0.9.0.md) | Supplier SCAR & Vendor Rating | Complete |
-| `v1.0.0` | `docs/milestones/v1.0.0.md` | Production Hardening & Live-Formula Exporters | Planned |
+| `v1.0.0` | [`docs/milestones/v1.0.0.md`](v1.0.0.md) | Production Hardening & Live-Formula Exporters | Complete · human release pending |
 
 ---
 

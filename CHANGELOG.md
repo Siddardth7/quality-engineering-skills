@@ -8,6 +8,10 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-08-29
+
+Milestone 10 implementation is complete and ready for the human release handoff. The closeout reconciles the [v1.0.0 milestone](docs/milestones/v1.0.0.md), all five version SSOTs and the workspace lock, and the 11-skill / 8-domain catalog. Promotion `test → main` and creation of the `v1.0.0` tag remain human-owner actions (#151).
+
 ### Added
 - End-to-end skill-catalog regression suite `packages/quality-mcp/tests/test_e2e_catalog_regression.py` (E10), plus the dated live-validation record `TRIAL_2026-08-29_v1.0.0_regression.md`. One in-process FastMCP client session walks all 31 registered tools across the eight domains (FMEA, SPC, MSA, Control Plan, RCA, NCR+COPQ, PPAP, SQE) over their shipped benchmark inputs, asserting the exercised tool set equals the set the server advertises. Each domain's `quality_core` exporter is then invoked directly — no exporter is an MCP tool — and put through the E1 verifier `assert_cell_is_formula`: the eight live-formula workbooks must pass on the coords their own `test_*_export.py` already proved, while RCA, a qualitative structured-only domain by design (`rca/ASSUMPTIONS_LOG.md` RULE 6), must make the verifier **raise**, so its "N/A" declaration is enforced rather than claimed. A negative control feeds `calculate_spc_chart` a malformed dataset and asserts `isError` plus an unpoisoned session. Tests and documentation only — no engine, tool, canvas, or skill source changed; the quality-mcp coverage gate stays at 100% line+branch (#150).
 - Six cited SCAR headings in D2–D7 order, backed by local Ford Global 8D / AIAG CQI-20 rules and three new `quality_core/sqe/CITATIONS.tsv` rows (`RULE-SQE-014` through `RULE-SQE-016`) (#181).

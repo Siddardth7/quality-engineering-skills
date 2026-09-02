@@ -8,6 +8,30 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 
 ## [Unreleased]
 
+### Added
+- 8D Problem-Solving standards and citation base for Milestone 11 (E0, P0 governance): 28 new
+  `quality_core/rca/CITATIONS.tsv` rows and 13 new `rca/ASSUMPTIONS_LOG.md` `RULE-8D-*` entries
+  covering the nine D0–D8 discipline definitions (`RULE-8D-D0`..`RULE-8D-D8`), the three
+  milestone gates (`RULE-8D-GATE-CONTAINMENT` D3→D4, `RULE-8D-GATE-PREVENTION` D7 loopback,
+  `RULE-8D-GATE-CLOSURE` D8 closure), and the source-primacy decision
+  (`RULE-8D-SOURCE-PRIMACY`) recording that AIAG CQI-20 "intentionally avoids labelling the
+  steps as an 8D", which is why the Ford Global 8D Manual is primary for every D-label.
+  PROCUREMENT-GAP status is **none** — every rule and gate has a direct on-box excerpt, verified
+  against `FORD_8D_MANUAL_PATH` / `CQI20_MANUAL_PATH` rather than assumed. Gate *enforcement
+  mechanisms* and the root-cause-authorship invariant are recorded as Process Design Decisions
+  with no `CITATIONS.tsv` row, explicitly not presentable as standards. Also records the on-box
+  reading of CQI-20's "5W2H" as **"5 Why – 2 How"**, not the generic
+  What/Where/When/Who/Why/How mnemonic, for the future D2 engine. Data and documentation only —
+  no `quality_core` production code, no schema, and no state machine (#218).
+
+### Changed
+- `packages/quality-core/tests/test_rca_citations.py` gains two manual-independent structural
+  guards that RCA lacked relative to SQE/COPQ: `test_every_manifest_site_has_an_assumptions_log_rule`
+  (every `CITATIONS.tsv` site must have a `## <site>:` heading in the log) and
+  `test_every_manifest_row_is_present_in_log` (every manifest quote must appear verbatim in the
+  log, per row rather than per contiguous blockquote block, so corrupting one quote inside a
+  shared block can no longer pass silently) (#218).
+
 ## [1.0.0] - 2026-08-29
 
 Milestone 10 implementation is complete and ready for the human release handoff. The closeout reconciles the [v1.0.0 milestone](docs/milestones/v1.0.0.md), all five version SSOTs and the workspace lock, and the 11-skill / 8-domain catalog. Promotion `test → main` and creation of the `v1.0.0` tag remain human-owner actions (#151).

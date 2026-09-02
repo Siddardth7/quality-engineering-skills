@@ -32,3 +32,31 @@ RULE 4	2026	These systemic problems need to be fixed. The goal is to change the 
 RULE 4	1685	The systemic root cause(s) addresses, "Why did the system or planning process fail to identify the cause of the problem and the non-discovery?" The systemic root cause typically is understood last and diligence is required to address thoroughly.
 RULE 5	14637	Causes can be written in several places if they relate to several categories.
 RULE 5	4140	6) If a possible cause could fit in either leg just pick one and enter it. Don't get into an argument about which leg it belongs.
+RULE-8D-D0	264	In response to a symptom, assess the need for the G8D process. If necessary, provide an Emergency Response Action to protect the customer and initiate the G8D process.
+RULE-8D-D0	536	Once an ARE has been identified, it must be checked that it is effective before its full implementation.
+RULE-8D-D0	638	Are Emergency Response Actions necessary?
+RULE-8D-D1	270	Establish a small group of people with the process and/or product knowledge. assign time, authority, and skills in the technical disciplines required to solve the problems and implement corrective actions. The group must have a Champion and a Designated Team Leader. The group begins the team-building process.
+RULE-8D-D1	751	Champion: the champion will usually be the internal person responsible who is feeling the pain of the problem.
+RULE-8D-D1	756	Team Leader: the role of the team leader is to manage the team's business for the team.
+RULE-8D-D1	833	Has the designated Champion of the team been identified? Has the Team Leader been identified?
+RULE-8D-D2	277	Describe the internal/external problem by identifying 'what is wrong with what', and detail the problem in quantifiable terms (Description of the problem).
+RULE-8D-D2	1610	The problem statement can include but is not limited to 5 Why-2 How (5W2H), Gantt chart, Is/Is Not, etc.
+RULE-8D-D3	282	Define, verify, and implement the Interim Containment Action (AIC) to isolate the effects of the problem of any internal/external client until they are implemented Permanent Corrective Actions (PCAs). Validate the effectiveness of the measures of containment.
+RULE-8D-D3	1182	The AIC is verified.
+RULE-8D-D4	293	Isolate and verify the root cause by testing each possible cause against the description of the Problem with the test data. Also isolate and verify the place in the process where the effects of the root cause should have been detected and contained, but it was not done (escape point).
+RULE-8D-D4	1310	Root Cause: - the lowest level event that can be attributed to and proven as the one that caused the problem that arises
+RULE-8D-D4	1313	Escape Point: - the place in the process where the root cause of the problem was not detected allowing the problem to occur
+RULE-8D-D5	300	Select the best permanent corrective action to eliminate the root cause. Also select the best permanent corrective action to address the escape point. Verify that both decisions will be successful when implemented without causing undesirable effects.
+RULE-8D-D5	1591	Now you are in a position to determine and choose the Permanent Corrective Action (PCA).
+RULE-8D-D5	1692	Finally, the G8D Team must verify that the ACP will eliminate the root cause effectively.
+RULE-8D-D5	1719	Have the criteria been established to choose an ACP for the root cause and the point of escape?
+RULE-8D-D6	307	Plan and implement selected Permanent Corrective Actions. Remove the AIC. Validate actions and monitor long-term results.
+RULE-8D-D6	1805	Having established and verified the best ACP for the root cause and the escape point, the next step is the implementation of the ACP.
+RULE-8D-D7	312	Modify the necessary systems, including policies, practices, and procedures, to prevent the recurrence of this and other similar problems. Make recommendations to systemic improvements, as necessary.
+RULE-8D-D7	2064	Have all changes been documented (for example, FMEA, control plan, flow) of the process)?
+RULE-8D-D8	318	Complete the team's experience, recognizing both individual contributions and the team's, and celebrate success.
+RULE-8D-D8	2147	Ensure that all related documentation is reviewed and updated.
+RULE-8D-GATE-CONTAINMENT	1449	Provisions for containment should stay in place until effectiveness of the corrective actions are verified.
+RULE-8D-GATE-PREVENTION	1729	Have all changes been documented (for example, FMEA, control plan, flow of process)?
+RULE-8D-GATE-CLOSURE	1991	there is normally a procedure, a policy, or a (systemic) practice that has allowed you pass. We call this the 'root cause of the root cause.' This must be established and resolved.
+RULE-8D-SOURCE-PRIMACY	549	Corrective action reporting from many diverse organizations requires applying the 8D approach. This guideline intentionally avoids labelling the steps as an 8D.

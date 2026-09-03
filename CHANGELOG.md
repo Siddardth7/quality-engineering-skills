@@ -13,6 +13,28 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
   `current_discipline` separate from report lifecycle status, adjacent-only transitions,
   provenance-backed D3 verification, D7 FMEA/Control Plan update evidence, and defense-in-depth
   D8 closure checks exposed through structured, copy-isolated results (#205).
+- 8D discipline engines for D0 and D1 in `quality_core.rca.eight_d_disciplines` (E3, Milestone
+  11): `validate_d0_readiness` reads a typed `D0Discipline` and reports Emergency Response Action
+  readiness — ACCEPT when no ERA is required or when the ERA is implemented *and* verified
+  effective, WARNING when the verification predates the implementation, and REJECT when a
+  required ERA is unimplemented, unverified, verified-without-implementation, or verified as not
+  effective. `validate_d1_team` reads a typed `D1Discipline` and rejects an incomplete team (an
+  empty `members` roster), warning on undefined member roles, duplicate roster names, and one
+  person holding both the Champion and Team Leader roles. Both return the house
+  `ACCEPT`/`WARNING`/`REJECT` verdict with per-finding severities, de-duplicated recommendations,
+  and a `to_dict()` serialization, matching the `five_why.py` engine shape. Adds six
+  `quality_core/rca/CITATIONS.tsv` rows in the reserved per-discipline namespace —
+  `RULE-8D-D0-001..003` (ERA verification/validation evaluation questions; what a verification
+  must demonstrate) and `RULE-8D-D1-001..003` (defining team members; team size adequacy; role
+  clarity) — each verified on-box against `FORD_8D_MANUAL_PATH` / `CQI20_MANUAL_PATH`, and
+  corrects the two `RULE-8D-D0`/`RULE-8D-D1` **Applied In** pointers to name the real module. The
+  four heuristics no manual backs (verification-date ordering, champion == team leader, duplicate
+  member names, and reading "roles ... clear" as a populated `role` field) carry no citation row
+  and are recorded as Process Design Decision #6, explicitly not presentable as standards. No
+  team-size threshold and no competency model are implemented: no source states a number and
+  `TeamMember` has no skill field. **D0/D1 engines only** — D2–D8, the 8D state machine and
+  cross-discipline gates (`rca/eight_d.py`, E2/#205), and any MCP, skill, or exporter surface
+  remain out of scope (#206).
 - 8D report schema and ingest boundary `quality_core.rca.eight_d_schema` (E1, Milestone 11): the
   `EightDReport` envelope plus `D0Discipline`..`D8Discipline`, the reusable
   `EffectivenessVerification` record, `WarningOverride`, and the four naturally tabular

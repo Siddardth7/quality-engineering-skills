@@ -228,8 +228,69 @@ effective before its full implementation.
 manual requires the emergency action taken at this stage to be *checked effective*, not merely
 declared, and makes the necessity of an emergency response an explicit D0 evaluation question.
 
-**Applied In:** Not yet applied — reserved for E3 (`rca/eight_d.py` D0 engine, #206). This entry
-seeds the citation only (#218).
+**Applied In:** `packages/quality-core/src/quality_core/rca/eight_d_disciplines.py`
+(`validate_d0_readiness`), E3 (#206).
+
+---
+
+## RULE-8D-D0-001: "Verified" is a concrete, checkable D0 event
+
+**Decision:** A D0 record whose Emergency Response Action is required and implemented but carries
+no effectiveness-verification record is rejected: "was it verified?" is a question the D0
+evaluation asks of every ERA, so the engine must be able to answer it from the record.
+
+**Source:**
+- Ford Motor Company, *Global 8D (G8D) Problem Solving Manual*, D0 Evaluation Questions:
+> How was the emergency response action verified?
+
+**Rationale:** The manual poses ERA verification as an evaluation question the team must answer,
+not as an optional extra. A record that cannot answer it is not D0-complete, which is why
+`ERA_NOT_VERIFIED` is an `error` (REJECT) rather than a warning.
+
+**Applied In:** `packages/quality-core/src/quality_core/rca/eight_d_disciplines.py`
+(`validate_d0_readiness`, `ERA_NOT_VERIFIED`), E3 (#206).
+
+---
+
+## RULE-8D-D0-002: Validation of the ERA is asked alongside verification
+
+**Decision:** The D0 engine treats the recorded `EffectivenessVerification` as the single
+evidence artifact answering the manual's paired verified/validated questions; it does not invent
+a second, separate "validation" field the schema does not have.
+
+**Source:**
+- Ford Motor Company, *Global 8D (G8D) Problem Solving Manual*, D0 Evaluation Questions:
+> How was the Emergency Response Action validated?
+
+**Rationale:** Ford asks both questions of D0, back to back, at the same evaluation point.
+`EffectivenessVerification` already records *who* determined effectiveness, *when*, and *on what
+evidence* — the substance both questions ask for. Splitting it into two fields would assert a
+data shape neither manual defines (see Process Design Decision #5).
+
+**Applied In:** `packages/quality-core/src/quality_core/rca/eight_d_disciplines.py`
+(`validate_d0_readiness`, the `era_verification` evidence read), E3 (#206).
+
+---
+
+## RULE-8D-D0-003: "Effective" means the effects are eliminated, not that a check happened
+
+**Decision:** An ERA whose verification record concluded `is_effective is False` is rejected
+(`ERA_VERIFIED_INEFFECTIVE`), and `era_verified` on the result is True only when a verification
+record exists *and* concluded the action is effective — the presence of a verification record is
+never on its own sufficient.
+
+**Source:**
+- Ford Motor Company, *Global 8D (G8D) Problem Solving Manual*, Section D0:
+> The verification must demonstrate that when installing the ARE, the effects of the problem are eliminated and when they are taken away, they come back.
+
+**Rationale:** The manual defines what a verification has to *demonstrate*, which makes a
+verification that demonstrated the opposite a failed ERA rather than a satisfied requirement.
+This is the standards grounding for reading `is_effective` and not merely `verification is not
+None`. (The manual's "ARE" is an artifact of the on-box extraction of "ERA"; the excerpt is
+quoted verbatim, as `RULE-8D-D0` already does.)
+
+**Applied In:** `packages/quality-core/src/quality_core/rca/eight_d_disciplines.py`
+(`validate_d0_readiness`, `_is_verified_effective` / `ERA_VERIFIED_INEFFECTIVE`), E3 (#206).
 
 ---
 
@@ -249,8 +310,66 @@ team is not complete until both a Champion and a Designated Team Leader are iden
 role's distinct responsibility, and re-tests both at the D1 evaluation questions — so a
 team-completeness check has to assert both roles, not merely a non-empty member list.
 
-**Applied In:** Not yet applied — reserved for E3 (`rca/eight_d.py` D1 engine, #206). This entry
-seeds the citation only (#218).
+**Applied In:** `packages/quality-core/src/quality_core/rca/eight_d_disciplines.py`
+(`validate_d1_team`), E3 (#206).
+
+---
+
+## RULE-8D-D1-001: The team members are defined separately from the two named roles
+
+**Decision:** A D1 record with a Champion and a Team Leader but an empty `members` list is
+rejected (`NO_TEAM_MEMBERS`, severity `error`). Naming the two roles does not by itself define
+the team.
+
+**Source:**
+- AIAG CQI-20 *Effective Problem Solving Guide* (2nd Edition, 2018), Check Your Progress:
+> Did we define the team members?
+
+**Rationale:** CQI-20 asks about the team members as its own progress check, listed separately
+from "Did we select an executive champion?" and "Did we select a team leader?". Treating an empty
+roster as complete would collapse three distinct checks into two.
+
+**Applied In:** `packages/quality-core/src/quality_core/rca/eight_d_disciplines.py`
+(`validate_d1_team`, `NO_TEAM_MEMBERS`), E3 (#206).
+
+---
+
+## RULE-8D-D1-002: Team adequacy is evaluated against the problem, with no numeric bound
+
+**Decision:** The engine rejects an *empty* roster but implements **no** minimum or maximum team
+size. "Large enough" is evaluated by the team against the problem's entries, not by a number this
+platform invents.
+
+**Source:**
+- Ford Motor Company, *Global 8D (G8D) Problem Solving Manual*, D1 Evaluation Questions:
+> Is the team large enough to include all the entries?
+
+**Rationale:** Ford frames team sufficiency as a judgment about coverage of the problem's inputs,
+and CQI-20 discusses "too few"/"too many" members qualitatively — neither states a count. Zero
+members is the one case that is unambiguously insufficient under either reading, so that is the
+only bound enforced.
+
+**Applied In:** `packages/quality-core/src/quality_core/rca/eight_d_disciplines.py`
+(`validate_d1_team`, `NO_TEAM_MEMBERS`; deliberately no team-size threshold), E3 (#206).
+
+---
+
+## RULE-8D-D1-003: Member roles must be clear
+
+**Decision:** Each team member whose `role` is unset raises one `TEAM_MEMBER_ROLE_UNDEFINED`
+warning — one finding per affected member, never an aggregate.
+
+**Source:**
+- Ford Motor Company, *Global 8D (G8D) Problem Solving Manual*, D1 Evaluation Questions:
+> Are the roles and responsibilities of the team members clear?
+
+**Rationale:** The manual makes role clarity an explicit D1 evaluation question. The manual does
+not define "clear", so the check is a `warning`, not a rejection, and the translation of "clear"
+into "the `role` field is populated" is this platform's own — recorded as Process Design
+Decision #6 below.
+
+**Applied In:** `packages/quality-core/src/quality_core/rca/eight_d_disciplines.py`
+(`validate_d1_team`, `TEAM_MEMBER_ROLE_UNDEFINED`), E3 (#206).
 
 ---
 
@@ -514,3 +633,31 @@ from the cited `RULE-8D-*` entries above for exactly that reason.
    bare boolean a caller can set to satisfy it. The specific field set is this platform's
    engineering translation of "validate the effectiveness" / "the AIC is verified"
    (`RULE-8D-D3`) into a data shape; no manual mandates these four fields by name.
+
+6. **D0/D1 engine heuristics with no manual behind them (E3, #206).** The D0/D1 engines in
+   `rca/eight_d_disciplines.py` raise four findings that no manual states; each is a warning, none
+   is presented as a standards requirement, and none carries a `CITATIONS.tsv` row. (This epic is
+   also the first user of the `RULE-8D-D<n>-NNN` namespace reserved in item 3 above, with
+   `RULE-8D-D0-001..003` and `RULE-8D-D1-001..003`.)
+   - **`ERA_VERIFICATION_DATE_INCONSISTENT`** — WARNING when `era_verification.verified_date` is
+     earlier than `era_implemented_date`. `D0Discipline` has no model validator enforcing this
+     ordering, unlike `ContainmentAction._verified_not_before_implemented` for the structurally
+     analogous D3 case, so this is an engine-layer sanity check the schema does not perform, not a
+     re-statement of a schema rule. Same-day verification is treated as consistent, and no maximum
+     gap is enforced in either direction — only the ordering is checked, because no source
+     quantifies a duration.
+   - **`CHAMPION_TEAM_LEADER_SAME_PERSON`** — WARNING when `champion` and `team_leader` normalise
+     (strip + casefold) to the same string. No manual states the two roles must be held by
+     different people. CQI-20 says the executive champion should *choose* a leader, which implies
+     but does not require two people; using it to back a rejection would overreach the source, so
+     this is a warning only and is deliberately not cited.
+   - **`DUPLICATE_TEAM_MEMBER`** — WARNING when a `TeamMember.name` normalises to the same string
+     as another roster entry. A pure data-quality heuristic; one finding per distinct duplicated
+     name, not one per repeat.
+   - **The mechanism behind `TEAM_MEMBER_ROLE_UNDEFINED`** — `RULE-8D-D1-003` asks whether roles
+     and responsibilities are "clear"; the manual never defines "clear" as "the `role` field is
+     non-null". That translation into a checkable field-presence rule is this platform's, which is
+     why the finding is a warning rather than a rejection.
+   No competency or skill-matching model is implemented for D1: `TeamMember` carries no such
+   field, and CQI-20's discussion of skill level and "too few"/"too many" members is qualitative
+   with no number attached.

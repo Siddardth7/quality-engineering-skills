@@ -92,6 +92,18 @@ def _resolve_manual_key(site: str, src_line: int) -> str:
         return "Ford_8D"  # src_line in (264, 536, 638)
     elif site == "RULE-8D-D1":
         return "Ford_8D"  # src_line in (270, 751, 756, 833)
+    elif site == "RULE-8D-D0-001":
+        return "Ford_8D"  # src_line == 653
+    elif site == "RULE-8D-D0-002":
+        return "Ford_8D"  # src_line == 654
+    elif site == "RULE-8D-D0-003":
+        return "Ford_8D"  # src_line == 539
+    elif site == "RULE-8D-D1-001":
+        return "AIAG_CQI20"  # src_line == 1213
+    elif site == "RULE-8D-D1-002":
+        return "Ford_8D"  # src_line == 825
+    elif site == "RULE-8D-D1-003":
+        return "Ford_8D"  # src_line == 835
     elif site == "RULE-8D-D2":
         if src_line == 1610:
             return "AIAG_CQI20"

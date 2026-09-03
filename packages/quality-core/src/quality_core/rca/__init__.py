@@ -4,11 +4,19 @@ quality_core.rca
 Root Cause Analysis (RCA) suite: schema definitions, validation boundaries,
 and domain models for 5-Why problem solving, 6M Fishbone cause-and-effect
 diagrams, Kepner-Tregoe Is/Is-Not scoping matrices, and the 8D report with its
-nine disciplines (schema and ingest only; the state machine is E2, #205).
+nine disciplines and deterministic gate engine.
 """
 
 from __future__ import annotations
 
+from quality_core.rca.eight_d import (
+    EightDState,
+    EightDTransitionResult,
+    GateCode,
+    TransitionReason,
+    TransitionVerdict,
+    transition_eight_d,
+)
 from quality_core.rca.eight_d_schema import (
     CONTAINMENT_ACTION_SCHEMA,
     CORRECTIVE_ACTION_CANDIDATE_SCHEMA,
@@ -31,6 +39,7 @@ from quality_core.rca.eight_d_schema import (
     DocumentationUpdate,
     DocumentationUpdateList,
     EffectivenessVerification,
+    EightDDiscipline,
     EightDReport,
     EightDStatus,
     EscapePointFinding,
@@ -132,16 +141,22 @@ __all__ = [
     "DocumentationUpdate",
     "DocumentationUpdateList",
     "EffectivenessVerification",
+    "EightDDiscipline",
     "EightDReport",
+    "EightDState",
+    "EightDTransitionResult",
     "EightDStatus",
     "EscapePointFinding",
     "FiveWhyLegType",
     "FiveWhyVerdict",
+    "GateCode",
     "ImplementedAction",
     "RootCauseFinding",
     "TEAM_MEMBER_SCHEMA",
     "TeamMember",
     "TeamMemberList",
+    "TransitionReason",
+    "TransitionVerdict",
     "WarningOverride",
     "load_containment_actions_csv",
     "load_corrective_action_candidates_csv",
@@ -154,6 +169,7 @@ __all__ = [
     "validate_documentation_updates",
     "validate_eight_d",
     "validate_team_members",
+    "transition_eight_d",
     # 5-Why
     "AntiPatternFinding",
     "FIVE_WHY_COLUMN_WIDTHS",
@@ -206,4 +222,3 @@ __all__ = [
     # Error
     "IngestError",
 ]
-

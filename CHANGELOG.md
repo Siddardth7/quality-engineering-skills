@@ -9,6 +9,10 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- Deterministic 8D state machine and gate engine (E2, Milestone 11), with an explicit
+  `current_discipline` separate from report lifecycle status, adjacent-only transitions,
+  provenance-backed D3 verification, D7 FMEA/Control Plan update evidence, and defense-in-depth
+  D8 closure checks exposed through structured, copy-isolated results (#205).
 - 8D report schema and ingest boundary `quality_core.rca.eight_d_schema` (E1, Milestone 11): the
   `EightDReport` envelope plus `D0Discipline`..`D8Discipline`, the reusable
   `EffectivenessVerification` record, `WarningOverride`, and the four naturally tabular

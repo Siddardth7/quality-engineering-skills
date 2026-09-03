@@ -418,8 +418,8 @@ mechanism — a state machine refusing the D3→D4 transition when containment i
 and "stay in place until verified" into an enforceable gate.** That mechanism is recorded as a
 Process Design Decision below, and is not implied to be a standards mandate.
 
-**Applied In:** Not yet applied — reserved for E2 (`rca/eight_d.py` gate engine, #205) and E5
-(`rca/eight_d.py` D3 engine and NCR linkage, #208). This entry seeds the citation only (#218).
+**Applied In:** `packages/quality-core/src/quality_core/rca/eight_d.py`
+(`transition_eight_d`, D3→D4 containment gate, E2/#205); also reserved for E5 (#208).
 
 ---
 
@@ -444,8 +444,9 @@ this gate enforces. **The loopback itself — refusing the D7→D8 transition wh
 update is absent — is this platform's engineering choice, not a clause in any manual.** Recorded
 as a Process Design Decision below.
 
-**Applied In:** Not yet applied — reserved for E2 (`rca/eight_d.py` gate engine, #205) and E8
-(`rca/eight_d.py` D7 engine, #211). This entry seeds the citation only (#218).
+**Applied In:** `packages/quality-core/src/quality_core/rca/eight_d.py`
+(`transition_eight_d`, D7→D8 and D8 closure prevention gates, E2/#205); also reserved for E8
+(#211).
 
 ---
 
@@ -467,8 +468,8 @@ therefore **composes with `RULE 4` rather than re-deriving it**: it consumes
 rejection logic. **The refusal to advance is this platform's enforcement mechanism, not a
 standards clause**; see the Process Design Decisions below.
 
-**Applied In:** Not yet applied — reserved for E2 (`rca/eight_d.py` gate engine, #205) and E9
-(`rca/eight_d.py` D8 engine, #212). This entry seeds the citation only (#218).
+**Applied In:** `packages/quality-core/src/quality_core/rca/eight_d.py`
+(`transition_eight_d`, provenance-bearing D8 closure gate, E2/#205); also reserved for E9 (#212).
 
 ---
 

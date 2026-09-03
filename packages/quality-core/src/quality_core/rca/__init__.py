@@ -4,7 +4,8 @@ quality_core.rca
 Root Cause Analysis (RCA) suite: schema definitions, validation boundaries,
 and domain models for 5-Why problem solving, 6M Fishbone cause-and-effect
 diagrams, Kepner-Tregoe Is/Is-Not scoping matrices, and the 8D report with its
-nine disciplines and deterministic gate engine.
+nine disciplines, its deterministic state machine and gate engine, and the D0/D1
+discipline engines.
 """
 
 from __future__ import annotations
@@ -16,6 +17,14 @@ from quality_core.rca.eight_d import (
     TransitionReason,
     TransitionVerdict,
     transition_eight_d,
+)
+from quality_core.rca.eight_d_disciplines import (
+    D0Finding,
+    D0ValidationResult,
+    D1Finding,
+    D1ValidationResult,
+    validate_d0_readiness,
+    validate_d1_team,
 )
 from quality_core.rca.eight_d_schema import (
     CONTAINMENT_ACTION_SCHEMA,
@@ -129,7 +138,11 @@ __all__ = [
     "CorrectiveActionCandidate",
     "CorrectiveActionCandidateList",
     "D0Discipline",
+    "D0Finding",
+    "D0ValidationResult",
     "D1Discipline",
+    "D1Finding",
+    "D1ValidationResult",
     "D2Discipline",
     "D3Discipline",
     "D4Discipline",
@@ -166,6 +179,8 @@ __all__ = [
     "load_team_members_csv",
     "validate_containment_actions",
     "validate_corrective_action_candidates",
+    "validate_d0_readiness",
+    "validate_d1_team",
     "validate_documentation_updates",
     "validate_eight_d",
     "validate_team_members",

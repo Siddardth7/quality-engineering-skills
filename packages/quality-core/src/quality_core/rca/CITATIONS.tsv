@@ -39,6 +39,12 @@ RULE-8D-D1	270	Establish a small group of people with the process and/or product
 RULE-8D-D1	751	Champion: the champion will usually be the internal person responsible who is feeling the pain of the problem.
 RULE-8D-D1	756	Team Leader: the role of the team leader is to manage the team's business for the team.
 RULE-8D-D1	833	Has the designated Champion of the team been identified? Has the Team Leader been identified?
+RULE-8D-D0-001	653	How was the emergency response action verified?
+RULE-8D-D0-002	654	How was the Emergency Response Action validated?
+RULE-8D-D0-003	539	The verification must demonstrate that when installing the ARE, the effects of the problem are eliminated and when they are taken away, they come back.
+RULE-8D-D1-001	1213	Did we define the team members?
+RULE-8D-D1-002	825	Is the team large enough to include all the entries?
+RULE-8D-D1-003	835	Are the roles and responsibilities of the team members clear?
 RULE-8D-D2	277	Describe the internal/external problem by identifying 'what is wrong with what', and detail the problem in quantifiable terms (Description of the problem).
 RULE-8D-D2	1610	The problem statement can include but is not limited to 5 Why-2 How (5W2H), Gantt chart, Is/Is Not, etc.
 RULE-8D-D3	282	Define, verify, and implement the Interim Containment Action (AIC) to isolate the effects of the problem of any internal/external client until they are implemented Permanent Corrective Actions (PCAs). Validate the effectiveness of the measures of containment.

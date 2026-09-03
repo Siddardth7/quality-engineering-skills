@@ -96,7 +96,7 @@ def _report(state: str, **updates: object) -> EightDReport:
         "current_discipline": "D8" if state == "CLOSED" else state,
     }
     if state == "CLOSED":
-        values.update(d7=_d7(), d8=_d8(), root_cause_validation=_validation())
+        values.update(d3=_d3(True), d7=_d7(), d8=_d8(), root_cause_validation=_validation())
     values.update(updates)
     return EightDReport(**values)
 
@@ -157,8 +157,11 @@ def test_valid_direct_closed_reconstruction_is_terminal() -> None:
     "updates,match",
     [
         ({"current_discipline": "D0"}, "must have current_discipline D8"),
-        ({"d8": None}, "requires D8 and provenance-bearing"),
-        ({"root_cause_validation": None}, "requires D8 and provenance-bearing"),
+        ({"d3": None}, "requires verified-effective D3 containment"),
+        ({"d3": _d3(False)}, "requires verified-effective D3 containment"),
+        ({"d3": _d3(None)}, "requires verified-effective D3 containment"),
+        ({"d8": None}, "requires D8"),
+        ({"root_cause_validation": None}, "requires provenance-bearing"),
         ({"d7": None}, "requires a D7 FMEA or Control Plan update"),
     ],
 )
@@ -206,7 +209,7 @@ def test_d7_missing_discipline_blocks() -> None:
 def test_d8_accepts_eligible_root_cause_evidence(verdict: str, override: bool) -> None:
     validation = _validation(verdict)
     result = transition_eight_d(_report(
-        "D8", d7=_d7(), d8=_d8(verdict, override=override),
+        "D8", d3=_d3(True), d7=_d7(), d8=_d8(verdict, override=override),
         root_cause_validation=validation,
     ), "CLOSED")
     assert result.verdict == "ADVANCED"
@@ -215,31 +218,34 @@ def test_d8_accepts_eligible_root_cause_evidence(verdict: str, override: bool) -
 
 @pytest.mark.parametrize(
     "d8,code,fragment",
-    [(None, "ROOT_CAUSE_EVIDENCE_MISSING", "no linked 5-Why"),
-     (_d8("REJECT"), "ROOT_CAUSE_REJECTED", "result is REJECT and invalid"),
-     (_d8("WARNING"), "ROOT_CAUSE_EVIDENCE_MISSING", "no recorded warning override")],
+    [(None, "ROOT_CAUSE_EVIDENCE_MISSING", "requires D8"),
+     (_d8("REJECT"), "ROOT_CAUSE_REJECTED", "valid, non-REJECT"),
+     (_d8("WARNING"), "ROOT_CAUSE_EVIDENCE_MISSING", "requires warning_override")],
 )
 def test_d8_rejects_missing_rejected_or_unapproved_warning_evidence(
     d8: D8Discipline | None, code: str, fragment: str
 ) -> None:
     validation = None if d8 is None else _validation(d8.linked_five_why_verdict)
     result = transition_eight_d(_report(
-        "D8", d7=_d7(), d8=d8, root_cause_validation=validation,
+        "D8", d3=_d3(True), d7=_d7(), d8=d8, root_cause_validation=validation,
     ), "CLOSED")
-    assert [r.code for r in result.reasons] == [code]
+    assert code in [r.code for r in result.reasons]
     assert result.reasons[0].rule_id == "RULE-8D-GATE-CLOSURE"
-    assert fragment in result.reasons[0].message
+    assert any(fragment in reason.message for reason in result.reasons)
 
 
 def test_d8_rejects_missing_typed_root_cause_validation() -> None:
-    result = transition_eight_d(_report("D8", d7=_d7(), d8=_d8("ACCEPT")), "CLOSED")
+    result = transition_eight_d(
+        _report("D8", d3=_d3(True), d7=_d7(), d8=_d8("ACCEPT")), "CLOSED"
+    )
     assert [reason.code for reason in result.reasons] == ["ROOT_CAUSE_EVIDENCE_MISSING"]
-    assert "no linked 5-Why validation evidence" in result.reasons[0].message
+    assert "provenance-bearing root_cause_validation" in result.reasons[0].message
 
 
 def test_d8_defense_in_depth_collects_root_cause_then_prevention_reasons() -> None:
     report = _report(
-        "D8", d8=_d8("REJECT"), d7=_d7("OTHER"), root_cause_validation=_validation("REJECT")
+        "D8", d3=_d3(True), d8=_d8("REJECT"), d7=_d7("OTHER"),
+        root_cause_validation=_validation("REJECT")
     )
     result = transition_eight_d(report, "CLOSED")
     assert [r.code for r in result.reasons] == ["ROOT_CAUSE_REJECTED", "PREVENTION_UPDATE_MISSING"]
@@ -247,24 +253,28 @@ def test_d8_defense_in_depth_collects_root_cause_then_prevention_reasons() -> No
 
 
 def test_d8_requires_verdict_to_match_typed_validation() -> None:
+    values = _report("CLOSED").model_dump()
+    values.update(d8=_d8("ACCEPT").model_dump(), root_cause_validation=_validation("WARNING"))
     with pytest.raises(pydantic.ValidationError, match="verdict must match"):
-        _report("D8", d7=_d7(), d8=_d8("ACCEPT"), root_cause_validation=_validation("WARNING"))
+        EightDReport.model_validate(values)
 
 
 def test_engine_defensively_rejects_constructed_verdict_mismatch() -> None:
     report = EightDReport.model_construct(
         report_id="8D-205", initiated_date=DAY, status="OPEN", current_discipline="D8",
-        d7=_d7(), d8=_d8("ACCEPT"), root_cause_validation=_validation("WARNING"),
+        d3=_d3(True), d7=_d7(), d8=_d8("ACCEPT"), root_cause_validation=_validation("WARNING"),
     )
     result = transition_eight_d(report, "CLOSED")
-    assert [reason.code for reason in result.reasons] == ["ROOT_CAUSE_EVIDENCE_MISSING"]
-    assert "does not match" in result.reasons[0].message
+    assert result.reasons[0].code == "ROOT_CAUSE_EVIDENCE_MISSING"
+    assert "must match" in result.reasons[0].message
 
 
 def test_d8_invalid_validation_blocks_even_when_verdict_is_not_reject() -> None:
     invalid = _validation("REJECT")
     invalid.verdict = "ACCEPT"
-    report = _report("D8", d7=_d7(), d8=_d8("ACCEPT"), root_cause_validation=invalid)
+    report = _report(
+        "D8", d3=_d3(True), d7=_d7(), d8=_d8("ACCEPT"), root_cause_validation=invalid
+    )
     result = transition_eight_d(report, "CLOSED")
     assert [reason.code for reason in result.reasons] == ["ROOT_CAUSE_REJECTED"]
 
@@ -274,13 +284,99 @@ def test_direct_closed_rejects_invalid_nonreject_and_warning_without_override() 
     invalid.verdict = "ACCEPT"
     base = _report("CLOSED").model_dump()
     base["root_cause_validation"] = invalid
-    with pytest.raises(pydantic.ValidationError, match="requires a valid root_cause_validation"):
+    with pytest.raises(pydantic.ValidationError, match="requires a valid, non-REJECT"):
         EightDReport.model_validate(base)
 
     warning = _validation("WARNING")
     base.update(root_cause_validation=warning, d8=_d8("WARNING").model_dump())
     with pytest.raises(pydantic.ValidationError, match="WARNING verdict requires warning_override"):
         EightDReport.model_validate(base)
+
+
+@pytest.mark.parametrize(
+    "case,engine_code",
+    [
+        ("d3_missing", "CONTAINMENT_NOT_VERIFIED"),
+        ("d3_unverified", "CONTAINMENT_NOT_VERIFIED"),
+        ("d7_missing", "PREVENTION_UPDATE_MISSING"),
+        ("d8_missing", "ROOT_CAUSE_EVIDENCE_MISSING"),
+        ("validation_missing", "ROOT_CAUSE_EVIDENCE_MISSING"),
+        ("validation_invalid", "ROOT_CAUSE_REJECTED"),
+        ("validation_reject", "ROOT_CAUSE_REJECTED"),
+        ("verdict_mismatch", "ROOT_CAUSE_EVIDENCE_MISSING"),
+        ("warning_override_missing", "ROOT_CAUSE_EVIDENCE_MISSING"),
+    ],
+)
+def test_direct_and_transition_closure_paths_reject_same_evidence_deficiencies(
+    case: str, engine_code: str
+) -> None:
+    values = _report("CLOSED").model_dump()
+    if case == "d3_missing":
+        values["d3"] = None
+    elif case == "d3_unverified":
+        values["d3"] = _d3(None).model_dump()
+    elif case == "d7_missing":
+        values["d7"] = None
+    elif case == "d8_missing":
+        values["d8"] = None
+    elif case == "validation_missing":
+        values["root_cause_validation"] = None
+    elif case == "validation_invalid":
+        validation = _validation("REJECT")
+        validation.verdict = "ACCEPT"
+        values["root_cause_validation"] = validation
+    elif case == "validation_reject":
+        values.update(
+            d8=_d8("REJECT").model_dump(), root_cause_validation=_validation("REJECT")
+        )
+    elif case == "verdict_mismatch":
+        values["root_cause_validation"] = _validation("WARNING")
+    else:
+        values.update(
+            d8=_d8("WARNING").model_dump(), root_cause_validation=_validation("WARNING")
+        )
+
+    with pytest.raises(pydantic.ValidationError):
+        EightDReport.model_validate(values)
+
+    values["status"] = "OPEN"
+    transition_report = EightDReport.model_validate(values)
+    result = transition_eight_d(transition_report, "CLOSED")
+    assert result.verdict == "BLOCKED"
+    assert engine_code in [reason.code for reason in result.reasons]
+
+
+@pytest.mark.parametrize("verdict,override", [("ACCEPT", False), ("WARNING", True)])
+def test_direct_and_transition_closure_paths_accept_same_complete_evidence(
+    verdict: str, override: bool
+) -> None:
+    values = _report("CLOSED").model_dump()
+    values.update(
+        d8=_d8(verdict, override=override).model_dump(),
+        root_cause_validation=_validation(verdict),
+    )
+    direct = EightDReport.model_validate(values)
+    assert direct.status == "CLOSED"
+
+    values["status"] = "OPEN"
+    result = transition_eight_d(EightDReport.model_validate(values), "CLOSED")
+    assert result.verdict == "ADVANCED"
+    assert result.report.status == "CLOSED"
+
+
+def test_shared_closure_evaluator_rejects_missing_d3_on_direct_path() -> None:
+    values = _report("CLOSED").model_dump()
+    values["d3"] = None
+    with pytest.raises(pydantic.ValidationError, match="verified-effective D3"):
+        EightDReport.model_validate(values)
+
+
+def test_shared_closure_evaluator_rejects_missing_d3_on_transition_path() -> None:
+    report = _report(
+        "D8", d3=None, d7=_d7(), d8=_d8(), root_cause_validation=_validation()
+    )
+    result = transition_eight_d(report, "CLOSED")
+    assert "CONTAINMENT_NOT_VERIFIED" in [reason.code for reason in result.reasons]
 
 
 def test_result_equality_determinism_json_serialization_and_copy_isolation() -> None:

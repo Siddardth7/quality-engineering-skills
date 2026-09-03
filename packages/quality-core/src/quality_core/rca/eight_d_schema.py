@@ -27,6 +27,7 @@ from __future__ import annotations
 import datetime
 import json
 import os
+from dataclasses import dataclass
 from typing import Annotated, Any, BinaryIO, Literal, cast
 
 import pandas as pd
@@ -104,6 +105,24 @@ EightDStatus = Literal["OPEN", "CLOSED", "CANCELLED"]
 
 #: Active problem-solving discipline, kept separate from the report lifecycle status.
 EightDDiscipline = Literal["D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8"]
+
+_ClosureDeficiencyCode = Literal[
+    "D8_MISSING",
+    "ROOT_CAUSE_VALIDATION_MISSING",
+    "ROOT_CAUSE_VERDICT_MISMATCH",
+    "ROOT_CAUSE_REJECTED",
+    "WARNING_OVERRIDE_MISSING",
+    "CONTAINMENT_NOT_VERIFIED",
+    "PREVENTION_UPDATE_MISSING",
+]
+
+
+@dataclass(frozen=True)
+class _ClosureDeficiency:
+    """One machine-readable failure from the shared closure evidence boundary."""
+
+    code: _ClosureDeficiencyCode
+    message: str
 
 
 def _na_to_none(value: Any) -> Any:
@@ -698,37 +717,69 @@ class EightDReport(pydantic.BaseModel):
             raise ValueError("target_completion_date cannot be before initiated_date")
         if self.closed_date is not None and self.closed_date < self.initiated_date:
             raise ValueError("closed_date cannot be before initiated_date")
-        if (
-            self.root_cause_validation is not None
-            and self.d8 is not None
-            and self.root_cause_validation.verdict != self.d8.linked_five_why_verdict
-        ):
-            raise ValueError(
-                "root_cause_validation.verdict must match d8.linked_five_why_verdict"
-            )
         if self.status == "CLOSED":
             if self.current_discipline != "D8":
                 raise ValueError("a CLOSED report must have current_discipline D8")
-            if self.d8 is None or self.root_cause_validation is None:
-                raise ValueError(
-                    "a CLOSED report requires D8 and provenance-bearing root_cause_validation"
-                )
-            if (
-                self.root_cause_validation.verdict == "REJECT"
-                or not self.root_cause_validation.valid
-            ):
-                raise ValueError("a CLOSED report requires a valid root_cause_validation")
-            if (
-                self.root_cause_validation.verdict == "WARNING"
-                and self.d8.warning_override is None
-            ):
-                raise ValueError("a CLOSED report with a WARNING verdict requires warning_override")
-            if self.d7 is None or not any(
-                update.artifact_type in {"FMEA", "CONTROL_PLAN"}
-                for update in self.d7.documentation_updates
-            ):
-                raise ValueError("a CLOSED report requires a D7 FMEA or Control Plan update")
+            deficiencies = _closure_evidence_deficiencies(self)
+            if deficiencies:
+                raise ValueError(deficiencies[0].message)
         return self
+
+
+def _closure_evidence_deficiencies(report: EightDReport) -> tuple[_ClosureDeficiency, ...]:
+    """Evaluate the complete closure evidence contract for every closure entry path."""
+    deficiencies: list[_ClosureDeficiency] = []
+    discipline = report.d8
+    validation = report.root_cause_validation
+    if discipline is None:
+        deficiencies.append(_ClosureDeficiency("D8_MISSING", "a CLOSED report requires D8"))
+    if validation is None:
+        deficiencies.append(
+            _ClosureDeficiency(
+                "ROOT_CAUSE_VALIDATION_MISSING",
+                "a CLOSED report requires provenance-bearing root_cause_validation",
+            )
+        )
+    if discipline is not None and validation is not None:
+        if validation.verdict != discipline.linked_five_why_verdict:
+            deficiencies.append(
+                _ClosureDeficiency(
+                    "ROOT_CAUSE_VERDICT_MISMATCH",
+                    "root_cause_validation.verdict must match d8.linked_five_why_verdict",
+                )
+            )
+        if validation.verdict == "REJECT" or not validation.valid:
+            deficiencies.append(
+                _ClosureDeficiency(
+                    "ROOT_CAUSE_REJECTED",
+                    "a CLOSED report requires a valid, non-REJECT root_cause_validation",
+                )
+            )
+        if validation.verdict == "WARNING" and discipline.warning_override is None:
+            deficiencies.append(
+                _ClosureDeficiency(
+                    "WARNING_OVERRIDE_MISSING",
+                    "a CLOSED report with a WARNING verdict requires warning_override",
+                )
+            )
+    if report.d3 is None or not report.d3.is_verified:
+        deficiencies.append(
+            _ClosureDeficiency(
+                "CONTAINMENT_NOT_VERIFIED",
+                "a CLOSED report requires verified-effective D3 containment",
+            )
+        )
+    if report.d7 is None or not any(
+        update.artifact_type in {"FMEA", "CONTROL_PLAN"}
+        for update in report.d7.documentation_updates
+    ):
+        deficiencies.append(
+            _ClosureDeficiency(
+                "PREVENTION_UPDATE_MISSING",
+                "a CLOSED report requires a D7 FMEA or Control Plan update",
+            )
+        )
+    return tuple(deficiencies)
 
 
 # ==============================================================================

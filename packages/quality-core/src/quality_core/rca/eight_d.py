@@ -11,7 +11,7 @@ import copy
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from quality_core.rca.eight_d_schema import EightDReport
+from quality_core.rca.eight_d_schema import EightDReport, _closure_evidence_deficiencies
 
 __all__ = [
     "EightDState",
@@ -91,34 +91,26 @@ def _prevention_reason(report: EightDReport) -> TransitionReason | None:
     )
 
 
-def _closure_reason(report: EightDReport) -> TransitionReason | None:
-    discipline = report.d8
-    validation = report.root_cause_validation
-    if discipline is None or validation is None:
-        return TransitionReason(
-            "ROOT_CAUSE_EVIDENCE_MISSING",
-            "D8 has no linked 5-Why validation evidence; validate and link the causal chain before closure.",
-            "RULE-8D-GATE-CLOSURE",
-        )
-    if validation.verdict != discipline.linked_five_why_verdict:
-        return TransitionReason(
-            "ROOT_CAUSE_EVIDENCE_MISSING",
-            "The linked D8 verdict does not match the supplied 5-Why validation result; reconcile the evidence before closure.",
-            "RULE-8D-GATE-CLOSURE",
-        )
-    if validation.verdict == "REJECT" or not validation.valid:
-        return TransitionReason(
-            "ROOT_CAUSE_REJECTED",
-            f"The linked 5-Why validation result is {validation.verdict} and invalid; resolve its findings before closure.",
-            "RULE-8D-GATE-CLOSURE",
-        )
-    if validation.verdict == "WARNING" and discipline.warning_override is None:
-        return TransitionReason(
-            "ROOT_CAUSE_EVIDENCE_MISSING",
-            "The linked 5-Why validation verdict is WARNING but has no recorded warning override; record the approval evidence before closure.",
-            "RULE-8D-GATE-CLOSURE",
-        )
-    return None
+def _closure_reasons(report: EightDReport) -> tuple[TransitionReason, ...]:
+    """Map shared closure deficiencies to the engine's stable public reason vocabulary."""
+    reasons: list[TransitionReason] = []
+    for deficiency in _closure_evidence_deficiencies(report):
+        if deficiency.code == "CONTAINMENT_NOT_VERIFIED":
+            reasons.append(
+                TransitionReason(deficiency.code, deficiency.message, "RULE-8D-GATE-CONTAINMENT")
+            )
+        elif deficiency.code == "PREVENTION_UPDATE_MISSING":
+            reasons.append(
+                TransitionReason(deficiency.code, deficiency.message, "RULE-8D-GATE-PREVENTION")
+            )
+        else:
+            code: GateCode = (
+                "ROOT_CAUSE_REJECTED"
+                if deficiency.code == "ROOT_CAUSE_REJECTED"
+                else "ROOT_CAUSE_EVIDENCE_MISSING"
+            )
+            reasons.append(TransitionReason(code, deficiency.message, "RULE-8D-GATE-CLOSURE"))
+    return tuple(reasons)
 
 
 def transition_eight_d(report: EightDReport, target: EightDState) -> EightDTransitionResult:
@@ -146,12 +138,7 @@ def transition_eight_d(report: EightDReport, target: EightDState) -> EightDTrans
         if gate_reason is not None:
             reasons.append(gate_reason)
     if previous == "D8":
-        closure_reason = _closure_reason(report)
-        if closure_reason is not None:
-            reasons.append(closure_reason)
-        prevention_reason = _prevention_reason(report)
-        if prevention_reason is not None:
-            reasons.append(prevention_reason)
+        reasons.extend(_closure_reasons(report))
     if reasons:
         return EightDTransitionResult("BLOCKED", previous, previous, tuple(reasons), report)
 

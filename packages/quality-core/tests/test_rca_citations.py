@@ -88,6 +88,34 @@ def _resolve_manual_key(site: str, src_line: int) -> str:
             return "ASQ"
         if src_line in (4140,):
             return "AIAG_CQI20"
+    elif site == "RULE-8D-D0":
+        return "Ford_8D"  # src_line in (264, 536, 638)
+    elif site == "RULE-8D-D1":
+        return "Ford_8D"  # src_line in (270, 751, 756, 833)
+    elif site == "RULE-8D-D2":
+        if src_line == 1610:
+            return "AIAG_CQI20"
+        return "Ford_8D"  # src_line == 277
+    elif site == "RULE-8D-D3":
+        return "Ford_8D"  # src_line in (282, 1182)
+    elif site == "RULE-8D-D4":
+        return "Ford_8D"  # src_line in (293, 1310, 1313)
+    elif site == "RULE-8D-D5":
+        return "Ford_8D"  # src_line in (300, 1591, 1692, 1719)
+    elif site == "RULE-8D-D6":
+        return "Ford_8D"  # src_line in (307, 1805)
+    elif site == "RULE-8D-D7":
+        return "Ford_8D"  # src_line in (312, 2064)
+    elif site == "RULE-8D-D8":
+        return "Ford_8D"  # src_line in (318, 2147)
+    elif site == "RULE-8D-GATE-CONTAINMENT":
+        return "AIAG_CQI20"  # src_line == 1449
+    elif site == "RULE-8D-GATE-PREVENTION":
+        return "Ford_8D"  # src_line == 1729
+    elif site == "RULE-8D-GATE-CLOSURE":
+        return "Ford_8D"  # src_line == 1991
+    elif site == "RULE-8D-SOURCE-PRIMACY":
+        return "AIAG_CQI20"  # src_line == 549
     raise ValueError(f"Unmapped citation site/line: {site} at line {src_line}")
 
 
@@ -192,6 +220,14 @@ def test_manifest_has_no_duplicate_rows() -> None:
     assert not duplicates, f"duplicate (site, quote) rows in {MANIFEST}: {sorted(duplicates)}"
 
 
+def test_every_manifest_site_has_an_assumptions_log_rule() -> None:
+    """Assert every CITATIONS.tsv site is a RULE heading in rca/ASSUMPTIONS_LOG.md."""
+    assert ASSUMPTIONS_LOG.exists(), f"ASSUMPTIONS_LOG.md not found at {ASSUMPTIONS_LOG}"
+    log_text = ASSUMPTIONS_LOG.read_text(encoding="utf-8")
+    for site in sorted({site for site, _, _ in MANIFEST_ROWS}):
+        assert f"## {site}:" in log_text, f"CITATIONS.tsv site {site} has no RULE entry in the log"
+
+
 @pytest.mark.parametrize(
     ("site", "src_line", "quote"),
     MANIFEST_ROWS,
@@ -248,6 +284,27 @@ def test_every_live_quotation_in_log_has_manifest_row() -> None:
     assert not unbacked, (
         "quotation(s) in ASSUMPTIONS_LOG.md with no row in CITATIONS.tsv:\n"
         + "\n".join(f"  ASSUMPTIONS_LOG.md:{line}: {text[:100]!r}" for line, text in unbacked)
+    )
+
+
+def test_every_manifest_row_is_present_in_log() -> None:
+    """Assert every manifest quote appears verbatim (normalised) in ASSUMPTIONS_LOG.md.
+
+    Binds manifest -> log per row. Unlike the block-level check above (log -> manifest, per
+    contiguous blockquote), this is not defeated by several quotes sharing one blockquote
+    block, and it runs on every machine whether or not the licensed manuals are present.
+    """
+    assert ASSUMPTIONS_LOG.exists(), f"ASSUMPTIONS_LOG.md not found at {ASSUMPTIONS_LOG}"
+    log_norm = _normalise(ASSUMPTIONS_LOG.read_text(encoding="utf-8"))
+    missing = [
+        (site, src_line, quote)
+        for site, src_line, quote in MANIFEST_ROWS
+        if _normalise(quote) and _normalise(quote) not in log_norm
+    ]
+    assert not missing, (
+        "manifest quote(s) not found verbatim in ASSUMPTIONS_LOG.md — the row is unverifiable "
+        "on any machine (corrupted, paraphrased, or absent from the log):\n"
+        + "\n".join(f"  {site}:{line}: {quote[:80]!r}" for site, line, quote in missing)
     )
 
 

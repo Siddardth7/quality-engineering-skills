@@ -1360,8 +1360,21 @@ def test_v100_closeout_completion_and_release_boundary() -> None:
 
 
 def _assert_v100_changelog_facts(changelog: str) -> None:
-    """Assert the dated release section and closeout traceability."""
-    assert "## [Unreleased]\n\n## [1.0.0] - 2026-08-29" in changelog
+    """Assert the dated release section and closeout traceability.
+
+    ``[Unreleased]`` was empty at the v1.0.0 closeout, but it fills up again as soon as the
+    next milestone lands work, so this checks the *structure* the closeout established —
+    ``[Unreleased]`` present, immediately above ``[1.0.0]``, with no other release section
+    between them — rather than pinning the section's momentary emptiness (#218).
+    """
+    assert "## [Unreleased]" in changelog
+    assert "## [1.0.0] - 2026-08-29" in changelog
+    before_v100 = changelog.split("## [1.0.0] - 2026-08-29", maxsplit=1)[0]
+    around_unreleased = before_v100.split("## [Unreleased]", maxsplit=1)
+    assert len(around_unreleased) == 2, "## [Unreleased] must sit above the 1.0.0 release section"
+    assert "## [" not in around_unreleased[1], (
+        "no release section may sit between ## [Unreleased] and ## [1.0.0] - 2026-08-29"
+    )
     release = changelog.split("## [0.9.0]", maxsplit=1)[0]
     assert "#151" in release
     assert "docs/milestones/v1.0.0.md" in release
@@ -1402,3 +1415,30 @@ def test_negative_control_v100_release_and_changelog_mutations() -> None:
     for old in ("## [1.0.0] - 2026-08-29", "#151"):
         with pytest.raises(AssertionError):
             _assert_v100_changelog_facts(changelog.replace(old, "", 1))
+
+
+def test_negative_control_v100_changelog_unreleased_ordering() -> None:
+    """Negative control: the ``[Unreleased]`` *placement* assertions are load-bearing.
+
+    ``_assert_v100_changelog_facts`` stopped pinning an empty ``[Unreleased]`` in #218 (the
+    old exact-string form blocked every milestone that adds an entry) and now pins the
+    ordering the v1.0.0 closeout established instead. These two mutations exercise the
+    replacement assertions specifically — the pre-existing control above passes against both
+    forms, so without this the new checks would be unguarded.
+    """
+    changelog = _CHANGELOG.read_text(encoding="utf-8")
+
+    # [Unreleased] still present, but demoted below the 1.0.0 release section.
+    demoted = changelog.replace("## [Unreleased]\n", "", 1) + "\n## [Unreleased]\n"
+    assert "## [Unreleased]" in demoted, "mutation must keep the heading, only move it"
+    with pytest.raises(AssertionError):
+        _assert_v100_changelog_facts(demoted)
+
+    # A later release section wedged between [Unreleased] and [1.0.0].
+    wedged = changelog.replace(
+        "## [1.0.0] - 2026-08-29",
+        "## [1.0.1] - 2026-09-01\n\n## [1.0.0] - 2026-08-29",
+        1,
+    )
+    with pytest.raises(AssertionError):
+        _assert_v100_changelog_facts(wedged)

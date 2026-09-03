@@ -149,3 +149,348 @@ Where internal platform choices or heuristics are adopted, they are explicitly d
 
 **Applied In:** `packages/quality-core/src/quality_core/rca/export.py` (`build_rca_workbook`, `export_rca_workbook`, `export_five_why_workbook`, `export_fishbone_workbook`, `export_is_is_not_workbook`), `packages/quality-core/src/quality_core/rca/__init__.py`.
 
+---
+
+## Note on the 8D State-Machine Citation Base (E0, #218)
+
+Milestone 11 (v1.1.0) adds a D0–D8 8D Problem-Solving state machine to `quality_core.rca`
+(`rca/eight_d_schema.py`, E1/#204; `rca/eight_d.py`, E2/#205; discipline engines E3–E9,
+#206–#212). The `RULE-8D-*` entries below seed the citation and assumptions base **before** any
+of that code exists (#218 is P0 governance and blocks E1–E14) — no engine file referenced below
+has been written yet, so every `**Applied In:**` line records the epic that will consume the
+citation rather than a function that exists today.
+
+**Ford Global 8D Manual is the primary source for all nine D0–D8 discipline definitions.**
+AIAG CQI-20 covers the same nine steps under its own numbering and explicitly declines to use
+D-labels (`RULE-8D-SOURCE-PRIMACY` below carries the verbatim excerpt). CQI-20 does carry a
+D1–D8 correspondence table in Appendix H — that table omits D0 — and is therefore cited
+standalone only where it supplies something Ford 8D does not: the 5W2H tool name
+(`RULE-8D-D2`) and the containment-persistence requirement (`RULE-8D-GATE-CONTAINMENT`).
+
+**On-box definition of "5W2H" (CQI-20, not the generic reading):**
+
+> The problem statement can include but is not limited to 5 Why-2 How (5W2H), Gantt chart, Is/Is Not, etc.
+
+CQI-20's 5W2H expands to "5 Why – 2 How", **not** the common What/Where/When/Who/Why/How
+mnemonic. Any future D2 (#207) 5W2H-completeness engine must implement *this* definition.
+
+**Site-ID convention for this milestone**, chosen to avoid the flat-counter renumbering
+collision that hit `RULE-SQE-*` twice (#164, #175): the nine discipline definitions are
+`RULE-8D-D0` through `RULE-8D-D8`, fixed here. The three milestone gates are
+`RULE-8D-GATE-CONTAINMENT` (D3→D4), `RULE-8D-GATE-PREVENTION` (D7 loopback), and
+`RULE-8D-GATE-CLOSURE` (D8 closure), fixed here. Any *additional* citable rule a later epic
+needs (E3–E9, discipline-engine-specific, not already covered by the nine discipline rows or
+three gates) uses `RULE-8D-D<n>-NNN`, a zero-padded 3-digit counter scoped to that discipline's
+own prefix — each epic owns a disjoint `D<n>` namespace, so parallel epics never race on one
+shared counter.
+
+**PROCUREMENT-GAP status: none.** Every D0–D8 rule and all three gates below have a direct,
+on-box, primary-source excerpt. This was verified, not assumed, against both manuals present at
+`CQI20_MANUAL_PATH` / `FORD_8D_MANUAL_PATH`.
+
+---
+
+## RULE-8D-SOURCE-PRIMACY: Ford Global 8D is the primary source for the D0–D8 labels
+
+**Decision:** Use the Ford Global 8D Manual as the primary source for all nine D0–D8 discipline
+definitions, and cite AIAG CQI-20 only where it supplies content Ford 8D does not. CQI-20 is a
+nine-step numbered guide that deliberately does not label its steps D0–D8, so it cannot back the
+D-label scheme this milestone's state machine is built on.
+
+**Source:**
+- AIAG CQI-20 *Effective Problem Solving Guide* (2nd Edition, 2018), Introduction:
+> Corrective action reporting from many diverse organizations requires applying the 8D approach. This guideline intentionally avoids labelling the steps as an 8D.
+
+**Rationale:** The 8D state machine (#205) is defined by the D0–D8 labels themselves; a source
+that declines to use those labels cannot be its primary authority for them. CQI-20's Appendix H
+does map D1–D8 to its own steps, but it omits D0 entirely, which is consistent with the
+Introduction's stated position. Recording that position verbatim here prevents a later epic from
+quietly re-attributing a D-label definition to CQI-20.
+
+**Applied In:** Not yet applied — this is a source-selection decision governing every
+`RULE-8D-*` entry below. This entry seeds the citation only (#218).
+
+---
+
+## RULE-8D-D0: Emergency Response Action (ERA) readiness precondition (D0)
+
+**Decision:** D0 ("Prepare for the 8D Technical Process") requires an Emergency Response Action
+(ERA) to protect the customer before the G8D process proper begins, and the ERA must be checked
+effective before its full implementation.
+
+**Source:**
+- Ford Motor Company, *Global 8D (G8D) Problem Solving Manual*, Section D0:
+> In response to a symptom, assess the need for the G8D process. If necessary, provide an Emergency Response Action to protect the customer and initiate the G8D process.
+> Once an ARE has been identified, it must be checked that it is effective before its full implementation.
+> Are Emergency Response Actions necessary?
+
+**Rationale:** D0 exists to stop customer harm immediately, before root-cause work starts. The
+manual requires the emergency action taken at this stage to be *checked effective*, not merely
+declared, and makes the necessity of an emergency response an explicit D0 evaluation question.
+
+**Applied In:** Not yet applied — reserved for E3 (`rca/eight_d.py` D0 engine, #206). This entry
+seeds the citation only (#218).
+
+---
+
+## RULE-8D-D1: Team completeness — Champion and Designated Team Leader (D1)
+
+**Decision:** D1 requires a small cross-functional team with process/product knowledge, and that
+team is not complete until both a Champion and a Designated Team Leader are identified.
+
+**Source:**
+- Ford Motor Company, *Global 8D (G8D) Problem Solving Manual*, Section D1:
+> Establish a small group of people with the process and/or product knowledge. assign time, authority, and skills in the technical disciplines required to solve the problems and implement corrective actions. The group must have a Champion and a Designated Team Leader. The group begins the team-building process.
+> Champion: the champion will usually be the internal person responsible who is feeling the pain of the problem.
+> Team Leader: the role of the team leader is to manage the team's business for the team.
+> Has the designated Champion of the team been identified? Has the Team Leader been identified?
+
+**Rationale:** The manual states the two roles as a requirement ("must have"), defines each
+role's distinct responsibility, and re-tests both at the D1 evaluation questions — so a
+team-completeness check has to assert both roles, not merely a non-empty member list.
+
+**Applied In:** Not yet applied — reserved for E3 (`rca/eight_d.py` D1 engine, #206). This entry
+seeds the citation only (#218).
+
+---
+
+## RULE-8D-D2: Problem description — "what is wrong with what" in quantifiable terms (D2)
+
+**Decision:** D2 requires the problem to be described as "what is wrong with what" and detailed
+in quantifiable terms. 5W2H is a named tool the problem statement may use, and on the on-box
+source it expands to "5 Why – 2 How".
+
+**Source:**
+- Ford Motor Company, *Global 8D (G8D) Problem Solving Manual*, Section D2:
+> Describe the internal/external problem by identifying 'what is wrong with what', and detail the problem in quantifiable terms (Description of the problem).
+- AIAG CQI-20 *Effective Problem Solving Guide* (2nd Edition, 2018), Problem Description:
+> The problem statement can include but is not limited to 5 Why-2 How (5W2H), Gantt chart, Is/Is Not, etc.
+
+**Rationale:** Ford 8D supplies the D2 definition; CQI-20 supplies the tool name, which Ford does
+not. The expansion matters: CQI-20's 5W2H is "5 Why – 2 How", not the generic
+What/Where/When/Who/Why/How mnemonic, so a D2 completeness engine (#207) built on the generic
+reading would be checking six fields the cited source never requires.
+
+**Applied In:** Not yet applied — reserved for E4 (`rca/eight_d.py` D2 engine, #207). This entry
+seeds the citation only (#218).
+
+---
+
+## RULE-8D-D3: Interim Containment Action defined, verified, and implemented (D3)
+
+**Decision:** D3 requires the Interim Containment Action (ICA/AIC) to be defined, verified, and
+implemented, and its effectiveness validated, before the report may treat containment as done.
+
+**Source:**
+- Ford Motor Company, *Global 8D (G8D) Problem Solving Manual*, Section D3:
+> Define, verify, and implement the Interim Containment Action (AIC) to isolate the effects of the problem of any internal/external client until they are implemented Permanent Corrective Actions (PCAs). Validate the effectiveness of the measures of containment.
+> The AIC is verified.
+
+**Rationale:** The manual makes verification part of the discipline itself and repeats it as a
+D3 selection condition — an ICA that is implemented but unverified does not satisfy D3.
+
+**Applied In:** Not yet applied — reserved for E5 (`rca/eight_d.py` D3 engine and NCR linkage,
+#208). This entry seeds the citation only (#218).
+
+---
+
+## RULE-8D-D4: Root cause and escape point, both isolated and verified (D4)
+
+**Decision:** D4 requires two distinct findings — the root cause, isolated and verified against
+test data, and the escape point, the place in the process where the effect should have been
+detected and contained but was not.
+
+**Source:**
+- Ford Motor Company, *Global 8D (G8D) Problem Solving Manual*, Section D4:
+> Isolate and verify the root cause by testing each possible cause against the description of the Problem with the test data. Also isolate and verify the place in the process where the effects of the root cause should have been detected and contained, but it was not done (escape point).
+> Root Cause: - the lowest level event that can be attributed to and proven as the one that caused the problem that arises
+> Escape Point: - the place in the process where the root cause of the problem was not detected allowing the problem to occur
+
+**Rationale:** The manual treats root cause and escape point as separate, separately-verified
+outputs of D4, and defines root cause as an event that must be *proven*, not asserted. A D4
+engine therefore validates a supplied root cause against evidence; it never authors one (see
+"Process Design Decisions" below).
+
+**Applied In:** Not yet applied — reserved for E6 (`rca/eight_d.py` D4 engine, #209), which will
+delegate the causal-chain verdict to `quality_core.rca.five_why.validate_five_why_chain`. This
+entry seeds the citation only (#218).
+
+---
+
+## RULE-8D-D5: Permanent Corrective Action selection and verification (D5)
+
+**Decision:** D5 requires selecting a permanent corrective action for the root cause *and* one
+addressing the escape point, with both decisions verified as effective and free of undesirable
+effects before implementation, against criteria established for each.
+
+**Source:**
+- Ford Motor Company, *Global 8D (G8D) Problem Solving Manual*, Section D5:
+> Select the best permanent corrective action to eliminate the root cause. Also select the best permanent corrective action to address the escape point. Verify that both decisions will be successful when implemented without causing undesirable effects.
+> Now you are in a position to determine and choose the Permanent Corrective Action (PCA).
+> Finally, the G8D Team must verify that the ACP will eliminate the root cause effectively.
+> Have the criteria been established to choose an ACP for the root cause and the point of escape?
+
+**Rationale:** The manual pairs each PCA with the specific finding it answers and requires
+verification *before* implementation, so PCA traceability (every PCA traced to a root cause or
+escape point) is a requirement of the discipline, not a platform embellishment.
+
+**Applied In:** Not yet applied — reserved for E7 (`rca/eight_d.py` D5 engine, #210). This entry
+seeds the citation only (#218).
+
+---
+
+## RULE-8D-D6: Implement and validate PCAs, remove the ICA (D6)
+
+**Decision:** D6 requires the selected permanent corrective actions to be planned and
+implemented, the interim containment action removed, and the actions validated with long-term
+results monitored.
+
+**Source:**
+- Ford Motor Company, *Global 8D (G8D) Problem Solving Manual*, Section D6:
+> Plan and implement selected Permanent Corrective Actions. Remove the AIC. Validate actions and monitor long-term results.
+> Having established and verified the best ACP for the root cause and the escape point, the next step is the implementation of the ACP.
+
+**Rationale:** Removal of the ICA is part of D6, not an afterthought: containment is temporary by
+construction, and the manual sequences its removal with validated permanent action. Ongoing
+monitoring is named as part of the same discipline.
+
+**Applied In:** Not yet applied — reserved for E7 (`rca/eight_d.py` D6 engine, #210). This entry
+seeds the citation only (#218).
+
+---
+
+## RULE-8D-D7: Prevent recurrence — modify systems and update documentation (D7)
+
+**Decision:** D7 requires modifying the systems, policies, practices, and procedures that
+permitted the problem, and documenting the resulting changes — the manual names the FMEA and the
+control plan explicitly.
+
+**Source:**
+- Ford Motor Company, *Global 8D (G8D) Problem Solving Manual*, Section D7:
+> Modify the necessary systems, including policies, practices, and procedures, to prevent the recurrence of this and other similar problems. Make recommendations to systemic improvements, as necessary.
+> Have all changes been documented (for example, FMEA, control plan, flow) of the process)?
+
+**Rationale:** Prevention in the manual's sense is systemic, not local to the affected part, and
+the D7 evaluation question names the FMEA and control plan as the artifacts that record the
+change. That is what makes an FMEA/Control-Plan linkage check a D7 concern rather than an
+invented one.
+
+**Applied In:** Not yet applied — reserved for E8 (`rca/eight_d.py` D7 engine and FMEA /
+Control-Plan linkage, #211). This entry seeds the citation only (#218).
+
+---
+
+## RULE-8D-D8: Recognize the team and close out documentation (D8)
+
+**Decision:** D8 completes the team's experience by recognizing individual and team
+contributions, and its closing checklist re-requires that all related documentation be reviewed
+and updated.
+
+**Source:**
+- Ford Motor Company, *Global 8D (G8D) Problem Solving Manual*, Section D8:
+> Complete the team's experience, recognizing both individual contributions and the team's, and celebrate success.
+> Ensure that all related documentation is reviewed and updated.
+
+**Rationale:** D8 is not purely ceremonial in the manual: alongside recognition it carries a
+documentation-review obligation, which is what a closure check can be built on.
+
+**Applied In:** Not yet applied — reserved for E9 (`rca/eight_d.py` D8 engine, #212). This entry
+seeds the citation only (#218).
+
+---
+
+## RULE-8D-GATE-CONTAINMENT: D3→D4 gate — no advance without verified containment
+
+**Decision:** The 8D state machine's D3→D4 transition (E2, #205) will require the Interim
+Containment Action to be marked verified before the report may advance to D4 root-cause work.
+
+**Source:**
+- AIAG CQI-20 *Effective Problem Solving Guide* (2nd Edition, 2018), Containment:
+> Provisions for containment should stay in place until effectiveness of the corrective actions are verified.
+- Ford Motor Company, *Global 8D (G8D) Problem Solving Manual*, Section D3 (reused from `RULE-8D-D3`, same manual lines already verified there):
+> Define, verify, and implement the Interim Containment Action (AIC) to isolate the effects of the problem of any internal/external client until they are implemented Permanent Corrective Actions (PCAs). Validate the effectiveness of the measures of containment.
+> The AIC is verified.
+
+**Rationale:** Both manuals require containment to be *verified*, and CQI-20 additionally
+requires it to remain in place until corrective-action effectiveness is confirmed. **The specific
+mechanism — a state machine refusing the D3→D4 transition when containment is not marked verified
+— is not itself a standards clause; it is this platform's engineering translation of "verified"
+and "stay in place until verified" into an enforceable gate.** That mechanism is recorded as a
+Process Design Decision below, and is not implied to be a standards mandate.
+
+**Applied In:** Not yet applied — reserved for E2 (`rca/eight_d.py` gate engine, #205) and E5
+(`rca/eight_d.py` D3 engine and NCR linkage, #208). This entry seeds the citation only (#218).
+
+---
+
+## RULE-8D-GATE-PREVENTION: D7 loopback — no closure without FMEA / Control-Plan update
+
+**Decision:** The 8D state machine (E2, #205) will not permit D8 closure while the D7 preventive
+documentation is outstanding; the report loops back to D7 until the changes are documented.
+
+**Source:**
+- Ford Motor Company, *Global 8D (G8D) Problem Solving Manual*, D5 evaluation checkpoint. The
+  manual repeats this documentation question at five evaluation checkpoints (manual lines 1015,
+  1536, 1729, 1901, 2064 — the D2, D4, D5, D6, and D7 checkpoints); the row cited here is the D5
+  occurrence, a distinct manual line from `RULE-8D-D7`'s D7 occurrence at line 2064:
+> Have all changes been documented (for example, FMEA, control plan, flow of process)?
+- Ford Motor Company, *Global 8D (G8D) Problem Solving Manual*, Section D7 (reused from `RULE-8D-D7`, same manual lines already verified there):
+> Modify the necessary systems, including policies, practices, and procedures, to prevent the recurrence of this and other similar problems. Make recommendations to systemic improvements, as necessary.
+> Have all changes been documented (for example, FMEA, control plan, flow) of the process)?
+
+**Rationale:** The manual asks the same documentation question at five separate evaluation
+checkpoints and names the FMEA and control plan each time, which is the substantive requirement
+this gate enforces. **The loopback itself — refusing the D7→D8 transition when the FMEA / Control-Plan
+update is absent — is this platform's engineering choice, not a clause in any manual.** Recorded
+as a Process Design Decision below.
+
+**Applied In:** Not yet applied — reserved for E2 (`rca/eight_d.py` gate engine, #205) and E8
+(`rca/eight_d.py` D7 engine, #211). This entry seeds the citation only (#218).
+
+---
+
+## RULE-8D-GATE-CLOSURE: D8 closure — no closure on an RCA-rejected 5-Why chain
+
+**Decision:** The 8D state machine (E2, #205) will refuse D8 closure when the report's 5-Why
+chain is rejected by `quality_core.rca.five_why.validate_five_why_chain` — a blame-terminal or
+non-systemic chain means no root cause has been established, so there is nothing to close on.
+
+**Source:**
+- Ford Motor Company, *Global 8D (G8D) Problem Solving Manual*, Section D4 / D7 (same manual line already backing `RULE 4` above, cited here for the
+  closure gate's own purpose):
+> there is normally a procedure, a policy, or a (systemic) practice that has allowed you pass. We call this the 'root cause of the root cause.' This must be established and resolved.
+
+**Rationale:** The manual requires the systemic "root cause of the root cause" to be established
+and resolved — the same requirement `RULE 4` already backs for the 5-Why validator. This gate
+therefore **composes with `RULE 4` rather than re-deriving it**: it consumes
+`validate_five_why_chain`'s existing accept/reject verdict and does not implement its own
+rejection logic. **The refusal to advance is this platform's enforcement mechanism, not a
+standards clause**; see the Process Design Decisions below.
+
+**Applied In:** Not yet applied — reserved for E2 (`rca/eight_d.py` gate engine, #205) and E9
+(`rca/eight_d.py` D8 engine, #212). This entry seeds the citation only (#218).
+
+---
+
+## Process Design Decisions (no standard implied)
+
+These are engineering and architectural decisions for the 8D state machine (#205 and onward).
+**None of them is a standards claim**, none is backed by a `CITATIONS.tsv` row, and none may be
+presented as one by any engine, MCP tool, canvas, or skill layer. They are recorded separately
+from the cited `RULE-8D-*` entries above for exactly that reason.
+
+1. **Root-cause-authorship invariant.** The D4 engine (E6, #209) will validate a *supplied* root
+   cause via `quality_core.rca.five_why.validate_five_why_chain`; it will never author, infer, or
+   paraphrase one. This mirrors `sqe/ASSUMPTIONS_LOG.md`'s identical invariant for the SCAR
+   generator (#120) — same reasoning, different consumer — and no configuration flag relaxes it.
+
+2. **Gate-enforcement mechanisms are ours, not the standard's.** `RULE-8D-GATE-CONTAINMENT`,
+   `RULE-8D-GATE-PREVENTION`, and `RULE-8D-GATE-CLOSURE` each cite manual text describing the
+   *prerequisite content* a step must satisfy (verified containment; FMEA / Control-Plan
+   documentation; an established and resolved systemic root cause). None of the manuals says
+   "refuse a state transition." The refusal behavior is this platform's engineering choice for
+   how to enforce, in software, what the manuals require in substance.
+
+3. **`RULE-8D-D<n>-NNN` is reserved, not yet used.** No row exists under this pattern as of #218;
+   the convention is declared here so E3–E9 (#206–#212) have a collision-free namespace before
+   they need one.

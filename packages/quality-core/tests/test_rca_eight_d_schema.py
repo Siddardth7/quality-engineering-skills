@@ -70,7 +70,7 @@ from quality_core.rca import (
     validate_team_members,
 )
 from quality_core.rca import eight_d_schema as m
-from quality_core.rca.five_why import FiveWhyValidationResult
+from quality_core.rca.five_why import FiveWhyValidationResult, validate_five_why_chain
 
 DAY_1 = datetime.date(2026, 1, 1)
 DAY_2 = datetime.date(2026, 1, 2)
@@ -122,12 +122,22 @@ def _d5_candidates() -> list[CorrectiveActionCandidate]:
 
 
 def _full_report() -> EightDReport:
+    validation = validate_five_why_chain(
+        [
+            {"step_number": 1, "why": "Why did bearing seize?", "because": "Lubricant dried up."},
+            {"step_number": 2, "why": "Why did it dry up?", "because": "Maintenance routine was omitted."},
+            {"step_number": 3, "why": "Why was routine omitted?", "because": "Training procedure lacked a checklist."},
+        ],
+        problem_statement="Bearing seized",
+    )
     return EightDReport(
         report_id="8D-2026-001",
         initiated_date=DAY_1,
         target_completion_date=DAY_3,
         closed_date=DAY_3,
         status="CLOSED",
+        current_discipline="D8",
+        root_cause_validation=validation,
         d0=D0Discipline(era_required=True, era_description="Quarantine all suspect stock."),
         d1=D1Discipline(
             champion="P. Champion",
@@ -223,6 +233,7 @@ EIGHT_D_EXPORTS = (
     "DocumentationUpdate",
     "DocumentationUpdateList",
     "EffectivenessVerification",
+    "EightDDiscipline",
     "EightDReport",
     "EightDStatus",
     "EscapePointFinding",

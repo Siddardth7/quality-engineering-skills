@@ -34,6 +34,7 @@ import pydantic
 
 from quality_core.io import IngestError, TableSchema, load_table, load_table_from_path
 from quality_core.io.validate import DEFAULT_MAX_UPLOAD_BYTES, clean_pydantic_message
+from quality_core.rca.five_why import FiveWhyValidationResult
 from quality_core.schema._base import find_duplicates
 
 __all__ = [
@@ -59,6 +60,7 @@ __all__ = [
     "DocumentationUpdateList",
     "EffectivenessVerification",
     "EightDReport",
+    "EightDDiscipline",
     "EightDStatus",
     "EscapePointFinding",
     "FiveWhyLegType",
@@ -99,6 +101,9 @@ FiveWhyLegType = Literal["occurrence", "escape", "systemic"]
 #: platform's own, mirroring the ``sqe/scar.py`` ``ScarStatus`` precedent (which declares the same
 #: "no published standard" position).
 EightDStatus = Literal["OPEN", "CLOSED", "CANCELLED"]
+
+#: Active problem-solving discipline, kept separate from the report lifecycle status.
+EightDDiscipline = Literal["D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8"]
 
 
 def _na_to_none(value: Any) -> Any:
@@ -648,9 +653,9 @@ class EightDReport(pydantic.BaseModel):
 
     Every ``d0``..``d8`` slot is optional: a report is built up progressively, and E1 does not
     enforce fill order, nor that a later discipline stays empty until an earlier one is done.
-    ``status`` is a plain caller-set field — it is deliberately *not* cross-checked against
-    ``d8.closure_approved`` here, because that is a cross-discipline rule and belongs to the
-    state machine (E2, #205).
+    ``status`` records the lifecycle while ``current_discipline`` records D0-D8 progress. OPEN
+    and CANCELLED reports retain their current discipline. A directly constructed CLOSED report
+    must satisfy the same provenance-bearing closure evidence boundaries as the E2 engine.
     """
 
     report_id: Annotated[str, pydantic.Field(min_length=1, max_length=200)]
@@ -658,6 +663,8 @@ class EightDReport(pydantic.BaseModel):
     target_completion_date: datetime.date | None = None
     closed_date: datetime.date | None = None
     status: EightDStatus = "OPEN"
+    current_discipline: EightDDiscipline = "D0"
+    root_cause_validation: FiveWhyValidationResult | None = None
 
     d0: D0Discipline | None = None
     d1: D1Discipline | None = None
@@ -691,6 +698,36 @@ class EightDReport(pydantic.BaseModel):
             raise ValueError("target_completion_date cannot be before initiated_date")
         if self.closed_date is not None and self.closed_date < self.initiated_date:
             raise ValueError("closed_date cannot be before initiated_date")
+        if (
+            self.root_cause_validation is not None
+            and self.d8 is not None
+            and self.root_cause_validation.verdict != self.d8.linked_five_why_verdict
+        ):
+            raise ValueError(
+                "root_cause_validation.verdict must match d8.linked_five_why_verdict"
+            )
+        if self.status == "CLOSED":
+            if self.current_discipline != "D8":
+                raise ValueError("a CLOSED report must have current_discipline D8")
+            if self.d8 is None or self.root_cause_validation is None:
+                raise ValueError(
+                    "a CLOSED report requires D8 and provenance-bearing root_cause_validation"
+                )
+            if (
+                self.root_cause_validation.verdict == "REJECT"
+                or not self.root_cause_validation.valid
+            ):
+                raise ValueError("a CLOSED report requires a valid root_cause_validation")
+            if (
+                self.root_cause_validation.verdict == "WARNING"
+                and self.d8.warning_override is None
+            ):
+                raise ValueError("a CLOSED report with a WARNING verdict requires warning_override")
+            if self.d7 is None or not any(
+                update.artifact_type in {"FMEA", "CONTROL_PLAN"}
+                for update in self.d7.documentation_updates
+            ):
+                raise ValueError("a CLOSED report requires a D7 FMEA or Control Plan update")
         return self
 
 

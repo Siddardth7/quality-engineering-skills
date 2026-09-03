@@ -83,16 +83,22 @@ def test_rca_module_all_exports() -> None:
         "DocumentationUpdate",
         "DocumentationUpdateList",
         "EffectivenessVerification",
+        "EightDDiscipline",
         "EightDReport",
+        "EightDState",
+        "EightDTransitionResult",
         "EightDStatus",
         "EscapePointFinding",
         "FiveWhyLegType",
         "FiveWhyVerdict",
+        "GateCode",
         "ImplementedAction",
         "RootCauseFinding",
         "TEAM_MEMBER_SCHEMA",
         "TeamMember",
         "TeamMemberList",
+        "TransitionReason",
+        "TransitionVerdict",
         "WarningOverride",
         "load_containment_actions_csv",
         "load_corrective_action_candidates_csv",
@@ -105,6 +111,7 @@ def test_rca_module_all_exports() -> None:
         "validate_documentation_updates",
         "validate_eight_d",
         "validate_team_members",
+        "transition_eight_d",
         # 5-Why
         "AntiPatternFinding",
         "FIVE_WHY_COLUMN_WIDTHS",
@@ -1072,5 +1079,4 @@ def test_nan_handling_in_all_validators() -> None:
     res_list_dict_in = validate_is_is_not(list_dict_in)
     assert res_list_dict_in.rows[0].distinctions is None
     assert res_list_dict_in.rows[0].changes is None
-
 

@@ -494,3 +494,22 @@ from the cited `RULE-8D-*` entries above for exactly that reason.
 3. **`RULE-8D-D<n>-NNN` is reserved, not yet used.** No row exists under this pattern as of #218;
    the convention is declared here so E3–E9 (#206–#212) have a collision-free namespace before
    they need one.
+
+4. **D8 closure policy for the `WARNING` 5-Why verdict (E1, #204).** `REJECT` hard-blocks
+   closure (`D8Discipline` cannot be constructed with `closure_approved=True` while
+   `linked_five_why_verdict == "REJECT"`; see `RULE-8D-GATE-CLOSURE` above). `ACCEPT` closes
+   without extra evidence. **`WARNING` closes only with a recorded `WarningOverride`**
+   (`approved_by`, `justification`, `override_date`, all required) — no manual defines
+   closure eligibility for a marginal, non-rejected chain, so this platform requires the
+   judgment call to be explicit and attributable rather than silently defaulting either way.
+   `sqe/scar.py`'s linkage check gates on the same validator's `.valid` boolean (`WARNING`
+   passes identically to `ACCEPT`) — D8 closure deliberately diverges from that precedent
+   because it is a terminal, higher-stakes gate than an intermediate evidence check.
+
+5. **Containment/corrective-action "verified" is a structured record, not a flag (E1, #204).**
+   `EffectivenessVerification` (`verified_by`, `verified_date`, `evidence`, `is_effective`) is
+   the only way `ContainmentAction` (D3) or `ImplementedAction` (D6) can be marked verified —
+   `is_verified` is `verification is not None and verification.is_effective`, so there is no
+   bare boolean a caller can set to satisfy it. The specific field set is this platform's
+   engineering translation of "validate the effectiveness" / "the AIC is verified"
+   (`RULE-8D-D3`) into a data shape; no manual mandates these four fields by name.

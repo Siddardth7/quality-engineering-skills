@@ -9,6 +9,23 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- 8D report schema and ingest boundary `quality_core.rca.eight_d_schema` (E1, Milestone 11): the
+  `EightDReport` envelope plus `D0Discipline`..`D8Discipline`, the reusable
+  `EffectivenessVerification` record, `WarningOverride`, and the four naturally tabular
+  sub-tables (D1 team roster, D3 containment measures, D5 corrective-action candidates, D7
+  documentation updates) each with a `TableSchema`, a `load_<x>_csv` loader, and a
+  `validate_<x>` trust-boundary validator. JSON ingest lands as `validate_eight_d`,
+  `load_eight_d_json`, and `load_eight_d_json_from_path`, all collapsing to `IngestError`. Two
+  invariants are enforced inside the models themselves: D8 closure is hard-blocked on a `REJECT`
+  linked 5-Why verdict and closable on `WARNING` only with a recorded `WarningOverride`; and
+  containment/corrective-action verification is a structured `EffectivenessVerification` record
+  (`is_verified` requires both presence and `is_effective`), never a settable boolean, so D6
+  cannot record removal of interim containment until every implemented action is verified
+  effective. **Schema and ingest only** — no state machine, no cross-discipline gates, no
+  exporter, no MCP or skill surface; those are E2 (#205) and onward. Adds no `CITATIONS.tsv`
+  rows: every quote it relies on was landed by E0 (#218). The two judgment calls above are
+  recorded as Process Design Decisions #4 and #5 in `quality_core/rca/ASSUMPTIONS_LOG.md`,
+  explicitly not presentable as standards (#204).
 - 8D Problem-Solving standards and citation base for Milestone 11 (E0, P0 governance): 28 new
   `quality_core/rca/CITATIONS.tsv` rows and 13 new `rca/ASSUMPTIONS_LOG.md` `RULE-8D-*` entries
   covering the nine D0–D8 discipline definitions (`RULE-8D-D0`..`RULE-8D-D8`), the three

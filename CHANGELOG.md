@@ -13,6 +13,41 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
   `current_discipline` separate from report lifecycle status, adjacent-only transitions,
   provenance-backed D3 verification, D7 FMEA/Control Plan update evidence, and defense-in-depth
   D8 closure checks exposed through structured, copy-isolated results (#205).
+- 8D discipline engine for D2 (problem description) in `quality_core.rca.eight_d_disciplines`
+  (E4, Milestone 11): `validate_d2_problem_description` reads a typed `D2Discipline` plus
+  optional Is/Is-Not scoping data and validates **Ford 8D's own two-stage D2** — a problem
+  *statement* ("what is bad (the symptom) with what (the object)") and a problem *description*
+  "established by determining what, where, when, how big and use the form Is / Is Not". The
+  second stage is delegated verbatim to `quality_core.rca.is_is_not.scope_is_is_not`, whose four
+  Kepner-Tregoe dimensions (WHAT / WHERE / WHEN / EXTENT) are the same four Ford names; no part
+  of Is/Is-Not scoping is reimplemented. **5W2H completeness is checked against AIAG CQI-20
+  Figure 12, "Problem Identification Questions"**, which enumerates and defines seven questions —
+  Who?, What?, When?, Where?, Why?, How?, How Many? — five W-questions and two How-questions.
+  `D2Discipline` gains seven optional `w2h_*` answer fields, and a record that declares
+  `method_used="5W2H"` while leaving any of the seven unanswered raises
+  `METHOD_5W2H_DESCRIPTION_INCOMPLETE` at `severity="error"`, naming the unanswered questions and
+  forcing a non-`ACCEPT` verdict; the structured evidence is returned on
+  `D2ValidationResult.five_w_two_h`. The seven answers are judged only when the method is
+  declared — claiming the method is what creates the obligation — and only for presence; there is
+  no free-text parsing of the D2 statement fields. Returns the house `ACCEPT`/`WARNING`/`REJECT`
+  verdict — REJECT when a declared 5W2H is incomplete or when supplied scoping data is itself
+  rejected, WARNING when scoping is incomplete or absent — with the composed problem statement,
+  per-finding severities, the nested scoping payload, de-duplicated recommendations, and
+  `to_dict()` serialization. Adds ten `quality_core/rca/CITATIONS.tsv` rows: `RULE-8D-D2-001` (the
+  problem-statement two-part test) and `RULE-8D-D2-002` (the Is/Is-Not problem-description stage),
+  verified on-box against `FORD_8D_MANUAL_PATH`, plus eight `RULE-8D-D2-003` rows carrying Figure
+  12's caption and its seven question definitions verbatim from `CQI20_MANUAL_PATH`; also corrects
+  the stale `RULE-8D-D2` **Applied In** pointer to name the real module. **This corrects the 5W2H
+  reading recorded at E0 (#218)**, which read CQI-20's prose aside "5 Why-2 How (5W2H)" — an
+  acronym expanded in passing inside a note on supplier corrective action requests — as the
+  manual's model and concluded that no question-set model was defensible; Figure 12 is the
+  normative enumeration, and `rca/ASSUMPTIONS_LOG.md` records the correction beside the original
+  reading rather than rewriting it. The two heuristics no manual backs
+  (`DEGENERATE_PROBLEM_STATEMENT`, `QUANTIFICATION_NOT_NUMERIC`), the override of the nested
+  Is/Is-Not problem statement, and the warning-not-error severity for absent scoping are recorded
+  as Process Design Decision #7 and carry no citation row. **D2 engine only** — D3–D8, the 8D
+  state machine and cross-discipline gates (`rca/eight_d.py`, E2/#205), and any MCP, skill, or
+  exporter surface remain out of scope (#207).
 - 8D discipline engines for D0 and D1 in `quality_core.rca.eight_d_disciplines` (E3, Milestone
   11): `validate_d0_readiness` reads a typed `D0Discipline` and reports Emergency Response Action
   readiness — ACCEPT when no ERA is required or when the ERA is implemented *and* verified

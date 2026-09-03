@@ -47,6 +47,16 @@ RULE-8D-D1-002	825	Is the team large enough to include all the entries?
 RULE-8D-D1-003	835	Are the roles and responsibilities of the team members clear?
 RULE-8D-D2	277	Describe the internal/external problem by identifying 'what is wrong with what', and detail the problem in quantifiable terms (Description of the problem).
 RULE-8D-D2	1610	The problem statement can include but is not limited to 5 Why-2 How (5W2H), Gantt chart, Is/Is Not, etc.
+RULE-8D-D2-001	898	Problem statement - A concise statement that identifies the object that experience the defect and the nature of the defect (the defect will typically be a symptom for whose cause is unknown). The problem statement clearly describes what is bad (the symptom) with what (the object).
+RULE-8D-D2-002	903	Problem description - Established by determining what, where, when, how big and use the form Is / Is Not to drive this part of the process.
+RULE-8D-D2-003	1348	Who? "Who" found it and who does it affect? Individuals/customers associated with the problem?
+RULE-8D-D2-003	1350	What? involved? Is there a trend? The problem statement or definition; What is the object and defect? What equipment is
+RULE-8D-D2-003	1353	When? Date and time the problem was identified? Date and time the defective product was produced?
+RULE-8D-D2-003	1355	Where? Location of complaints (area, facilities, process flow diagram) and location of defect on part?
+RULE-8D-D2-003	1357	Why? Why the part failed, what standard did it fail to meet?
+RULE-8D-D2-003	1359	How? How did the problem occur? How was it detected?
+RULE-8D-D2-003	1361	How Many? Size and frequency of problem; how many parts have the problem? How many defects on each part? Is it getting worse?
+RULE-8D-D2-003	1364	Figure 12. Problem Identification Questions
 RULE-8D-D3	282	Define, verify, and implement the Interim Containment Action (AIC) to isolate the effects of the problem of any internal/external client until they are implemented Permanent Corrective Actions (PCAs). Validate the effectiveness of the measures of containment.
 RULE-8D-D3	1182	The AIC is verified.
 RULE-8D-D4	293	Isolate and verify the root cause by testing each possible cause against the description of the Problem with the test data. Also isolate and verify the place in the process where the effects of the root cause should have been detected and contained, but it was not done (escape point).

@@ -15,8 +15,9 @@ engine has something to *read*; they never block anything themselves.
 
 Standards basis: the Ford Motor Company *Global 8D (G8D) Problem Solving Manual* and AIAG CQI-20
 *Effective Problem Solving Practitioner Guide* (2nd Edition, 2018). Every citation this module
-relies on was already landed in ``rca/CITATIONS.tsv`` and ``rca/ASSUMPTIONS_LOG.md`` by E0
-(#218); this module adds **no** new citation rows. Two data-shape judgment calls — the D8
+relies on was landed in ``rca/CITATIONS.tsv`` and ``rca/ASSUMPTIONS_LOG.md`` by E0 (#218) and,
+for the ``D2Discipline`` 5W2H answer fields, by E4 (#207, ``RULE-8D-D2-003``); this module
+authors **no** citation rows of its own. Two data-shape judgment calls — the D8
 ``WARNING`` closure policy and the ``EffectivenessVerification`` field set — are this platform's
 own and are recorded as Process Design Decisions #4 and #5 in ``rca/ASSUMPTIONS_LOG.md``, not as
 standards requirements.
@@ -278,17 +279,47 @@ class D2Discipline(pydantic.BaseModel):
     ``method_used`` is informational metadata only: it names the scoping technique used and
     deliberately does not embed an ``IsIsNotMatrix`` or ``FiveWhyChain`` object, so this module
     never becomes a second source of truth for data ``quality_core.rca`` already owns.
+
+    The seven ``w2h_*`` fields hold the answers to CQI-20 Figure 12's "Problem Identification
+    Questions" — Who?, What?, When?, Where?, Why?, How?, How Many? — the enumeration behind the
+    5W2H tool name (``RULE-8D-D2-003``). They carry a prefix because a Python identifier cannot
+    begin with the ``5`` of "5W2H", and because ``w2h_what`` must not be read as the required
+    ``what_is_wrong`` / ``with_what`` statement fields. **All seven are optional here**: a
+    partially answered 5W2H is a normal intermediate state and must stay representable. Judging
+    completeness belongs to ``eight_d_disciplines.validate_d2_problem_description``, not to this
+    model.
     """
 
     what_is_wrong: Annotated[str, pydantic.Field(min_length=1, max_length=2000)]
     with_what: Annotated[str, pydantic.Field(min_length=1, max_length=2000)]
     quantification: Annotated[str, pydantic.Field(min_length=1, max_length=2000)]
     method_used: Literal["5W2H", "GANTT", "IS_IS_NOT", "OTHER"] | None = None
+    w2h_who: Annotated[str | None, pydantic.Field(default=None, max_length=2000)] = None
+    w2h_what: Annotated[str | None, pydantic.Field(default=None, max_length=2000)] = None
+    w2h_when: Annotated[str | None, pydantic.Field(default=None, max_length=2000)] = None
+    w2h_where: Annotated[str | None, pydantic.Field(default=None, max_length=2000)] = None
+    w2h_why: Annotated[str | None, pydantic.Field(default=None, max_length=2000)] = None
+    w2h_how: Annotated[str | None, pydantic.Field(default=None, max_length=2000)] = None
+    w2h_how_many: Annotated[str | None, pydantic.Field(default=None, max_length=2000)] = None
 
     @pydantic.field_validator("what_is_wrong", "with_what", "quantification", mode="before")
     @classmethod
     def _reject_blank_fields(cls, v: object) -> object:
         return _reject_blank(v)
+
+    @pydantic.field_validator(
+        "w2h_who",
+        "w2h_what",
+        "w2h_when",
+        "w2h_where",
+        "w2h_why",
+        "w2h_how",
+        "w2h_how_many",
+        mode="before",
+    )
+    @classmethod
+    def _normalize_w2h_answers(cls, v: object) -> object:
+        return _blank_to_none(v)
 
 
 # ==============================================================================

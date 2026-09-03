@@ -108,6 +108,13 @@ def _resolve_manual_key(site: str, src_line: int) -> str:
         if src_line == 1610:
             return "AIAG_CQI20"
         return "Ford_8D"  # src_line == 277
+    elif site == "RULE-8D-D2-001":
+        return "Ford_8D"  # src_line == 898
+    elif site == "RULE-8D-D2-002":
+        return "Ford_8D"  # src_line == 903
+    elif site == "RULE-8D-D2-003":
+        # CQI-20 Figure 12; src_line in (1348, 1350, 1353, 1355, 1357, 1359, 1361, 1364)
+        return "AIAG_CQI20"
     elif site == "RULE-8D-D3":
         return "Ford_8D"  # src_line in (282, 1182)
     elif site == "RULE-8D-D4":

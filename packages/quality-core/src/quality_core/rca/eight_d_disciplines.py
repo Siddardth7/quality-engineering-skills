@@ -1,23 +1,40 @@
 """
 eight_d_disciplines.py
 Deterministic 8D discipline engines for D0 (Emergency Response Action readiness), D1
-(team completeness), and D2 (problem description).
+(team completeness), D2 (problem description), and D3 (interim containment).
 
 Pure, post-validation checks over already-typed :mod:`quality_core.rca.eight_d_schema` models:
 ``validate_d0_readiness`` reads a ``D0Discipline`` and reports whether the Emergency Response
 Action (ERA) is required, implemented, and verified *effective*; ``validate_d1_team`` reads a
 ``D1Discipline`` and reports whether the team is complete enough to proceed;
 ``validate_d2_problem_description`` reads a ``D2Discipline`` plus optional Is/Is-Not scoping data
-and reports whether both stages of Ford 8D's D2 are covered. All three return a verdict on the
-same three-value ``ACCEPT`` / ``WARNING`` / ``REJECT`` scale the other RCA engines use.
+and reports whether both stages of Ford 8D's D2 are covered; ``validate_d3_containment`` reads a
+``D3Discipline`` plus optional linked Nonconformance Record evidence and reports whether every
+interim containment action is verified effective. All four return a verdict on the same
+three-value ``ACCEPT`` / ``WARNING`` / ``REJECT`` scale the other RCA engines use.
 
-**Scope.** D0, D1 and D2 only. There is no state machine, no discipline-advancement API, and no
-cross-discipline gate enforcement here — those live in ``rca/eight_d.py``. These functions take
+**Scope.** D0, D1, D2 and D3 only. There is no state machine, no discipline-advancement API, and
+no cross-discipline gate enforcement here — those live in ``rca/eight_d.py``. These functions take
 typed discipline instances only; the untrusted-data trust boundary is ``validate_eight_d`` in
-``rca/eight_d_schema.py``, which validates D0/D1/D2 as part of a whole ``EightDReport``. The one
-exception is ``validate_d2_problem_description``'s optional ``is_is_not`` argument: untrusted
-scoping data handed straight to ``quality_core.rca.is_is_not.scope_is_is_not``, the module that
-owns that trust boundary, with no independent type check here.
+``rca/eight_d_schema.py``, which validates D0/D1/D2/D3 as part of a whole ``EightDReport``. The two
+exceptions are the optional untrusted-evidence arguments: ``validate_d2_problem_description``'s
+``is_is_not``, handed straight to ``quality_core.rca.is_is_not.scope_is_is_not``, and
+``validate_d3_containment``'s ``linked_ncr``, handed straight to
+``quality_core.ncr.schema.validate_ncr`` — the modules that own those trust boundaries — with no
+independent type check here.
+
+**D3 is an advisory pre-flight check that shares its rules with the gate.**
+``validate_d3_containment`` *reads* ``D3Discipline.is_verified``, the same predicate
+``rca/eight_d.py``'s D3→D4 gate reads, and never recomputes, overrides, or re-derives it. The
+real state transition remains ``transition_eight_d``, which this module does not call. Linked
+Nonconformance Record *evidence* stays a parameter of this function and is never a schema field,
+but the *outcome* of validating it is one: this engine returns a ``LinkedNCRValidation`` record
+for the caller to store on ``D3Discipline.linked_ncr_validation``, and the D3→D4 gate blocks on a
+recorded invalid outcome with a ``LINKED_NCR_INVALID`` reason. Both sides ask the one shared
+evaluator ``eight_d_schema._linked_ncr_deficiency`` — never two copies of the rule — so this
+engine's ``REJECT`` and the gate's block cannot disagree about the same evidence. Only
+``quality_core.ncr.schema.validate_ncr`` is called for that check; ``recommend_disposition`` and
+``write_nonconformance`` are deliberately not invoked here.
 
 **No competency or team-size model is implemented for D1.** ``TeamMember`` carries no skill or
 competency field to check one against, and neither manual quantifies a team size or a skill
@@ -40,11 +57,20 @@ Standards References:
   problem-description step, and Figure 12 "Problem Identification Questions".
 
 Rules applied: RULE-8D-D0, RULE-8D-D0-001..003, RULE-8D-D1, RULE-8D-D1-001..003, RULE-8D-D2,
-RULE-8D-D2-001..003 in ``rca/CITATIONS.tsv`` / ``rca/ASSUMPTIONS_LOG.md``. The heuristics that no
-manual backs (``ERA_VERIFICATION_DATE_INCONSISTENT``, ``CHAMPION_TEAM_LEADER_SAME_PERSON``,
+RULE-8D-D2-001..003, RULE-8D-D3 in ``rca/CITATIONS.tsv`` / ``rca/ASSUMPTIONS_LOG.md``.
+``RULE-8D-GATE-CONTAINMENT`` is *mirrored* by ``validate_d3_containment``, not re-cited as a new
+claim: the gate that rule backs stays in ``rca/eight_d.py``. The heuristics that no manual backs
+(``ERA_VERIFICATION_DATE_INCONSISTENT``, ``CHAMPION_TEAM_LEADER_SAME_PERSON``,
 ``DUPLICATE_TEAM_MEMBER``, the field-presence reading of "roles ... clear",
-``DEGENERATE_PROBLEM_STATEMENT`` and ``QUANTIFICATION_NOT_NUMERIC``) are declared as Process
-Design Decisions #6 and #7 in ``rca/ASSUMPTIONS_LOG.md`` and carry no citation row.
+``DEGENERATE_PROBLEM_STATEMENT``, ``QUANTIFICATION_NOT_NUMERIC``, and the three NCR-linkage
+findings ``LINKED_NCR_NOT_PROVIDED`` / ``LINKED_NCR_INVALID`` / ``LINKED_NCR_VALID``) are declared
+as Process Design Decisions #6, #7 and #8 in ``rca/ASSUMPTIONS_LOG.md`` and carry no citation row.
+
+**PROCUREMENT-GAP (ISO 9001:2015 §8.7 / IATF 16949:2016 §8.7).** The licensed excerpts for the
+nonconforming-output clauses that stand behind ``quality_core.ncr`` are not on this machine, so no
+ISO/IATF quotation or paraphrase appears anywhere in ``rca/``: this engine only *calls* the
+already-implemented ``validate_ncr`` and asserts nothing of its own about §8.7. The gap is
+declared under Process Design Decision #8 in ``rca/ASSUMPTIONS_LOG.md``.
 """
 
 from __future__ import annotations
@@ -54,12 +80,18 @@ from dataclasses import asdict, dataclass
 from typing import Any, Literal
 
 import pandas as pd
+import pydantic
 
+from quality_core.io.validate import clean_pydantic_message
+from quality_core.ncr.schema import NCRDataset, validate_ncr
 from quality_core.rca.eight_d_schema import (
     D0Discipline,
     D1Discipline,
     D2Discipline,
+    D3Discipline,
     EffectivenessVerification,
+    LinkedNCRValidation,
+    _linked_ncr_deficiency,
 )
 from quality_core.rca.is_is_not import scope_is_is_not
 from quality_core.rca.schema import IsIsNotMatrix
@@ -71,9 +103,12 @@ __all__ = [
     "D1ValidationResult",
     "D2Finding",
     "D2ValidationResult",
+    "D3Finding",
+    "D3ValidationResult",
     "validate_d0_readiness",
     "validate_d1_team",
     "validate_d2_problem_description",
+    "validate_d3_containment",
 ]
 
 _STANDARDS_BASIS = "Ford Global 8D / AIAG CQI-20"
@@ -753,4 +788,289 @@ def validate_d2_problem_description(
         is_is_not=scoping_payload,
         five_w_two_h=five_w_two_h_payload,
         recommendations=_dedupe([f.recommendation for f in findings] + recommendations),
+    )
+
+
+# ==============================================================================
+# 4. D3 — Interim containment
+# ==============================================================================
+
+
+def _ncr_linkage_findings(exc: Exception) -> tuple[str, ...]:
+    """Turn a ``validate_ncr`` failure into finding text carrying the sub-engine's own words.
+
+    Re-declares the identical logic of ``sqe/scar.py``'s ``_findings_from_exception`` **by
+    necessity, not by preference**: that helper is ``sqe``-private and ``rca`` cannot import it,
+    because imports run downward only (``sqe -> ncr/rca/copq``; none of those packages imports
+    ``sqe``). Kept in exact behavioural lockstep with it — same catch shape, same
+    ``"{location}: {message}"`` format — so the two copies cannot drift into different
+    user-facing text for the identical failure.
+    """
+    if isinstance(exc, pydantic.ValidationError):
+        messages: list[str] = []
+        for error in exc.errors():
+            message = clean_pydantic_message(str(error["msg"]))
+            location = ".".join(str(part) for part in error["loc"])
+            messages.append(f"{location}: {message}" if location else message)
+        return tuple(messages)
+    return (str(exc),)
+
+
+@dataclass
+class D3Finding:
+    """Finding raised against a D3 containment action or the linked nonconformity evidence."""
+
+    code: str
+    severity: Literal["error", "warning", "info"]
+    action_description: str | None
+    message: str
+    recommendation: str
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return serializable dictionary representation of the D3 finding."""
+        return asdict(self)
+
+
+@dataclass
+class D3ValidationResult:
+    """Complete D3 (interim containment + NCR linkage) validation result.
+
+    ``containment_verified`` is read directly from ``D3Discipline.is_verified`` — never
+    recomputed by counting findings — so it cannot drift from the same predicate the D3→D4 gate
+    in ``rca/eight_d.py`` reads. ``linked_ncr`` carries the validated
+    ``NCRDataset.model_dump(mode="json")`` payload when linked evidence was supplied *and*
+    accepted by ``quality_core.ncr.schema.validate_ncr``, and is ``None`` both when no evidence
+    was supplied and when the supplied evidence was rejected; the ``findings`` codes
+    (``LINKED_NCR_NOT_PROVIDED`` vs ``LINKED_NCR_INVALID``) disambiguate those two cases.
+
+    ``linked_ncr_validation`` is the recorded outcome of that check, ``None`` when there is
+    nothing to record. It is the artifact a caller stores on ``D3Discipline.linked_ncr_validation``
+    so the D3→D4 gate can read the same verdict this engine reached, rather than re-deriving one.
+    """
+
+    basis: str
+    valid: bool
+    verdict: Literal["ACCEPT", "WARNING", "REJECT"]
+    containment_verified: bool
+    action_count: int
+    linked_ncr: dict[str, Any] | None
+    linked_ncr_validation: LinkedNCRValidation | None
+    findings: list[D3Finding]
+    recommendations: list[str]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return serializable dictionary representation of the D3 result."""
+        validation = self.linked_ncr_validation
+        return {
+            "basis": self.basis,
+            "valid": self.valid,
+            "verdict": self.verdict,
+            "containment_verified": self.containment_verified,
+            "action_count": self.action_count,
+            "linked_ncr": self.linked_ncr,
+            "linked_ncr_validation": (
+                None if validation is None else validation.model_dump(mode="json")
+            ),
+            "findings": [f.to_dict() for f in self.findings],
+            "recommendations": list(self.recommendations),
+        }
+
+
+def validate_d3_containment(
+    discipline: D3Discipline,
+    linked_ncr: NCRDataset | pd.DataFrame | list[Any] | dict[str, Any] | None = None,
+) -> D3ValidationResult:
+    """Validate D3 interim containment and its linked nonconformity evidence.
+
+    Ford Global 8D requires the Interim Containment Action to be defined, verified and
+    implemented, and the effectiveness of the measures of containment validated (RULE-8D-D3);
+    AIAG CQI-20 adds that containment stays in place until corrective-action effectiveness is
+    verified (RULE-8D-GATE-CONTAINMENT). This function reports one finding per containment action
+    that is unverified or was verified ineffective, and rejects when any is found.
+
+    **Advisory pre-flight check that shares both of the gate's rules.** ``containment_verified``
+    *mirrors* — and never redefines — ``discipline.is_verified``, the same predicate
+    ``rca/eight_d.py``'s D3→D4 gate reads at ``transition_eight_d``. The linked-NCR verdict is
+    shared the same way: this function and that gate both call
+    ``eight_d_schema._linked_ncr_deficiency``, so an invalid linked NCR is a hard stop in both
+    places — here as this function's own ``REJECT``, there as a ``LINKED_NCR_INVALID`` transition
+    reason, once the outcome is recorded on ``discipline.linked_ncr_validation``. That record is
+    what this function returns in ``D3ValidationResult.linked_ncr_validation``, for the caller to
+    store on the report. The state machine itself is still neither called nor duplicated here.
+    See Process Design Decision #8 in ``rca/ASSUMPTIONS_LOG.md``.
+
+    ``ContainmentAction`` already rejects a verification dated before the action it verifies, and
+    ``D3Discipline`` already requires at least one action, so neither is re-checked here.
+
+    Only ``quality_core.ncr.schema.validate_ncr`` is invoked for the linkage check.
+    ``recommend_disposition`` and ``write_nonconformance`` remain available to a caller's
+    downstream disposition workflow and are deliberately not called from this engine.
+
+    Parameters
+    ----------
+    discipline : D3Discipline
+        A validated D3 discipline record; guaranteed by its own model validator to carry at
+        least one containment action. Any outcome already recorded on its
+        ``linked_ncr_validation`` is reported when no ``linked_ncr`` evidence is supplied on this
+        call, so this engine and the gate never disagree about a report they both can see.
+    linked_ncr : NCRDataset | pd.DataFrame | list | dict | None, optional
+        Untrusted Nonconformance Record evidence in any shape ``validate_ncr`` accepts, passed
+        through unchanged with no pre-parsing or pre-validation here. Supplied evidence is
+        validated live and its outcome supersedes any outcome recorded on the discipline.
+        ``None`` means none was supplied on this call — a warning when the discipline records no
+        outcome either, since not-yet-linked evidence is a normal in-progress state. Anything
+        else, including an empty list, goes to ``validate_ncr`` and fails there if it is invalid.
+
+    Returns
+    -------
+    D3ValidationResult
+        Verdict, containment summary, findings, validated NCR payload, and de-duplicated
+        recommendations.
+
+    Notes
+    -----
+    Unlike ``validate_d2_problem_description``, which lets ``scope_is_is_not``'s exceptions
+    propagate unmodified, this function **never raises from the** ``linked_ncr`` **path**:
+    ``validate_ncr``'s ``pydantic.ValidationError`` / ``TypeError`` / ``ValueError`` are caught
+    and surfaced as a ``LINKED_NCR_INVALID`` finding carrying the sub-engine's own message text,
+    following the shipped ``sqe/scar.py`` (``_evaluate_ncr_linkage``) precedent, so a caller
+    asking "does an invalid linked NCR block D3?" gets a verdict to read rather than an
+    exception to catch.
+    """
+    findings: list[D3Finding] = []
+
+    for action in discipline.actions:
+        verification = action.verification
+        if verification is None:
+            findings.append(
+                D3Finding(
+                    code="CONTAINMENT_ACTION_NOT_VERIFIED",
+                    severity="error",
+                    action_description=action.description,
+                    message=(
+                        f"The containment action implemented on {action.implemented_date} "
+                        "carries no effectiveness verification record."
+                    ),
+                    recommendation=(
+                        "Verify the Interim Containment Action and validate the effectiveness of "
+                        "the measures of containment, recording who verified it, when, and on "
+                        "what evidence."
+                    ),
+                )
+            )
+        elif not action.is_verified:
+            findings.append(
+                D3Finding(
+                    code="CONTAINMENT_ACTION_VERIFIED_INEFFECTIVE",
+                    severity="error",
+                    action_description=action.description,
+                    message=(
+                        f"The containment verification recorded by {verification.verified_by} on "
+                        f"{verification.verified_date} concluded the action is not effective."
+                    ),
+                    recommendation=(
+                        "Replace or strengthen the Interim Containment Action and re-verify it: "
+                        "the containment must isolate the client from the effects of the problem "
+                        "until permanent corrective actions are implemented."
+                    ),
+                )
+            )
+
+    containment_verified = discipline.is_verified
+
+    linked_ncr_payload: dict[str, Any] | None = None
+    ncr_validation: LinkedNCRValidation | None = discipline.linked_ncr_validation
+    if linked_ncr is not None:
+        try:
+            ncr_dataset = validate_ncr(linked_ncr)
+        except (pydantic.ValidationError, TypeError, ValueError) as exc:
+            ncr_validation = LinkedNCRValidation(
+                is_valid=False, findings=list(_ncr_linkage_findings(exc))
+            )
+        else:
+            linked_ncr_payload = ncr_dataset.model_dump(mode="json")
+            ncr_validation = LinkedNCRValidation(
+                is_valid=True, record_count=len(ncr_dataset.records)
+            )
+
+    deficiency = _linked_ncr_deficiency(ncr_validation)
+    if deficiency is not None:
+        findings.append(
+            D3Finding(
+                code=deficiency.code,
+                severity="error",
+                action_description=None,
+                message=deficiency.message,
+                recommendation=(
+                    "Correct the linked Nonconformance Record(s) so they satisfy "
+                    "quality_core.ncr.schema.validate_ncr before this containment record can "
+                    "be accepted."
+                ),
+            )
+        )
+    elif ncr_validation is None:
+        findings.append(
+            D3Finding(
+                code="LINKED_NCR_NOT_PROVIDED",
+                severity="warning",
+                action_description=None,
+                message=(
+                    "No linked Nonconformance Record evidence was supplied, so the nonconformity "
+                    "this containment isolates is not evidenced alongside the D3 record."
+                ),
+                recommendation=(
+                    "Link the Nonconformance Record(s) covering the contained nonconformity so "
+                    "the containment can be traced to the recorded nonconformity."
+                ),
+            )
+        )
+    else:
+        findings.append(
+            D3Finding(
+                code="LINKED_NCR_VALID",
+                severity="info",
+                action_description=None,
+                message=(
+                    f"Linked Nonconformance Record evidence is structurally valid "
+                    f"({ncr_validation.record_count} record(s))."
+                ),
+                recommendation=(
+                    "No action required; the linked nonconformity evidence is valid."
+                ),
+            )
+        )
+
+    verdict: Literal["ACCEPT", "WARNING", "REJECT"]
+    if any(f.severity == "error" for f in findings):
+        verdict, valid = "REJECT", False
+    elif any(f.severity == "warning" for f in findings):
+        verdict, valid = "WARNING", True
+    else:
+        findings.append(
+            D3Finding(
+                code="D3_READY",
+                severity="info",
+                action_description=None,
+                message=(
+                    f"All {len(discipline.actions)} containment action(s) are verified effective "
+                    "and the linked nonconformity evidence is valid."
+                ),
+                recommendation=(
+                    "Interim containment is verified and NCR-linked; proceed to D4 root-cause "
+                    "work."
+                ),
+            )
+        )
+        verdict, valid = "ACCEPT", True
+
+    return D3ValidationResult(
+        basis=_STANDARDS_BASIS,
+        valid=valid,
+        verdict=verdict,
+        containment_verified=containment_verified,
+        action_count=len(discipline.actions),
+        linked_ncr=linked_ncr_payload,
+        linked_ncr_validation=ncr_validation,
+        findings=findings,
+        recommendations=_dedupe(f.recommendation for f in findings),
     )

@@ -4,8 +4,8 @@ quality_core.rca
 Root Cause Analysis (RCA) suite: schema definitions, validation boundaries,
 and domain models for 5-Why problem solving, 6M Fishbone cause-and-effect
 diagrams, Kepner-Tregoe Is/Is-Not scoping matrices, and the 8D report with its
-nine disciplines, its deterministic state machine and gate engine, and the D0/D1/D2
-discipline engines.
+nine disciplines, its deterministic state machine and gate engine, and the
+D0/D1/D2/D3 discipline engines.
 """
 
 from __future__ import annotations
@@ -25,9 +25,12 @@ from quality_core.rca.eight_d_disciplines import (
     D1ValidationResult,
     D2Finding,
     D2ValidationResult,
+    D3Finding,
+    D3ValidationResult,
     validate_d0_readiness,
     validate_d1_team,
     validate_d2_problem_description,
+    validate_d3_containment,
 )
 from quality_core.rca.eight_d_schema import (
     CONTAINMENT_ACTION_SCHEMA,
@@ -58,6 +61,7 @@ from quality_core.rca.eight_d_schema import (
     FiveWhyLegType,
     FiveWhyVerdict,
     ImplementedAction,
+    LinkedNCRValidation,
     RootCauseFinding,
     TeamMember,
     TeamMemberList,
@@ -150,6 +154,8 @@ __all__ = [
     "D2Finding",
     "D2ValidationResult",
     "D3Discipline",
+    "D3Finding",
+    "D3ValidationResult",
     "D4Discipline",
     "D5Discipline",
     "D6Discipline",
@@ -169,6 +175,7 @@ __all__ = [
     "FiveWhyVerdict",
     "GateCode",
     "ImplementedAction",
+    "LinkedNCRValidation",
     "RootCauseFinding",
     "TEAM_MEMBER_SCHEMA",
     "TeamMember",
@@ -187,6 +194,7 @@ __all__ = [
     "validate_d0_readiness",
     "validate_d1_team",
     "validate_d2_problem_description",
+    "validate_d3_containment",
     "validate_documentation_updates",
     "validate_eight_d",
     "validate_team_members",

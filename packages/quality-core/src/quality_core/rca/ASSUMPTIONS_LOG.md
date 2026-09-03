@@ -194,9 +194,15 @@ three gates) uses `RULE-8D-D<n>-NNN`, a zero-padded 3-digit counter scoped to th
 own prefix — each epic owns a disjoint `D<n>` namespace, so parallel epics never race on one
 shared counter.
 
-**PROCUREMENT-GAP status: none.** Every D0–D8 rule and all three gates below have a direct,
-on-box, primary-source excerpt. This was verified, not assumed, against both manuals present at
-`CQI20_MANUAL_PATH` / `FORD_8D_MANUAL_PATH`.
+**PROCUREMENT-GAP status: none for the cited `RULE-8D-*` rows.** Every D0–D8 rule and all three
+gates below have a direct, on-box, primary-source excerpt. This was verified, not assumed,
+against both manuals present at `CQI20_MANUAL_PATH` / `FORD_8D_MANUAL_PATH`. Two things sit
+deliberately *outside* that statement rather than being left implicit, and are declared under
+Process Design Decision #8 below: the D3→D4 gate's **second** blocking reason, refusing the
+transition over invalid linked nonconformity evidence, which no manual clause requires and which
+is therefore identified as `PDD-8D-008` and not as a `RULE-8D-*` row; and the ISO 9001:2015 §8.7 /
+IATF 16949:2016 §8.7 excerpts standing behind `quality_core.ncr`, which are not on this machine
+(`PROCUREMENT-GAP`, #221) and which nothing in `rca/` quotes or paraphrases.
 
 ---
 
@@ -534,8 +540,9 @@ implemented, and its effectiveness validated, before the report may treat contai
 **Rationale:** The manual makes verification part of the discipline itself and repeats it as a
 D3 selection condition — an ICA that is implemented but unverified does not satisfy D3.
 
-**Applied In:** Not yet applied — reserved for E5 (`rca/eight_d.py` D3 engine and NCR linkage,
-#208). This entry seeds the citation only (#218).
+**Applied In:** `packages/quality-core/src/quality_core/rca/eight_d_disciplines.py`
+(`validate_d3_containment`, `CONTAINMENT_ACTION_NOT_VERIFIED` /
+`CONTAINMENT_ACTION_VERIFIED_INEFFECTIVE`), E5 (#208).
 
 ---
 
@@ -664,7 +671,13 @@ and "stay in place until verified" into an enforceable gate.** That mechanism is
 Process Design Decision below, and is not implied to be a standards mandate.
 
 **Applied In:** `packages/quality-core/src/quality_core/rca/eight_d.py`
-(`transition_eight_d`, D3→D4 containment gate, E2/#205); also reserved for E5 (#208).
+(`transition_eight_d`, D3→D4 containment gate, E2/#205); also
+`packages/quality-core/src/quality_core/rca/eight_d_disciplines.py` (`validate_d3_containment`,
+which reads the identical `discipline.is_verified` predicate as an advisory pre-flight check and
+does not duplicate it), E5 (#208). E5 added a *second*, independent D3→D4 gate reason for
+invalid linked nonconformity evidence; that reason is **not** authorized by this rule and is
+declared as `PDD-8D-008` under Process Design Decision #8 instead. This rule continues to
+authorize the containment-verification reason (`CONTAINMENT_NOT_VERIFIED`) and nothing else.
 
 ---
 
@@ -828,3 +841,71 @@ from the cited `RULE-8D-*` entries above for exactly that reason.
    - **Answer *presence* is all that is checked.** A non-blank `w2h_*` field counts as answered.
      There is no free-text parsing of the D2 statement fields for who/when/where tokens, and no
      judgment of whether an answer is a *good* answer — the manual gives no rubric for that.
+
+8. **D3 engine and NCR-linkage design decisions (E5, #208).**
+   `validate_d3_containment` emits one `D3Finding` per unverified or verified-ineffective
+   `ContainmentAction` rather than a single aggregate verdict. That per-action granularity is
+   this platform's diagnostic choice, not a new standards claim — `RULE-8D-D3` already covers the
+   substance ("Define, verify, and implement the Interim Containment Action", "Validate the
+   effectiveness of the measures of containment", "The AIC is verified"), and no new
+   `CITATIONS.tsv` row is added by this epic.
+   - **`containment_verified` is read, never recomputed.** The result field is assigned straight
+     from `D3Discipline.is_verified`, which is itself `all(a.is_verified for a in actions)` in
+     `eight_d_schema.py`. The engine never rebuilds an equivalent boolean by counting its own
+     findings, so it cannot drift from the single predicate the D3→D4 gate reads at
+     `eight_d.py`'s `transition_eight_d`.
+   - **The engine is the advisory pre-flight validator, the state machine is the enforcement
+     point, and both read the same rules.** `validate_d3_containment` does not call, wrap, or
+     replace `transition_eight_d`. What the two share is the *rules*, not a copy of them:
+     containment through `D3Discipline.is_verified`, and linked nonconformity evidence through
+     the single shared evaluator `_linked_ncr_deficiency` in `eight_d_schema.py` — the same
+     one-evaluator-two-consumers shape `_closure_evidence_deficiencies` already uses for the
+     CLOSED-report boundary, chosen so the two answers cannot drift rather than merely being
+     tested for agreement. The D3→D4 gate therefore blocks on an invalid linked NCR
+     (`LINKED_NCR_INVALID`) as well as on unverified containment (`CONTAINMENT_NOT_VERIFIED`),
+     which is how #208's "an invalid linked NCR blocks the gate" is satisfied — at the state
+     machine itself, not in advisory prose. **Refusing a state transition over
+     nonconformity-record validity is this platform's decision and carries no manual clause**:
+     that gate reason is identified as `PDD-8D-008`, and the `PDD-` prefix is deliberately not
+     `RULE-`, which is reserved for identifiers naming a `CITATIONS.tsv` row backed by an on-box
+     manual quote. **Scope:** only the D3→D4 gate reads the linked-NCR outcome; the D8→CLOSED
+     closure boundary (`_closure_evidence_deficiencies`) is unchanged and still evaluates
+     containment, root-cause and prevention evidence only.
+   - **Linked NCR *evidence* is a function parameter; the *outcome* of validating it is a schema
+     field.** No `linked_ncr_id`, dataset, or record content is stored on `D3Discipline` /
+     `ContainmentAction` — the evidence itself is still passed to
+     `validate_d3_containment(discipline, linked_ncr=...)` by the caller. What the report carries
+     is `D3Discipline.linked_ncr_validation`: an optional `LinkedNCRValidation` record
+     (`is_valid`, `record_count`, `findings`) that `validate_d3_containment` returns for the
+     caller to store, so the gate reads a verdict this platform already reached instead of
+     re-running — or re-implementing — NCR validation inside the state machine. It is optional
+     because a D3 record whose evidence has not been linked yet must stay representable, and an
+     absent outcome blocks nothing; an *invalid* recorded outcome must carry at least one finding
+     message, so a blocked transition can never be silent about its reason. When no evidence is
+     supplied on a call, `validate_d3_containment` reports the already-recorded outcome through
+     that same shared evaluator, so the advisory verdict and the gate cannot disagree about a
+     report both can see.
+   - **NCR-linkage dispatch follows the shipped `sqe/scar.py` `_evaluate_ncr_linkage` pattern:**
+     `pydantic.ValidationError`, `TypeError` and `ValueError` raised by
+     `quality_core.ncr.schema.validate_ncr` are caught and surfaced as a `LINKED_NCR_INVALID`
+     finding carrying the sub-engine's own message text. NCR validity rules are never re-derived
+     here. This diverges deliberately from `validate_d2_problem_description`, which lets
+     `scope_is_is_not`'s exceptions propagate: the acceptance criterion is about a *verdict* a
+     caller can read, not an exception a caller must catch. Only `validate_ncr` is invoked —
+     `recommend_disposition` and `write_nonconformance` are not called by this engine.
+   - **The three NCR-linkage findings are declared platform decisions, not standards claims.**
+     `LINKED_NCR_NOT_PROVIDED` is a `warning`, never an `error`, because linking nonconformity
+     evidence to a containment record is this platform's traceability convention and its absence
+     is a normal in-progress state — mirroring `IS_IS_NOT_NOT_PROVIDED` at D2. `error` is reserved
+     for evidence that *was* supplied and that `validate_ncr` itself rejected
+     (`LINKED_NCR_INVALID`); that verdict is delegated, never re-derived. `LINKED_NCR_VALID` is
+     `info` and never gates. None of the three carries a `CITATIONS.tsv` row.
+   - **`PROCUREMENT-GAP` (ISO 9001:2015 §8.7 / IATF 16949:2016 §8.7).** The licensed excerpts for
+     these clauses are **not on this machine** — `ISO_9001_MANUAL_PATH` and
+     `IATF_16949_MANUAL_PATH` both point into an empty `SixSigma/NCR/` directory and neither file
+     exists, verified this session; issue #221 tracks procurement. Accordingly this epic adds **no ISO/IATF quotation and no paraphrase
+     anywhere in `rca/`**: `validate_d3_containment` only calls the already-implemented
+     `quality_core.ncr.schema.validate_ncr` and asserts nothing of its own about what §8.7
+     requires. `quality_core.ncr`'s own §8.7 citation rows in `ncr/CITATIONS.tsv` are untouched by
+     this epic and remain separately tracked as an existing gap (#220); this declaration does not
+     claim to close that gap, only to avoid deepening it.

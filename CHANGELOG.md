@@ -9,6 +9,35 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- 8D discipline engine for D3 (interim containment) plus NCR linkage in
+  `quality_core.rca.eight_d_disciplines` (E5, Milestone 11): `validate_d3_containment` reads a
+  typed `D3Discipline` and optional linked Nonconformance Record evidence, emitting one finding
+  per containment action that carries no effectiveness verification
+  (`CONTAINMENT_ACTION_NOT_VERIFIED`) or whose verification concluded the action is not effective
+  (`CONTAINMENT_ACTION_VERIFIED_INEFFECTIVE`), per Ford Global 8D's "Define, verify, and implement
+  the Interim Containment Action" / "The AIC is verified" (`RULE-8D-D3`). Returns the house
+  `ACCEPT`/`WARNING`/`REJECT` verdict with `containment_verified` **read directly from**
+  `D3Discipline.is_verified` — the same predicate the D3→D4 gate reads — the action count, the
+  validated NCR payload, per-finding severities, de-duplicated recommendations, and `to_dict()`
+  serialization. Linked NCR evidence is delegated to `quality_core.ncr.schema.validate_ncr` and
+  never re-validated here: absent evidence is a `warning` (`LINKED_NCR_NOT_PROVIDED`), evidence
+  the NCR engine rejects is an `error` (`LINKED_NCR_INVALID`) carrying that engine's own message
+  text, following the shipped `sqe/scar.py` linkage precedent. **Zero new `CITATIONS.tsv` rows** —
+  `RULE-8D-D3` and `RULE-8D-GATE-CONTAINMENT` already back every claim — with both stale
+  **Applied In** pointers corrected to name the real module. **An invalid linked NCR blocks the
+  D3→D4 gate itself:** `D3Discipline` gains an optional `linked_ncr_validation`
+  (`LinkedNCRValidation` — `is_valid`, `record_count`, `findings`) recording the outcome
+  `validate_d3_containment` returns, and `transition_eight_d` refuses D3→D4 on a recorded
+  rejection with a structured `LINKED_NCR_INVALID` reason. Engine and gate consult **one shared
+  evaluator** (`_linked_ncr_deficiency`, following `_closure_evidence_deficiencies`), never two
+  copies of the rule, so the advisory `REJECT` and the gate's block cannot drift apart. Refusing a
+  state transition over nonconformity-record validity is a platform decision with no manual clause
+  behind it, identified as `PDD-8D-008` — the `PDD-` prefix deliberately not `RULE-`, which names
+  a cited manifest row. That decision, the warning-not-error severity for absent evidence, and a
+  `PROCUREMENT-GAP` declaration for the unprocured ISO 9001:2015 §8.7 / IATF 16949:2016 §8.7
+  excerpts (#221) are recorded as Process Design Decision #8 and carry no citation row. **D3
+  only** — D4–D8 disciplines, the D7 and D8→CLOSED gates and the closure evidence boundary, and
+  any MCP, skill, or exporter surface remain out of scope (#208).
 - Deterministic 8D state machine and gate engine (E2, Milestone 11), with an explicit
   `current_discipline` separate from report lifecycle status, adjacent-only transitions,
   provenance-backed D3 verification, D7 FMEA/Control Plan update evidence, and defense-in-depth

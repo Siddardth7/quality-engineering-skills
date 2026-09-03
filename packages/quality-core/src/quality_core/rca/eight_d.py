@@ -3,6 +3,14 @@
 Prerequisite evidence is grounded in the Ford Global 8D Manual and AIAG CQI-20 through
 ``rca/CITATIONS.tsv``. The adjacency graph and structured blocking behavior are platform design
 decisions; no published source mandates this software state machine.
+
+The D3 to D4 gate reads two pieces of D3 evidence: containment verification
+(``report.d3.is_verified``, ``RULE-8D-GATE-CONTAINMENT``) and the recorded outcome of validating
+the linked nonconformity evidence (``report.d3.linked_ncr_validation``). The second is evaluated
+by ``eight_d_schema._linked_ncr_deficiency`` — the same evaluator ``validate_d3_containment``
+calls, so the advisory engine and this gate cannot answer "is the linked NCR acceptable"
+differently — and blocking on it is a platform decision carrying no manual clause, declared as
+``PDD-8D-008`` (Process Design Decision #8 in ``rca/ASSUMPTIONS_LOG.md``).
 """
 
 from __future__ import annotations
@@ -11,7 +19,11 @@ import copy
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from quality_core.rca.eight_d_schema import EightDReport, _closure_evidence_deficiencies
+from quality_core.rca.eight_d_schema import (
+    EightDReport,
+    _closure_evidence_deficiencies,
+    _linked_ncr_deficiency,
+)
 
 __all__ = [
     "EightDState",
@@ -27,10 +39,17 @@ TransitionVerdict = Literal["ADVANCED", "BLOCKED"]
 GateCode = Literal[
     "ILLEGAL_TRANSITION",
     "CONTAINMENT_NOT_VERIFIED",
+    "LINKED_NCR_INVALID",
     "PREVENTION_UPDATE_MISSING",
     "ROOT_CAUSE_REJECTED",
     "ROOT_CAUSE_EVIDENCE_MISSING",
 ]
+
+#: Rule identifier for the linked-NCR block. The ``PDD-`` prefix is deliberately not ``RULE-``:
+#: every ``RULE-8D-*`` id names a ``rca/CITATIONS.tsv`` row backed by an on-box manual quote, and
+#: no manual clause requires a transition to be refused over nonconformity-record validity. This
+#: one names Process Design Decision #8 in ``rca/ASSUMPTIONS_LOG.md`` instead.
+_LINKED_NCR_RULE_ID = "PDD-8D-008"
 
 _NEXT: dict[EightDState, EightDState] = {
     "D0": "D1",
@@ -75,6 +94,26 @@ class EightDTransitionResult:
 
 def _state(report: EightDReport) -> EightDState:
     return "CLOSED" if report.status == "CLOSED" else report.current_discipline
+
+
+def _linked_ncr_reason(report: EightDReport) -> TransitionReason | None:
+    """Block D3 to D4 when D3 records that its linked nonconformity evidence was rejected.
+
+    Delegates the verdict to ``eight_d_schema._linked_ncr_deficiency``, the single shared
+    evaluator ``validate_d3_containment`` also consults, and never re-derives NCR validity here.
+    An absent ``linked_ncr_validation`` is not a block: unlinked evidence is a normal in-progress
+    state, which the advisory engine reports as a warning.
+    """
+    recorded = None if report.d3 is None else report.d3.linked_ncr_validation
+    deficiency = _linked_ncr_deficiency(recorded)
+    if deficiency is None:
+        return None
+    return TransitionReason(
+        deficiency.code,
+        f"{deficiency.message} Correct the linked Nonconformance Record evidence and re-record "
+        "its validation outcome before advancing.",
+        _LINKED_NCR_RULE_ID,
+    )
 
 
 def _prevention_reason(report: EightDReport) -> TransitionReason | None:
@@ -125,14 +164,18 @@ def transition_eight_d(report: EightDReport, target: EightDState) -> EightDTrans
         return EightDTransitionResult("BLOCKED", previous, previous, (reason,), report)
 
     reasons: list[TransitionReason] = []
-    if previous == "D3" and (report.d3 is None or not report.d3.is_verified):
-        reasons.append(
-            TransitionReason(
-                "CONTAINMENT_NOT_VERIFIED",
-                "D3 containment is not verified effective; record successful verification evidence for every containment action before advancing.",
-                "RULE-8D-GATE-CONTAINMENT",
+    if previous == "D3":
+        if report.d3 is None or not report.d3.is_verified:
+            reasons.append(
+                TransitionReason(
+                    "CONTAINMENT_NOT_VERIFIED",
+                    "D3 containment is not verified effective; record successful verification evidence for every containment action before advancing.",
+                    "RULE-8D-GATE-CONTAINMENT",
+                )
             )
-        )
+        ncr_reason = _linked_ncr_reason(report)
+        if ncr_reason is not None:
+            reasons.append(ncr_reason)
     if previous == "D7":
         gate_reason = _prevention_reason(report)
         if gate_reason is not None:

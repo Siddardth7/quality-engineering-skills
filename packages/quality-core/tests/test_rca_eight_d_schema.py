@@ -422,6 +422,60 @@ def test_d2_happy_path() -> None:
     )
     assert d2.what_is_wrong == "Bore undersized"
     assert d2.method_used is None
+    assert d2.w2h_who is None
+    assert d2.w2h_how_many is None
+
+
+W2H_FIELDS = [
+    "w2h_who",
+    "w2h_what",
+    "w2h_when",
+    "w2h_where",
+    "w2h_why",
+    "w2h_how",
+    "w2h_how_many",
+]
+
+
+@pytest.mark.parametrize("field", W2H_FIELDS)
+def test_d2_w2h_answers_default_to_none_and_strip(field: str) -> None:
+    """Assert each Figure 12 answer field is optional and stripped when supplied."""
+    d2 = D2Discipline(
+        what_is_wrong="w",
+        with_what="x",
+        quantification="q",
+        **{field: "  an answer  "},
+    )
+    assert getattr(d2, field) == "an answer"
+    assert [f for f in W2H_FIELDS if getattr(d2, f) is None] == [
+        f for f in W2H_FIELDS if f != field
+    ]
+
+
+@pytest.mark.parametrize("field", W2H_FIELDS)
+@pytest.mark.parametrize("blank", ["", "   "], ids=["empty", "whitespace"])
+def test_d2_blank_w2h_answer_normalises_to_none(field: str, blank: str) -> None:
+    """Assert a blank Figure 12 answer becomes None rather than raising — completeness is the
+    engine's judgment, so an unanswered question must stay representable."""
+    d2 = D2Discipline(
+        what_is_wrong="w",
+        with_what="x",
+        quantification="q",
+        **{field: blank},
+    )
+    assert getattr(d2, field) is None
+
+
+@pytest.mark.parametrize("field", W2H_FIELDS)
+def test_d2_rejects_overlong_w2h_answer(field: str) -> None:
+    """Assert each Figure 12 answer carries the same 2000-character bound as the text fields."""
+    with pytest.raises(pydantic.ValidationError):
+        D2Discipline(
+            what_is_wrong="w",
+            with_what="x",
+            quantification="q",
+            **{field: "z" * 2001},
+        )
 
 
 @pytest.mark.parametrize("field", ["what_is_wrong", "with_what", "quantification"])

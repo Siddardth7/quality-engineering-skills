@@ -164,15 +164,25 @@ citation rather than a function that exists today.
 AIAG CQI-20 covers the same nine steps under its own numbering and explicitly declines to use
 D-labels (`RULE-8D-SOURCE-PRIMACY` below carries the verbatim excerpt). CQI-20 does carry a
 D1–D8 correspondence table in Appendix H — that table omits D0 — and is therefore cited
-standalone only where it supplies something Ford 8D does not: the 5W2H tool name
-(`RULE-8D-D2`) and the containment-persistence requirement (`RULE-8D-GATE-CONTAINMENT`).
+standalone only where it supplies something Ford 8D does not: the 5W2H tool name and its
+question set (`RULE-8D-D2`, `RULE-8D-D2-003`) and the containment-persistence requirement
+(`RULE-8D-GATE-CONTAINMENT`).
 
-**On-box definition of "5W2H" (CQI-20, not the generic reading):**
+**On-box definition of "5W2H" (CQI-20) — CORRECTED at E4 (#207).** CQI-20 mentions the acronym
+in prose, in an aside inside a note on supplier corrective action requests:
 
 > The problem statement can include but is not limited to 5 Why-2 How (5W2H), Gantt chart, Is/Is Not, etc.
 
-CQI-20's 5W2H expands to "5 Why – 2 How", **not** the common What/Where/When/Who/Why/How
-mnemonic. Any future D2 (#207) 5W2H-completeness engine must implement *this* definition.
+**That prose expansion is not the manual's model, and E0's original reading of it here was
+wrong.** This entry previously concluded that CQI-20's 5W2H means "5 Why – 2 How", **not** the
+What/Where/When/Who/Why/How question set, and directed that "any future D2 (#207)
+5W2H-completeness engine must implement *this* definition". Re-reading the manual for E4 found
+Figure 12, "Problem Identification Questions", which enumerates and defines seven questions —
+Who?, What?, When?, Where?, Why?, How?, How Many? — five W-questions and two How-questions.
+Figure 12 is the normative enumeration; the SCAR-note line above is a loose acronym expansion.
+The corrected reading is carried verbatim at `RULE-8D-D2-003` below and is what
+`validate_d2_problem_description` implements. The original excerpt is retained above rather than
+deleted, because the correction is to its *interpretation*, not to the quotation.
 
 **Site-ID convention for this milestone**, chosen to avoid the flat-counter renumbering
 collision that hit `RULE-SQE-*` twice (#164, #175): the nine discipline definitions are
@@ -376,8 +386,9 @@ Decision #6 below.
 ## RULE-8D-D2: Problem description — "what is wrong with what" in quantifiable terms (D2)
 
 **Decision:** D2 requires the problem to be described as "what is wrong with what" and detailed
-in quantifiable terms. 5W2H is a named tool the problem statement may use, and on the on-box
-source it expands to "5 Why – 2 How".
+in quantifiable terms. 5W2H is a named tool the problem statement may use; the on-box source
+enumerates its questions at Figure 12 (`RULE-8D-D2-003` below), which is what this platform
+implements.
 
 **Source:**
 - Ford Motor Company, *Global 8D (G8D) Problem Solving Manual*, Section D2:
@@ -386,12 +397,127 @@ source it expands to "5 Why – 2 How".
 > The problem statement can include but is not limited to 5 Why-2 How (5W2H), Gantt chart, Is/Is Not, etc.
 
 **Rationale:** Ford 8D supplies the D2 definition; CQI-20 supplies the tool name, which Ford does
-not. The expansion matters: CQI-20's 5W2H is "5 Why – 2 How", not the generic
-What/Where/When/Who/Why/How mnemonic, so a D2 completeness engine (#207) built on the generic
-reading would be checking six fields the cited source never requires.
+not. **Correction (E4, #207):** this rationale previously argued that the quoted line's "5 Why-2
+How" phrasing *was* CQI-20's model of 5W2H, and that a completeness engine built on a
+question-set reading "would be checking six fields the cited source never requires". That is
+wrong. CQI-20 defines the questions itself at Figure 12 (`RULE-8D-D2-003`), and there are seven,
+not six. The line quoted above is an aside inside a note on supplier corrective action requests;
+Figure 12 is the normative enumeration. The correction is recorded rather than silently
+rewritten because the mistaken reading shipped in this log at E0 and shaped the first D2 engine.
 
-**Applied In:** Not yet applied — reserved for E4 (`rca/eight_d.py` D2 engine, #207). This entry
-seeds the citation only (#218).
+**Applied In:** `packages/quality-core/src/quality_core/rca/eight_d_disciplines.py`
+(`validate_d2_problem_description`), E4 (#207), which composes this discipline definition with
+`RULE-8D-D2-001` / `RULE-8D-D2-002` below and delegates Is/Is-Not scoping to
+`quality_core.rca.is_is_not.scope_is_is_not` rather than reimplementing it.
+
+---
+
+## RULE-8D-D2-001: Problem statement two-part test — defect ("what is wrong") + object ("with what") (D2)
+
+**Decision:** The problem *statement* stage of D2 is a concise pairing of the defect/symptom and
+the object experiencing it — Ford 8D's own "what is bad (the symptom) with what (the object)"
+test, which `D2Discipline.what_is_wrong` / `D2Discipline.with_what` (E1, #204) already capture as
+two distinct required fields.
+
+**Source:**
+- Ford Motor Company, *Global 8D (G8D) Problem Solving Manual*, Section D2:
+> Problem statement - A concise statement that identifies the object that experience the defect and the nature of the defect (the defect will typically be a symptom for whose cause is unknown). The problem statement clearly describes what is bad (the symptom) with what (the object).
+
+**Rationale:** This is the manual's own definition of what "what is wrong with what" (already
+cited at `RULE-8D-D2`) is *for* — distinguishing the defect from the object it affects. It
+justifies the D2 engine composing its `problem_statement` as "<what_is_wrong> with <with_what>",
+and it is the qualitative language behind the declared-heuristic check that the two fields are
+not identical text (Process Design Decision #7 below; the equality check itself is not
+standards-backed, only the requirement that the two be distinguishable is).
+
+**Applied In:** `packages/quality-core/src/quality_core/rca/eight_d_disciplines.py`
+(`validate_d2_problem_description`, the composed `problem_statement` and
+`DEGENERATE_PROBLEM_STATEMENT`), E4 (#207).
+
+---
+
+## RULE-8D-D2-002: Problem description stage carried out via Is/Is-Not across what/where/when/how-big (D2)
+
+**Decision:** D2's second stage — the problem *description* — is established by determining
+what, where, when, and how big, using the Is/Is-Not form. These four dimensions are exactly
+Kepner-Tregoe's `WHAT` / `WHERE` / `WHEN` / `EXTENT` ("how big" = extent/magnitude), already
+implemented as `quality_core.rca.is_is_not.scope_is_is_not` and cited at `RULE 2` above — this
+entry records that Ford 8D independently names the same four-dimension Is/Is-Not scoping as part
+of D2 itself, which is why the D2 engine (#207) reuses `scope_is_is_not` rather than
+reimplementing scoping logic.
+
+**Source:**
+- Ford Motor Company, *Global 8D (G8D) Problem Solving Manual*, Section D2:
+> Problem description - Established by determining what, where, when, how big and use the form Is / Is Not to drive this part of the process.
+
+**Rationale:** The manual makes the Is/Is-Not linkage explicit and mandatory ("use the form Is /
+Is Not to drive this part of the process"), not optional tooling advice — this is the primary
+justification for why `validate_d2_problem_description` calls `scope_is_is_not` unconditionally
+whenever scoping data is supplied, and flags its absence when it is not
+(`IS_IS_NOT_NOT_PROVIDED`). Absence is a warning rather than a rejection because Ford 8D itself
+describes D2 as carried out in two stages, so a report holding only the problem statement is a
+normal intermediate state rather than a defective one — that severity choice is this platform's,
+not the manual's (Process Design Decision #7 below).
+
+**Applied In:** `packages/quality-core/src/quality_core/rca/eight_d_disciplines.py`
+(`validate_d2_problem_description`, the `scope_is_is_not` delegation and
+`IS_IS_NOT_NOT_PROVIDED`), E4 (#207).
+
+---
+
+## RULE-8D-D2-003: 5W2H is CQI-20 Figure 12's seven Problem Identification Questions (D2)
+
+**Decision:** A 5W2H problem description answers the seven questions CQI-20 enumerates and
+defines in Figure 12, "Problem Identification Questions": Who?, What?, When?, Where?, Why?,
+How?, How Many? — five W-questions and two How-questions, which is the acronym. Those seven are
+the checkable sub-fields of a 5W2H description; a record that declares `method_used="5W2H"` and
+leaves any of them unanswered has not completed the method it claims.
+
+**Source:** AIAG CQI-20 *Effective Problem Solving Guide* (2nd Edition, 2018), Describe the
+Problem, Figure 12. The figure's caption:
+
+> Figure 12. Problem Identification Questions
+
+Its seven entries, verbatim (question, then the manual's definition of it):
+
+> Who? "Who" found it and who does it affect? Individuals/customers associated with the problem?
+
+> What? involved? Is there a trend? The problem statement or definition; What is the object and defect? What equipment is
+
+> When? Date and time the problem was identified? Date and time the defective product was produced?
+
+> Where? Location of complaints (area, facilities, process flow diagram) and location of defect on part?
+
+> Why? Why the part failed, what standard did it fail to meet?
+
+> How? How did the problem occur? How was it detected?
+
+> How Many? Size and frequency of problem; how many parts have the problem? How many defects on each part? Is it getting worse?
+
+The "What?" entry is quoted exactly as the manual extraction holds it. The PDF-to-text
+extraction interleaved that entry's two columns, so its clause "involved? Is there a trend?"
+lands on the line *before* the clause it continues ("... What equipment is"). Every word of the
+entry is present and nothing has been reordered to make it read better — reordering a quotation
+to tidy it is a fabrication, and the line numbers in `CITATIONS.tsv` must keep pointing at what
+the file actually says.
+
+**Rationale:** This entry exists because E0's reading of 5W2H was wrong and shipped. E0 recorded
+CQI-20's prose aside — "The problem statement can include but is not limited to 5 Why-2 How
+(5W2H), Gantt chart, Is/Is Not, etc.", inside a note on supplier corrective action requests
+(`RULE-8D-D2`) — as the manual's definition of the acronym, and concluded that no
+question-set model was defensible. It then directed the D2 engine (#207) to implement that
+reading, which the first version of `validate_d2_problem_description` did: it emitted an `info`
+note restating "5 Why - 2 How" and returned `ACCEPT`, so an incomplete 5W2H was never flagged.
+Figure 12 settles it: the manual enumerates the questions and defines each one. A figure that
+enumerates and defines outranks an acronym expanded in passing, so the engine now validates
+against Figure 12 and the SCAR-note line is retained only as the prose mention it is.
+
+**Applied In:** `packages/quality-core/src/quality_core/rca/eight_d_schema.py`
+(`D2Discipline.w2h_who` … `w2h_how_many`, the seven optional answer fields) and
+`packages/quality-core/src/quality_core/rca/eight_d_disciplines.py`
+(`_five_w_two_h_answers`, `validate_d2_problem_description`'s
+`METHOD_5W2H_DESCRIPTION_INCOMPLETE` finding and `D2ValidationResult.five_w_two_h` payload),
+E4 (#207).
 
 ---
 
@@ -611,9 +737,11 @@ from the cited `RULE-8D-*` entries above for exactly that reason.
    "refuse a state transition." The refusal behavior is this platform's engineering choice for
    how to enforce, in software, what the manuals require in substance.
 
-3. **`RULE-8D-D<n>-NNN` is reserved, not yet used.** No row exists under this pattern as of #218;
-   the convention is declared here so E3–E9 (#206–#212) have a collision-free namespace before
-   they need one.
+3. **`RULE-8D-D<n>-NNN` is the reserved per-discipline namespace.** No row existed under this
+   pattern as of #218; the convention was declared here so E3–E9 (#206–#212) would have a
+   collision-free namespace before they needed one. E3 (#206) is its first user
+   (`RULE-8D-D0-001..003`, `RULE-8D-D1-001..003`); E4 (#207) additionally claims
+   `RULE-8D-D2-001` and `RULE-8D-D2-002`. The pattern remains collision-free for D3–D8.
 
 4. **D8 closure policy for the `WARNING` 5-Why verdict (E1, #204).** `REJECT` hard-blocks
    closure (`D8Discipline` cannot be constructed with `closure_approved=True` while
@@ -661,3 +789,42 @@ from the cited `RULE-8D-*` entries above for exactly that reason.
    No competency or skill-matching model is implemented for D1: `TeamMember` carries no such
    field, and CQI-20's discussion of skill level and "too few"/"too many" members is qualitative
    with no number attached.
+
+7. **D2 declared heuristics are not standards claims (E4, #207).**
+   `DEGENERATE_PROBLEM_STATEMENT` (exact case-insensitive equality between `what_is_wrong` and
+   `with_what`) and `QUANTIFICATION_NOT_NUMERIC` (no digit character anywhere in
+   `quantification`) are this platform's own completeness proxies, not AIAG/Ford requirements —
+   neither manual defines a checkable rubric for "quantifiable terms" or for statement
+   distinctiveness beyond the qualitative language quoted at `RULE-8D-D2-001`. Both are crude by
+   construction: a digit test cannot tell "3 per shift" from "a majority of parts", and exact
+   equality cannot tell a genuinely degenerate statement from two fields that merely overlap.
+   Both findings are `severity="warning"`, never `"error"`, and neither is backed by a
+   `CITATIONS.tsv` row.
+   Two further D2 choices are also this platform's, not the manuals':
+   - **Overriding the Is/Is-Not problem statement.** `validate_d2_problem_description` always
+     passes its composed `"<what_is_wrong> with <with_what>"` string to `scope_is_is_not`,
+     overriding that engine's `"Problem Statement"` default and any statement carried on a
+     supplied `IsIsNotMatrix`, so the nested scoping result reflects D2's authoritative
+     statement. No manual says which statement wins; this is a single-source-of-truth judgment
+     call.
+   - **Severity of absent scoping.** `IS_IS_NOT_NOT_PROVIDED` is a warning, not an error,
+     because Ford 8D describes D2 as carried out in two stages (`RULE-8D-D2-002`), making a
+     statement-only D2 a normal intermediate state. `REJECT` is reserved for scoping data that
+     *was* supplied and that `scope_is_is_not` itself rejected
+     (`IS_IS_NOT_SCOPING_REJECTED`) — that verdict is delegated, never re-derived here.
+   **5W2H completeness is a standards check, not a heuristic, and is the one D2 item that
+   changed after review (E4, #207).** This decision previously read: "The 5W2H note
+   (`METHOD_5W2H_STANDARD_NOTE`) is `severity="info"` and never gates: it restates the cited
+   expansion at `RULE-8D-D2` ('5 Why - 2 How') so a declared method is not silently read as the
+   generic What/Where/When/Who/Why/How mnemonic. **No 5W2H sub-field parsing is implemented**,
+   because neither on-box manual defines checkable 5W2H sub-fields." CQI-20 Figure 12 does define
+   them — seven questions, each with a definition (`RULE-8D-D2-003`) — so the info note is gone
+   and `METHOD_5W2H_DESCRIPTION_INCOMPLETE` is an `error` naming the unanswered questions.
+   What remains this platform's own, and is stated here rather than implied as standards backing:
+   - **The check fires on the declaration, not on the data.** Completeness is judged only when
+     `method_used == "5W2H"`; the seven `w2h_*` answers are optional data otherwise, and
+     `five_w_two_h` stays `None`. No manual says a team that never claimed 5W2H owes those seven
+     answers, so claiming the method is what creates the obligation.
+   - **Answer *presence* is all that is checked.** A non-blank `w2h_*` field counts as answered.
+     There is no free-text parsing of the D2 statement fields for who/when/where tokens, and no
+     judgment of whether an answer is a *good* answer — the manual gives no rubric for that.

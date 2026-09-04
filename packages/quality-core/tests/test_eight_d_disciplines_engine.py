@@ -1,5 +1,5 @@
 """
-Unit tests for the 8D D0/D1 discipline engines (quality_core.rca.eight_d_disciplines).
+Unit tests for the 8D D0/D1/D2 discipline engines (quality_core.rca.eight_d_disciplines).
 
 Tests:
 1. Dataclass serialization: D0Finding, D0ValidationResult, D1Finding, D1ValidationResult.
@@ -20,30 +20,59 @@ Tests:
    - roleless members (WARNING, one finding per affected member).
    - champion == team_leader, case/whitespace-insensitive (WARNING).
    - error-over-warning precedence: empty members + champion == team_leader -> REJECT.
-5. Package re-export smoke test from quality_core.rca.
+5. D2 positive controls and negative controls — one per finding condition:
+   - clean input (distinct fields, numeric quantification, complete scoping) -> ACCEPT, no
+     findings.
+   - the composed "<what_is_wrong> with <with_what>" statement overrides an IsIsNotMatrix's own.
+   - DEGENERATE_PROBLEM_STATEMENT fires on normalised equality only; distinct, overlapping and
+     substring field pairs are negative controls that must NOT fire.
+   - QUANTIFICATION_NOT_NUMERIC fires when no digit is present; "14ppm" / "3 per shift" /
+     "0.8 mm oversize" are negative controls that must NOT fire.
+   - METHOD_5W2H_DESCRIPTION_INCOMPLETE fires when method_used="5W2H" and any of the seven
+     CQI-20 Figure 12 questions is unanswered: `error` severity, REJECT verdict, the missing
+     questions named, and structured evidence on `five_w_two_h`. Negative controls: all seven
+     answered ACCEPTs; None / GANTT / IS_IS_NOT / OTHER are never judged, answered or not.
+   - a citation control binds the engine's seven questions to the RULE-8D-D2-003 manifest rows
+     and forbids the "5 Why - 2 How" reading it replaced.
+   - is_is_not=None warns (IS_IS_NOT_NOT_PROVIDED) and never reaches scope_is_is_not; explicitly
+     supplied but empty scoping data REJECTs by delegation (IS_IS_NOT_SCOPING_REJECTED).
+   - verdict tiering: error outranks warning; several warnings do not escalate.
+   - recommendation de-duplication across a finding and the nested scoping result.
+   - TypeError / pydantic.ValidationError from scope_is_is_not propagate uncaught.
+6. Package re-export smoke test from quality_core.rca.
 """
 
 from __future__ import annotations
 
 import datetime
+from pathlib import Path
 
+import pandas as pd
+import pydantic
 import pytest
 from quality_core.rca.eight_d_disciplines import (
     D0Finding,
     D0ValidationResult,
     D1Finding,
     D1ValidationResult,
+    D2Finding,
+    D2ValidationResult,
     _dedupe,
+    _five_w_two_h_answers,
     _is_verified_effective,
     validate_d0_readiness,
     validate_d1_team,
+    validate_d2_problem_description,
 )
 from quality_core.rca.eight_d_schema import (
     D0Discipline,
     D1Discipline,
+    D2Discipline,
     EffectivenessVerification,
     TeamMember,
 )
+from quality_core.rca.is_is_not import scope_is_is_not
+from quality_core.rca.schema import IsIsNotMatrix
 
 IMPLEMENTED = datetime.date(2026, 3, 1)
 
@@ -62,12 +91,95 @@ def _verification(
     )
 
 
-def _codes(result: D0ValidationResult | D1ValidationResult) -> list[str]:
+#: The seven CQI-20 Figure 12 question labels, in the manual's order, paired with the
+#: `D2Discipline` field that answers each. Written out independently of the engine so a change
+#: to `_five_w_two_h_answers` has to be made twice, on purpose.
+FIGURE_12_QUESTIONS: tuple[tuple[str, str], ...] = (
+    ("Who?", "w2h_who"),
+    ("What?", "w2h_what"),
+    ("When?", "w2h_when"),
+    ("Where?", "w2h_where"),
+    ("Why?", "w2h_why"),
+    ("How?", "w2h_how"),
+    ("How Many?", "w2h_how_many"),
+)
+
+
+def _full_w2h() -> dict[str, str]:
+    """Every Figure 12 question answered — a complete 5W2H description."""
+    return {field: f"answer to {question}" for question, field in FIGURE_12_QUESTIONS}
+
+
+def _d2(
+    *,
+    what_is_wrong: str = "Bore diameter undersized",
+    with_what: str = "Housing P/N 44821",
+    quantification: str = "14 of 500 parts",
+    method_used: str | None = None,
+    **w2h: str | None,
+) -> D2Discipline:
+    """Build a D2Discipline with the fields under test parameterized.
+
+    Extra keyword arguments are the optional `w2h_*` Figure 12 answers; omitted ones stay None.
+    """
+    return D2Discipline(
+        what_is_wrong=what_is_wrong,
+        with_what=with_what,
+        quantification=quantification,
+        method_used=method_used,
+        **w2h,
+    )
+
+
+def _full_is_is_not_rows() -> list[dict[str, str]]:
+    """Four KT dimensions, each with paired distinctions and changes — a scoping ACCEPT."""
+    return [
+        {
+            "dimension": "WHAT",
+            "is_data": "Housing P/N 44821 bore undersized",
+            "is_not_data": "Housing P/N 44822 bore",
+            "distinctions": "44821 uses the older reamer fixture",
+            "changes": "Fixture rebuilt on 2026-02-14",
+        },
+        {
+            "dimension": "WHERE",
+            "is_data": "Op 30 reaming cell B",
+            "is_not_data": "Op 30 reaming cell A",
+            "distinctions": "Cell B coolant loop is shared",
+            "changes": "Coolant concentration set point lowered in cell B",
+        },
+        {
+            "dimension": "WHEN",
+            "is_data": "Second shift since 2026-02-16",
+            "is_not_data": "First shift",
+            "distinctions": "Second shift runs without a setup verification",
+            "changes": "Setup verification dropped from the second-shift routine",
+        },
+        {
+            "dimension": "EXTENT",
+            "is_data": "14 of 500 parts, growing per lot",
+            "is_not_data": "Zero parts in lots before 2026-02-16",
+            "distinctions": "Only lots run after the fixture rebuild are affected",
+            "changes": "Reamer replaced at the same rebuild",
+        },
+    ]
+
+
+def _partial_is_is_not_rows() -> list[dict[str, str | None]]:
+    """Two dimensions, one of them missing its changes — a scoping WARNING with 2 warnings."""
+    rows: list[dict[str, str | None]] = [dict(r) for r in _full_is_is_not_rows()[:2]]
+    rows[0]["changes"] = None
+    return rows
+
+
+def _codes(result: D0ValidationResult | D1ValidationResult | D2ValidationResult) -> list[str]:
     """Return the finding codes of a result, in order."""
     return [f.code for f in result.findings]
 
 
-def _severities(result: D0ValidationResult | D1ValidationResult) -> list[str]:
+def _severities(
+    result: D0ValidationResult | D1ValidationResult | D2ValidationResult,
+) -> list[str]:
     """Return the finding severities of a result, in order.
 
     D0's verdict is assigned explicitly per branch rather than derived from finding
@@ -486,12 +598,498 @@ def test_d1_error_outranks_warning() -> None:
 
 
 # ==============================================================================
-# 5. Package re-export
+# 5. D2 — problem statement composition + Is/Is-Not delegation
+# ==============================================================================
+
+
+def test_d2_finding_to_dict_shape() -> None:
+    """Assert D2Finding.to_dict returns every field."""
+    finding = D2Finding(
+        code="QUANTIFICATION_NOT_NUMERIC",
+        severity="warning",
+        message="msg",
+        recommendation="rec",
+    )
+    assert finding.to_dict() == {
+        "code": "QUANTIFICATION_NOT_NUMERIC",
+        "severity": "warning",
+        "message": "msg",
+        "recommendation": "rec",
+    }
+
+
+def test_d2_validation_result_to_dict_nests_findings_and_scoping() -> None:
+    """Assert D2ValidationResult.to_dict recurses into findings and carries the scoping payload."""
+    finding = D2Finding(
+        code="IS_IS_NOT_SCOPING_REJECTED", severity="error", message="msg", recommendation="rec"
+    )
+    scoping_payload = {"verdict": "REJECT", "total_rows": 0}
+    w2h_payload = {"answered": ["Who?"], "missing": ["What?"], "complete": False}
+    result = D2ValidationResult(
+        basis="Ford Global 8D / AIAG CQI-20",
+        valid=False,
+        verdict="REJECT",
+        problem_statement="Bore undersized with Housing 44821",
+        findings=[finding],
+        is_is_not=scoping_payload,
+        five_w_two_h=w2h_payload,
+        recommendations=["rec"],
+    )
+    payload = result.to_dict()
+    assert payload == {
+        "basis": "Ford Global 8D / AIAG CQI-20",
+        "valid": False,
+        "verdict": "REJECT",
+        "problem_statement": "Bore undersized with Housing 44821",
+        "findings": [finding.to_dict()],
+        "is_is_not": scoping_payload,
+        "five_w_two_h": w2h_payload,
+        "recommendations": ["rec"],
+    }
+    assert isinstance(payload["findings"][0], dict)
+    assert payload["recommendations"] is not result.recommendations
+
+
+def test_d2_validation_result_to_dict_keeps_absent_payloads_none() -> None:
+    """Assert a result with no scoping and no declared 5W2H serialises both payloads as None."""
+    result = D2ValidationResult(
+        basis="Ford Global 8D / AIAG CQI-20",
+        valid=True,
+        verdict="WARNING",
+        problem_statement="Bore undersized with Housing 44821",
+        findings=[],
+        is_is_not=None,
+        five_w_two_h=None,
+        recommendations=[],
+    )
+    assert result.to_dict()["is_is_not"] is None
+    assert result.to_dict()["five_w_two_h"] is None
+
+
+def test_d2_clean_input_accepts_with_no_findings() -> None:
+    """Assert a fully described D2 with complete Is/Is-Not scoping ACCEPTs with zero findings."""
+    result = validate_d2_problem_description(_d2(), is_is_not=_full_is_is_not_rows())
+    assert result.verdict == "ACCEPT"
+    assert result.valid is True
+    assert result.findings == []
+    assert result.basis == "Ford Global 8D / AIAG CQI-20"
+    assert result.problem_statement == "Bore diameter undersized with Housing P/N 44821"
+    assert result.is_is_not is not None
+    assert result.is_is_not["verdict"] == "ACCEPT"
+
+
+def test_d2_composed_problem_statement_overrides_the_matrix_statement() -> None:
+    """Assert the composed statement always wins over an IsIsNotMatrix's own statement."""
+    matrix = IsIsNotMatrix(
+        problem_statement="A stale statement carried on the matrix",
+        rows=_full_is_is_not_rows(),
+    )
+    result = validate_d2_problem_description(_d2(), is_is_not=matrix)
+    assert result.problem_statement == "Bore diameter undersized with Housing P/N 44821"
+    assert result.is_is_not is not None
+    assert result.is_is_not["problem_statement"] == "Bore diameter undersized with Housing P/N 44821"
+
+
+def test_d2_degenerate_problem_statement_warns() -> None:
+    """Assert identical defect/object text warns, case- and whitespace-insensitively."""
+    result = validate_d2_problem_description(
+        _d2(what_is_wrong="Bore undersized", with_what="  BORE UNDERSIZED  "),
+        is_is_not=_full_is_is_not_rows(),
+    )
+    assert result.verdict == "WARNING"
+    assert result.valid is True
+    assert _codes(result) == ["DEGENERATE_PROBLEM_STATEMENT"]
+    assert _severities(result) == ["warning"]
+
+
+@pytest.mark.parametrize(
+    ("what_is_wrong", "with_what"),
+    [
+        ("Bore undersized", "Bore housing 44821"),
+        ("Undersized bore", "Bore undersized housing"),
+        ("Leak", "Leaking pump body"),
+    ],
+    ids=["distinct", "overlapping-words", "substring"],
+)
+def test_d2_distinct_statement_fields_do_not_warn(what_is_wrong: str, with_what: str) -> None:
+    """Negative control: only exact (normalised) equality trips the degenerate-statement check."""
+    result = validate_d2_problem_description(
+        _d2(what_is_wrong=what_is_wrong, with_what=with_what),
+        is_is_not=_full_is_is_not_rows(),
+    )
+    assert "DEGENERATE_PROBLEM_STATEMENT" not in _codes(result)
+    assert result.verdict == "ACCEPT"
+
+
+@pytest.mark.parametrize(
+    "quantification",
+    ["several units", "a majority of parts", "many", "most of the lot"],
+    ids=["several", "majority", "many", "most"],
+)
+def test_d2_non_numeric_quantification_warns(quantification: str) -> None:
+    """Assert a quantification with no digit anywhere is flagged as a warning."""
+    result = validate_d2_problem_description(
+        _d2(quantification=quantification), is_is_not=_full_is_is_not_rows()
+    )
+    assert result.verdict == "WARNING"
+    assert _codes(result) == ["QUANTIFICATION_NOT_NUMERIC"]
+    assert _severities(result) == ["warning"]
+
+
+@pytest.mark.parametrize(
+    "quantification",
+    ["14 of 500 parts", "14ppm", "3 per shift", "0.8 mm oversize"],
+    ids=["ratio", "embedded-digit", "rate", "decimal"],
+)
+def test_d2_numeric_quantification_does_not_warn(quantification: str) -> None:
+    """Negative control: any digit character anywhere satisfies the digit check."""
+    result = validate_d2_problem_description(
+        _d2(quantification=quantification), is_is_not=_full_is_is_not_rows()
+    )
+    assert "QUANTIFICATION_NOT_NUMERIC" not in _codes(result)
+    assert result.verdict == "ACCEPT"
+
+
+def test_d2_declared_5w2h_with_no_answers_is_rejected() -> None:
+    """Assert a bare method_used='5W2H' declaration REJECTs, naming all seven questions."""
+    result = validate_d2_problem_description(
+        _d2(method_used="5W2H"), is_is_not=_full_is_is_not_rows()
+    )
+    assert result.verdict == "REJECT"
+    assert result.valid is False
+    assert _codes(result) == ["METHOD_5W2H_DESCRIPTION_INCOMPLETE"]
+    assert _severities(result) == ["error"]
+    assert result.five_w_two_h == {
+        "answered": [],
+        "missing": [question for question, _ in FIGURE_12_QUESTIONS],
+        "complete": False,
+    }
+    for question, _ in FIGURE_12_QUESTIONS:
+        assert question in result.findings[0].message
+
+
+@pytest.mark.parametrize(
+    ("question", "field"),
+    FIGURE_12_QUESTIONS,
+    ids=[field for _, field in FIGURE_12_QUESTIONS],
+)
+def test_d2_declared_5w2h_missing_one_question_is_rejected(question: str, field: str) -> None:
+    """Assert dropping any single Figure 12 answer flags that question as an error."""
+    answers = _full_w2h()
+    del answers[field]
+    result = validate_d2_problem_description(
+        _d2(method_used="5W2H", **answers), is_is_not=_full_is_is_not_rows()
+    )
+    assert result.verdict == "REJECT"
+    assert result.valid is False
+    assert _codes(result) == ["METHOD_5W2H_DESCRIPTION_INCOMPLETE"]
+    assert _severities(result) == ["error"]
+    assert result.five_w_two_h is not None
+    assert result.five_w_two_h["missing"] == [question]
+    assert result.five_w_two_h["complete"] is False
+    assert question in result.findings[0].message
+
+
+@pytest.mark.parametrize(
+    ("blank", "label"),
+    [("", "empty"), ("   ", "whitespace")],
+    ids=["empty", "whitespace"],
+)
+def test_d2_blank_5w2h_answer_counts_as_unanswered(blank: str, label: str) -> None:
+    """Assert a blank answer is normalised to None by the schema and flagged as missing."""
+    answers = _full_w2h()
+    answers["w2h_where"] = blank
+    discipline = _d2(method_used="5W2H", **answers)
+    assert discipline.w2h_where is None, label
+    result = validate_d2_problem_description(discipline, is_is_not=_full_is_is_not_rows())
+    assert result.verdict == "REJECT"
+    assert _codes(result) == ["METHOD_5W2H_DESCRIPTION_INCOMPLETE"]
+    assert _severities(result) == ["error"]
+    assert result.five_w_two_h is not None
+    assert result.five_w_two_h["missing"] == ["Where?"]
+
+
+def test_d2_complete_5w2h_accepts_with_structured_evidence() -> None:
+    """Assert all seven Figure 12 answers present ACCEPTs and records complete evidence."""
+    result = validate_d2_problem_description(
+        _d2(method_used="5W2H", **_full_w2h()), is_is_not=_full_is_is_not_rows()
+    )
+    assert result.verdict == "ACCEPT"
+    assert result.valid is True
+    assert result.findings == []
+    assert result.five_w_two_h == {
+        "answered": [question for question, _ in FIGURE_12_QUESTIONS],
+        "missing": [],
+        "complete": True,
+    }
+
+
+@pytest.mark.parametrize(
+    "method_used",
+    [None, "GANTT", "IS_IS_NOT", "OTHER"],
+    ids=["none", "gantt", "is-is-not", "other"],
+)
+def test_d2_undeclared_5w2h_is_never_judged(method_used: str | None) -> None:
+    """Negative control: with no 5W2H claim, unanswered questions are not a finding at all."""
+    result = validate_d2_problem_description(
+        _d2(method_used=method_used), is_is_not=_full_is_is_not_rows()
+    )
+    assert "METHOD_5W2H_DESCRIPTION_INCOMPLETE" not in _codes(result)
+    assert result.five_w_two_h is None
+    assert result.verdict == "ACCEPT"
+
+
+@pytest.mark.parametrize(
+    "method_used",
+    [None, "GANTT", "IS_IS_NOT", "OTHER"],
+    ids=["none", "gantt", "is-is-not", "other"],
+)
+def test_d2_answers_without_a_5w2h_claim_record_no_evidence(method_used: str | None) -> None:
+    """Negative control: answering all seven without claiming 5W2H still records no judgment."""
+    result = validate_d2_problem_description(
+        _d2(method_used=method_used, **_full_w2h()), is_is_not=_full_is_is_not_rows()
+    )
+    assert result.five_w_two_h is None
+    assert result.findings == []
+    assert result.verdict == "ACCEPT"
+
+
+def test_d2_five_w_two_h_model_is_cqi20_figure_12_not_five_why_two_how() -> None:
+    """Citation control: the engine's 5W2H questions are Figure 12's, quoted in CITATIONS.tsv.
+
+    This test replaces an inverted one. The earlier version asserted that the D2 engine's 5W2H
+    note carried the expansion "5 Why - 2 How" and that the What/Where/When/Who/Why/How question
+    set must never be implemented — a reading taken from a CQI-20 aside inside a note on supplier
+    SCARs. CQI-20 Figure 12, "Problem Identification Questions", enumerates and defines seven
+    questions, so the old assertion defended an error and would have blocked the correct model.
+    It now guards the opposite: every question the engine checks must be quoted verbatim from
+    Figure 12 in the RULE-8D-D2-003 manifest rows, and the engine must not restate the
+    SCAR-note expansion as its definition of 5W2H.
+    """
+    manifest = Path(__file__).resolve().parents[1] / "src" / "quality_core" / "rca"
+    figure_12_quotes = [
+        row.split("\t")[2]
+        for row in manifest.joinpath("CITATIONS.tsv").read_text(encoding="utf-8").splitlines()
+        if row.startswith("RULE-8D-D2-003\t")
+    ]
+    assert len(figure_12_quotes) == 8, "expected the Figure 12 caption plus seven question rows"
+
+    engine_questions = [question for question, _ in _five_w_two_h_answers(_d2())]
+    assert engine_questions == [question for question, _ in FIGURE_12_QUESTIONS]
+    for question in engine_questions:
+        assert any(question in quote for quote in figure_12_quotes), (
+            f"engine 5W2H question {question!r} is not quoted in any RULE-8D-D2-003 row"
+        )
+
+    result = validate_d2_problem_description(_d2(method_used="5W2H"))
+    incomplete = next(
+        f for f in result.findings if f.code == "METHOD_5W2H_DESCRIPTION_INCOMPLETE"
+    )
+    assert "5 Why" not in incomplete.message
+    assert "RULE-8D-D2-003" in incomplete.message
+
+
+def test_d2_absent_scoping_warns_and_never_calls_the_scoping_engine() -> None:
+    """Assert is_is_not=None warns, leaves the payload None, and does not raise TypeError."""
+    result = validate_d2_problem_description(_d2())
+    assert result.verdict == "WARNING"
+    assert result.valid is True
+    assert _codes(result) == ["IS_IS_NOT_NOT_PROVIDED"]
+    assert _severities(result) == ["warning"]
+    assert result.is_is_not is None
+    assert result.recommendations == [result.findings[0].recommendation]
+
+
+@pytest.mark.parametrize(
+    "empty",
+    [[], {"rows": []}, pd.DataFrame(columns=["dimension", "is_data", "is_not_data"])],
+    ids=["empty-list", "empty-rows-dict", "empty-dataframe"],
+)
+def test_d2_empty_scoping_data_is_rejected_by_delegation(empty: object) -> None:
+    """Assert explicitly-supplied-but-empty scoping data REJECTs, unlike an absent one."""
+    result = validate_d2_problem_description(_d2(), is_is_not=empty)
+    assert result.verdict == "REJECT"
+    assert result.valid is False
+    assert _codes(result) == ["IS_IS_NOT_SCOPING_REJECTED"]
+    assert _severities(result) == ["error"]
+    assert result.is_is_not is not None
+    assert result.is_is_not["verdict"] == "REJECT"
+
+
+def test_d2_incomplete_scoping_warns() -> None:
+    """Assert an Is/Is-Not matrix missing KT dimensions surfaces the incomplete-scoping warning."""
+    result = validate_d2_problem_description(_d2(), is_is_not=_full_is_is_not_rows()[:1])
+    assert result.verdict == "WARNING"
+    assert result.valid is True
+    assert _codes(result) == ["IS_IS_NOT_SCOPING_INCOMPLETE"]
+    assert _severities(result) == ["warning"]
+    assert result.is_is_not is not None
+    assert result.is_is_not["missing_dimensions"] == ["WHERE", "WHEN", "EXTENT"]
+    assert "WHERE, WHEN, EXTENT" in result.findings[0].message
+
+
+def test_d2_error_outranks_warning() -> None:
+    """Assert a rejected scoping outranks concurrent warnings — overall verdict REJECT."""
+    result = validate_d2_problem_description(
+        _d2(what_is_wrong="Bore undersized", with_what="bore undersized"), is_is_not=[]
+    )
+    assert result.verdict == "REJECT"
+    assert result.valid is False
+    assert _codes(result) == ["DEGENERATE_PROBLEM_STATEMENT", "IS_IS_NOT_SCOPING_REJECTED"]
+    assert _severities(result) == ["warning", "error"]
+
+
+def test_d2_two_concurrent_warnings_do_not_escalate() -> None:
+    """Assert several warning findings still resolve to WARNING, never REJECT."""
+    result = validate_d2_problem_description(
+        _d2(
+            what_is_wrong="Bore undersized",
+            with_what="Bore Undersized",
+            quantification="several units",
+        )
+    )
+    assert result.verdict == "WARNING"
+    assert result.valid is True
+    assert _codes(result) == [
+        "DEGENERATE_PROBLEM_STATEMENT",
+        "QUANTIFICATION_NOT_NUMERIC",
+        "IS_IS_NOT_NOT_PROVIDED",
+    ]
+    assert _severities(result) == ["warning", "warning", "warning"]
+
+
+def test_d2_incomplete_5w2h_outranks_concurrent_warnings() -> None:
+    """Assert an incomplete declared 5W2H REJECTs even alongside warning-tier findings."""
+    result = validate_d2_problem_description(
+        _d2(method_used="5W2H", quantification="several units")
+    )
+    assert result.verdict == "REJECT"
+    assert result.valid is False
+    assert _codes(result) == [
+        "QUANTIFICATION_NOT_NUMERIC",
+        "METHOD_5W2H_DESCRIPTION_INCOMPLETE",
+        "IS_IS_NOT_NOT_PROVIDED",
+    ]
+    assert _severities(result) == ["warning", "error", "warning"]
+
+
+def test_d2_recommendations_are_deduplicated_across_finding_and_scoping() -> None:
+    """Assert the scoping recommendation reused as a finding recommendation appears once."""
+    rows = _partial_is_is_not_rows()
+    result = validate_d2_problem_description(_d2(), is_is_not=rows)
+    scoping = scope_is_is_not(rows, problem_statement=result.problem_statement)
+    assert result.findings[0].recommendation == scoping.recommendations[0]
+    assert result.recommendations.count(scoping.recommendations[0]) == 1
+    assert result.recommendations == _dedupe(
+        [result.findings[0].recommendation] + scoping.recommendations
+    )
+    assert result.recommendations == scoping.recommendations
+    assert len(scoping.recommendations) > 1
+    assert len(result.recommendations) == len(set(result.recommendations))
+
+
+@pytest.mark.parametrize("bad", [5, 4.2, True, "a string"], ids=["int", "float", "bool", "str"])
+def test_d2_propagates_type_error_from_the_scoping_engine(bad: object) -> None:
+    """Negative control: the D2 engine must NOT swallow scope_is_is_not's TypeError."""
+    with pytest.raises(TypeError):
+        validate_d2_problem_description(_d2(), is_is_not=bad)
+
+
+def test_d2_propagates_validation_error_from_the_scoping_engine() -> None:
+    """Negative control: the D2 engine must NOT swallow pydantic's ValidationError."""
+    with pytest.raises(pydantic.ValidationError):
+        validate_d2_problem_description(
+            _d2(),
+            is_is_not=[
+                {"dimension": "NOT_A_KT_DIMENSION", "is_data": "x", "is_not_data": "y"}
+            ],
+        )
+
+
+# ==============================================================================
+# 5b. Cross-module drift guard — scope_is_is_not's warning/recommendation pairing
+#
+# validate_d2_problem_description reads scoping.recommendations[0] with no fallback,
+# on the strength of an inline comment asserting scope_is_is_not always pairs every
+# warning it raises with a recommendation (so a non-ACCEPT verdict always carries at
+# least one recommendation). That is a claim about ANOTHER module's undocumented
+# invariant — the one place D2 depends on is_is_not.py behaviour rather than its own.
+# If a future warning path is ever added to is_is_not.py without a paired recommendation,
+# D2 raises IndexError at runtime and nothing in either module's own tests would catch
+# it. This guard pins the invariant directly: every scope_is_is_not result that carries
+# warnings must carry at least one recommendation. It exercises each warning-producing
+# path in is_is_not.py so that dropping any paired recommendation.append fails here.
+# Same posture as test_five_why_verdict_stays_in_sync_with_five_why_module (#204).
+# ==============================================================================
+
+
+def _warning_path_inputs() -> dict[str, list[dict[str, str]]]:
+    """One input per warning-emitting path in scope_is_is_not, keyed by the path it hits."""
+    return {
+        # Empty data short-circuits to REJECT with a warning + recommendation (is_is_not.py:168-183).
+        "empty-data-reject": [],
+        # A dimension with distinctions but no changes (is_is_not.py:230/233).
+        "distinction-without-change": [
+            {"dimension": "WHAT", "is_data": "x", "is_not_data": "y", "distinctions": "d"}
+        ],
+        # A dimension with changes but no distinctions (is_is_not.py:250/253).
+        "change-without-distinction": [
+            {"dimension": "WHAT", "is_data": "x", "is_not_data": "y", "changes": "c"}
+        ],
+        # A dimension with IS/IS-NOT data but neither distinctions nor changes (is_is_not.py:257/260).
+        "neither-distinction-nor-change": [
+            {"dimension": "WHAT", "is_data": "x", "is_not_data": "y"}
+        ],
+        # A fully paired single row leaves 3 dimensions missing (is_is_not.py:265/269).
+        "missing-dimensions": [
+            {
+                "dimension": "WHAT",
+                "is_data": "x",
+                "is_not_data": "y",
+                "distinctions": "d",
+                "changes": "c",
+            }
+        ],
+    }
+
+
+@pytest.mark.parametrize("path", list(_warning_path_inputs()))
+def test_scope_is_is_not_pairs_every_warning_with_a_recommendation(path: str) -> None:
+    """DRIFT GUARD: D2 relies on scope_is_is_not never raising a warning without a recommendation.
+
+    D2's validate_d2_problem_description indexes scoping.recommendations[0] with no fallback.
+    If any warning path in is_is_not.py ever loses its paired recommendation, D2 IndexErrors at
+    runtime. This exercises every warning path and pins warnings -> recommendations non-empty.
+    """
+    data = _warning_path_inputs()[path]
+    scoping = scope_is_is_not(data, problem_statement="drift guard")
+    assert scoping.warnings, f"expected the {path} input to raise a warning"
+    # The exact property D2 depends on: a non-empty warnings list guarantees recommendations[0].
+    assert scoping.recommendations, (
+        f"scope_is_is_not raised warnings on {path} but produced no recommendation; "
+        "validate_d2_problem_description's scoping.recommendations[0] would IndexError"
+    )
+    assert scoping.recommendations[0]
+
+
+def test_d2_scoping_reject_indexes_the_first_recommendation_without_fallback() -> None:
+    """Directly exercise the no-fallback recommendations[0] read in the D2 REJECT branch."""
+    result = validate_d2_problem_description(_d2(), is_is_not=[])
+    assert result.verdict == "REJECT"
+    assert result.findings[0].recommendation
+    assert (
+        result.findings[0].recommendation
+        == scope_is_is_not([], problem_statement=result.problem_statement).recommendations[0]
+    )
+
+
+# ==============================================================================
+# 6. Package re-export
 # ==============================================================================
 
 
 def test_engine_symbols_are_re_exported_from_quality_core_rca() -> None:
-    """Assert the D0/D1 engine surface is importable from the quality_core.rca package."""
+    """Assert the D0/D1/D2 engine surface is importable from the quality_core.rca package."""
     import quality_core.rca as rca
 
     assert rca.validate_d0_readiness is validate_d0_readiness
@@ -500,12 +1098,18 @@ def test_engine_symbols_are_re_exported_from_quality_core_rca() -> None:
     assert rca.D0ValidationResult is D0ValidationResult
     assert rca.D1Finding is D1Finding
     assert rca.D1ValidationResult is D1ValidationResult
+    assert rca.D2Finding is D2Finding
+    assert rca.D2ValidationResult is D2ValidationResult
+    assert rca.validate_d2_problem_description is validate_d2_problem_description
     for name in (
         "D0Finding",
         "D0ValidationResult",
         "D1Finding",
         "D1ValidationResult",
+        "D2Finding",
+        "D2ValidationResult",
         "validate_d0_readiness",
         "validate_d1_team",
+        "validate_d2_problem_description",
     ):
         assert name in rca.__all__

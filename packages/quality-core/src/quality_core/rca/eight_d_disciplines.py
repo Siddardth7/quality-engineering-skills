@@ -1,19 +1,23 @@
 """
 eight_d_disciplines.py
-Deterministic 8D discipline engines for D0 (Emergency Response Action readiness) and D1
-(team completeness).
+Deterministic 8D discipline engines for D0 (Emergency Response Action readiness), D1
+(team completeness), and D2 (problem description).
 
 Pure, post-validation checks over already-typed :mod:`quality_core.rca.eight_d_schema` models:
 ``validate_d0_readiness`` reads a ``D0Discipline`` and reports whether the Emergency Response
 Action (ERA) is required, implemented, and verified *effective*; ``validate_d1_team`` reads a
-``D1Discipline`` and reports whether the team is complete enough to proceed. Both return a
-verdict on the same three-value ``ACCEPT`` / ``WARNING`` / ``REJECT`` scale the other RCA
-engines use.
+``D1Discipline`` and reports whether the team is complete enough to proceed;
+``validate_d2_problem_description`` reads a ``D2Discipline`` plus optional Is/Is-Not scoping data
+and reports whether both stages of Ford 8D's D2 are covered. All three return a verdict on the
+same three-value ``ACCEPT`` / ``WARNING`` / ``REJECT`` scale the other RCA engines use.
 
-**Scope.** D0 and D1 only. There is no state machine, no discipline-advancement API, and no
+**Scope.** D0, D1 and D2 only. There is no state machine, no discipline-advancement API, and no
 cross-discipline gate enforcement here — those live in ``rca/eight_d.py``. These functions take
 typed discipline instances only; the untrusted-data trust boundary is ``validate_eight_d`` in
-``rca/eight_d_schema.py``, which validates D0/D1 as part of a whole ``EightDReport``.
+``rca/eight_d_schema.py``, which validates D0/D1/D2 as part of a whole ``EightDReport``. The one
+exception is ``validate_d2_problem_description``'s optional ``is_is_not`` argument: untrusted
+scoping data handed straight to ``quality_core.rca.is_is_not.scope_is_is_not``, the module that
+owns that trust boundary, with no independent type check here.
 
 **No competency or team-size model is implemented for D1.** ``TeamMember`` carries no skill or
 competency field to check one against, and neither manual quantifies a team size or a skill
@@ -21,15 +25,26 @@ level: CQI-20 describes "too few"/"too many" members and appropriate skill level
 with no number. Inventing a minimum member count, a maximum roster size, or a competency matrix
 would assert a threshold no source states, so none is implemented.
 
-Standards References:
-- Ford Motor Company, Global 8D (G8D) Problem Solving Manual, Sections D0 and D1.
-- AIAG CQI-20 Effective Problem Solving Guide (2nd Edition, 2018), team-definition step.
+**The D2 5W2H model is CQI-20 Figure 12, read from the manual.** Figure 12, "Problem
+Identification Questions", enumerates and defines seven questions — Who?, What?, When?, Where?,
+Why?, How?, How Many? — five W-questions and two How-questions (``RULE-8D-D2-003``). Those seven
+are the checkable sub-fields, held on ``D2Discipline`` as the optional ``w2h_*`` answers, and a
+declared-but-incomplete 5W2H is an ``error`` here. The looser expansion "5 Why-2 How" appears
+once in CQI-20, in an aside inside a note on supplier SCARs (``RULE-8D-D2``); Figure 12 is the
+normative enumeration and this engine follows Figure 12. No free-text token parsing is done —
+completeness is judged over the typed answer fields only.
 
-Rules applied: RULE-8D-D0, RULE-8D-D0-001..003, RULE-8D-D1, RULE-8D-D1-001..003 in
-``rca/CITATIONS.tsv`` / ``rca/ASSUMPTIONS_LOG.md``. The heuristics that no manual backs
-(``ERA_VERIFICATION_DATE_INCONSISTENT``, ``CHAMPION_TEAM_LEADER_SAME_PERSON``,
-``DUPLICATE_TEAM_MEMBER``, and the field-presence reading of "roles ... clear") are declared as
-Process Design Decision #6 in ``rca/ASSUMPTIONS_LOG.md`` and carry no citation row.
+Standards References:
+- Ford Motor Company, Global 8D (G8D) Problem Solving Manual, Sections D0, D1 and D2.
+- AIAG CQI-20 Effective Problem Solving Guide (2nd Edition, 2018), team-definition step,
+  problem-description step, and Figure 12 "Problem Identification Questions".
+
+Rules applied: RULE-8D-D0, RULE-8D-D0-001..003, RULE-8D-D1, RULE-8D-D1-001..003, RULE-8D-D2,
+RULE-8D-D2-001..003 in ``rca/CITATIONS.tsv`` / ``rca/ASSUMPTIONS_LOG.md``. The heuristics that no
+manual backs (``ERA_VERIFICATION_DATE_INCONSISTENT``, ``CHAMPION_TEAM_LEADER_SAME_PERSON``,
+``DUPLICATE_TEAM_MEMBER``, the field-presence reading of "roles ... clear",
+``DEGENERATE_PROBLEM_STATEMENT`` and ``QUANTIFICATION_NOT_NUMERIC``) are declared as Process
+Design Decisions #6 and #7 in ``rca/ASSUMPTIONS_LOG.md`` and carry no citation row.
 """
 
 from __future__ import annotations
@@ -38,19 +53,27 @@ from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from typing import Any, Literal
 
+import pandas as pd
+
 from quality_core.rca.eight_d_schema import (
     D0Discipline,
     D1Discipline,
+    D2Discipline,
     EffectivenessVerification,
 )
+from quality_core.rca.is_is_not import scope_is_is_not
+from quality_core.rca.schema import IsIsNotMatrix
 
 __all__ = [
     "D0Finding",
     "D0ValidationResult",
     "D1Finding",
     "D1ValidationResult",
+    "D2Finding",
+    "D2ValidationResult",
     "validate_d0_readiness",
     "validate_d1_team",
+    "validate_d2_problem_description",
 ]
 
 _STANDARDS_BASIS = "Ford Global 8D / AIAG CQI-20"
@@ -461,4 +484,273 @@ def validate_d1_team(discipline: D1Discipline) -> D1ValidationResult:
         member_count=len(discipline.members),
         findings=findings,
         recommendations=_dedupe(f.recommendation for f in findings),
+    )
+
+
+# ==============================================================================
+# 3. D2 — Problem description
+# ==============================================================================
+
+
+def _five_w_two_h_answers(discipline: D2Discipline) -> tuple[tuple[str, str | None], ...]:
+    """Pair each CQI-20 Figure 12 question with the ``D2Discipline`` field that answers it.
+
+    The questions and their order are the manual's own (``RULE-8D-D2-003``): five W-questions
+    (Who, What, When, Where, Why) and two How-questions (How, How Many), which is what CQI-20's
+    "5W2H" names. Written as an explicit tuple rather than a ``getattr`` loop so that a renamed
+    or dropped ``w2h_*`` field fails type-checking here instead of silently reading ``None``.
+    """
+    return (
+        ("Who?", discipline.w2h_who),
+        ("What?", discipline.w2h_what),
+        ("When?", discipline.w2h_when),
+        ("Where?", discipline.w2h_where),
+        ("Why?", discipline.w2h_why),
+        ("How?", discipline.w2h_how),
+        ("How Many?", discipline.w2h_how_many),
+    )
+
+
+@dataclass
+class D2Finding:
+    """Finding raised against the D2 problem description — structural or declared heuristic."""
+
+    code: str
+    severity: Literal["error", "warning", "info"]
+    message: str
+    recommendation: str
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return serializable dictionary representation of the D2 finding."""
+        return asdict(self)
+
+
+@dataclass
+class D2ValidationResult:
+    """Complete D2 (problem description) validation result.
+
+    ``is_is_not`` is the nested ``IsIsNotScopingResult.to_dict()`` payload when scoping data was
+    supplied, and ``None`` when it was not — this engine never authors scoping data of its own.
+
+    ``five_w_two_h`` is the structured completeness evidence behind
+    ``METHOD_5W2H_DESCRIPTION_INCOMPLETE``: ``{"answered": [...], "missing": [...], "complete":
+    bool}``, the question labels being CQI-20 Figure 12's own (``RULE-8D-D2-003``). It is
+    ``None`` when 5W2H was not the declared method, so the engine never records a completeness
+    judgment about a method the team did not claim.
+    """
+
+    basis: str
+    valid: bool
+    verdict: Literal["ACCEPT", "WARNING", "REJECT"]
+    problem_statement: str
+    findings: list[D2Finding]
+    is_is_not: dict[str, Any] | None
+    five_w_two_h: dict[str, Any] | None
+    recommendations: list[str]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return serializable dictionary representation of the D2 result."""
+        return {
+            "basis": self.basis,
+            "valid": self.valid,
+            "verdict": self.verdict,
+            "problem_statement": self.problem_statement,
+            "findings": [f.to_dict() for f in self.findings],
+            "is_is_not": self.is_is_not,
+            "five_w_two_h": self.five_w_two_h,
+            "recommendations": list(self.recommendations),
+        }
+
+
+def validate_d2_problem_description(
+    discipline: D2Discipline,
+    is_is_not: IsIsNotMatrix | pd.DataFrame | list[Any] | dict[str, Any] | None = None,
+) -> D2ValidationResult:
+    """Validate D2: problem-statement structure plus Is/Is-Not problem-description scoping.
+
+    Ford Global 8D splits D2 into two stages (RULE-8D-D2-001, RULE-8D-D2-002): a problem
+    *statement* — what is bad (the symptom) with what (the object) — and a problem *description*
+    established by determining what, where, when and how big using the Is / Is Not form.
+    ``D2Discipline`` captures the first stage as three required, already-non-blank text fields;
+    this engine folds in the second stage by delegating to
+    ``quality_core.rca.is_is_not.scope_is_is_not``, whose four Kepner-Tregoe dimensions
+    (``WHAT`` / ``WHERE`` / ``WHEN`` / ``EXTENT``) are the same four Ford names. Is/Is-Not scoping
+    is never reimplemented here.
+
+    Two of the findings are **declared heuristics, not standards claims**:
+    ``DEGENERATE_PROBLEM_STATEMENT`` (``what_is_wrong`` and ``with_what`` are the same text) and
+    ``QUANTIFICATION_NOT_NUMERIC`` (no digit anywhere in ``quantification``). No manual defines
+    either check — a digit test cannot tell "3 per shift" from "a majority of parts" — so both are
+    warnings, never errors, and neither carries a ``CITATIONS.tsv`` row. See Process Design
+    Decision #7 in ``rca/ASSUMPTIONS_LOG.md``.
+
+    ``method_used == "5W2H"`` is a **checked claim, not a label**. AIAG CQI-20 Figure 12,
+    "Problem Identification Questions" (RULE-8D-D2-003), enumerates and defines the seven
+    questions a 5W2H description answers — Who?, What?, When?, Where?, Why?, How?, How Many? —
+    so a record that declares the method and leaves any of the seven ``w2h_*`` answers empty is
+    an incomplete 5W2H. That is reported as ``METHOD_5W2H_DESCRIPTION_INCOMPLETE`` at
+    ``severity="error"``, naming the unanswered questions, and the verdict is never ``ACCEPT``.
+    The structured evidence is returned on ``D2ValidationResult.five_w_two_h``. When 5W2H is not
+    the declared method, nothing here is checked and ``five_w_two_h`` stays ``None``: the seven
+    answers are optional data, and only the declaration makes them a promise.
+
+    The composed statement **always overrides** any ``problem_statement`` ``scope_is_is_not``
+    would otherwise use (its ``"Problem Statement"`` default, or the one carried on a supplied
+    ``IsIsNotMatrix``), so the nested scoping result reflects D2's authoritative statement. That
+    override is a platform judgment call, not a standards requirement.
+
+    Parameters
+    ----------
+    discipline : D2Discipline
+        A validated D2 discipline record. Its three text fields are guaranteed non-blank and
+        stripped by ``D2Discipline`` itself and are deliberately not re-checked for presence.
+    is_is_not : IsIsNotMatrix | pd.DataFrame | list | dict | None, optional
+        Untrusted Is/Is-Not scoping data in any shape ``scope_is_is_not`` accepts. ``None`` means
+        no scoping data has been supplied yet: flagged as a warning and never passed through to
+        ``scope_is_is_not``, which raises ``TypeError`` on ``None``.
+
+    Returns
+    -------
+    D2ValidationResult
+        Verdict, composed problem statement, findings, nested Is/Is-Not scoping payload, 5W2H
+        completeness evidence, and de-duplicated recommendations.
+
+    Raises
+    ------
+    TypeError
+        Propagated unmodified from ``scope_is_is_not`` when ``is_is_not`` is a type it rejects
+        (an int, a bool, ...). This engine performs no independent type check of its own.
+    pydantic.ValidationError
+        Propagated unmodified from ``scope_is_is_not`` / ``validate_is_is_not`` when ``is_is_not``
+        contains structurally invalid rows.
+    """
+    problem_statement = f"{discipline.what_is_wrong} with {discipline.with_what}"
+
+    findings: list[D2Finding] = []
+    recommendations: list[str] = []
+
+    if discipline.what_is_wrong.strip().casefold() == discipline.with_what.strip().casefold():
+        findings.append(
+            D2Finding(
+                code="DEGENERATE_PROBLEM_STATEMENT",
+                severity="warning",
+                message=(
+                    f"The problem statement does not distinguish the defect from the object: "
+                    f"what_is_wrong and with_what both read '{discipline.what_is_wrong}'."
+                ),
+                recommendation=(
+                    "Restate what_is_wrong as the defect or symptom and with_what as the object "
+                    "experiencing it, so the two fields name different things."
+                ),
+            )
+        )
+
+    if not any(ch.isdigit() for ch in discipline.quantification):
+        findings.append(
+            D2Finding(
+                code="QUANTIFICATION_NOT_NUMERIC",
+                severity="warning",
+                message=(
+                    f"The D2 quantification '{discipline.quantification}' carries no numeric "
+                    "magnitude, so the problem is not detailed in quantifiable terms."
+                ),
+                recommendation=(
+                    "Add a numeric magnitude — a count, rate, or ratio — to quantification, for "
+                    "example the number of affected parts out of the number inspected."
+                ),
+            )
+        )
+
+    five_w_two_h_payload: dict[str, Any] | None = None
+    if discipline.method_used == "5W2H":
+        answers = _five_w_two_h_answers(discipline)
+        missing = [question for question, answer in answers if answer is None]
+        five_w_two_h_payload = {
+            "answered": [question for question, answer in answers if answer is not None],
+            "missing": missing,
+            "complete": not missing,
+        }
+        if missing:
+            findings.append(
+                D2Finding(
+                    code="METHOD_5W2H_DESCRIPTION_INCOMPLETE",
+                    severity="error",
+                    message=(
+                        "method_used declares 5W2H, but the problem description leaves "
+                        f"{len(missing)} of the seven AIAG CQI-20 Figure 12 problem "
+                        "identification questions unanswered: " + ", ".join(missing) + " "
+                        "(RULE-8D-D2-003)."
+                    ),
+                    recommendation=(
+                        "Answer the outstanding Figure 12 question(s) in the matching w2h_* "
+                        "field(s) before claiming a 5W2H problem description, or set "
+                        "method_used to the method actually used."
+                    ),
+                )
+            )
+
+    scoping_payload: dict[str, Any] | None = None
+    if is_is_not is None:
+        findings.append(
+            D2Finding(
+                code="IS_IS_NOT_NOT_PROVIDED",
+                severity="warning",
+                message=(
+                    "No Is/Is-Not scoping data was supplied, so only the problem-statement stage "
+                    "of D2 could be assessed; the problem-description stage is established by "
+                    "determining what, where, when and how big using the Is / Is Not form "
+                    "(RULE-8D-D2-002)."
+                ),
+                recommendation=(
+                    "Supply an Is/Is-Not matrix scoping the problem across the four "
+                    "Kepner-Tregoe dimensions (WHAT, WHERE, WHEN, EXTENT)."
+                ),
+            )
+        )
+    else:
+        scoping = scope_is_is_not(is_is_not, problem_statement=problem_statement)
+        scoping_payload = scoping.to_dict()
+        # `scope_is_is_not` pairs every warning it raises with a recommendation, so a non-ACCEPT
+        # verdict always carries at least one recommendation; no fallback branch is reachable.
+        if scoping.verdict == "REJECT":
+            findings.append(
+                D2Finding(
+                    code="IS_IS_NOT_SCOPING_REJECTED",
+                    severity="error",
+                    message=(
+                        "Is/Is-Not scoping was rejected: " + "; ".join(scoping.warnings)
+                    ),
+                    recommendation=scoping.recommendations[0],
+                )
+            )
+        elif scoping.verdict == "WARNING":
+            findings.append(
+                D2Finding(
+                    code="IS_IS_NOT_SCOPING_INCOMPLETE",
+                    severity="warning",
+                    message=(
+                        "Is/Is-Not scoping is incomplete: " + "; ".join(scoping.warnings)
+                    ),
+                    recommendation=scoping.recommendations[0],
+                )
+            )
+        recommendations.extend(scoping.recommendations)
+
+    verdict: Literal["ACCEPT", "WARNING", "REJECT"]
+    if any(f.severity == "error" for f in findings):
+        verdict, valid = "REJECT", False
+    elif any(f.severity == "warning" for f in findings):
+        verdict, valid = "WARNING", True
+    else:
+        verdict, valid = "ACCEPT", True
+
+    return D2ValidationResult(
+        basis=_STANDARDS_BASIS,
+        valid=valid,
+        verdict=verdict,
+        problem_statement=problem_statement,
+        findings=findings,
+        is_is_not=scoping_payload,
+        five_w_two_h=five_w_two_h_payload,
+        recommendations=_dedupe([f.recommendation for f in findings] + recommendations),
     )

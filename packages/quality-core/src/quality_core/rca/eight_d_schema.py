@@ -11,7 +11,10 @@ containment measures, D5 corrective-action candidates, and D7 documentation upda
 **Data shape and ingest only.** There is no state machine here, no discipline-advancement API,
 and no cross-discipline gate enforcement — those live in the future ``rca/eight_d.py`` (E2,
 #205) and onward. The ``is_verified`` / ``is_documented`` properties defined below exist so that
-engine has something to *read*; they never block anything themselves.
+engine has something to *read*; they never block anything themselves. ``D3Discipline``'s
+recorded ``linked_ncr_validation`` outcome and its shared evaluator ``_linked_ncr_deficiency``
+follow the same split: this module records and evaluates the outcome, ``rca/eight_d.py`` decides
+what to refuse on the strength of it.
 
 Standards basis: the Ford Motor Company *Global 8D (G8D) Problem Solving Manual* and AIAG CQI-20
 *Effective Problem Solving Practitioner Guide* (2nd Edition, 2018). Every citation this module
@@ -68,6 +71,7 @@ __all__ = [
     "FiveWhyLegType",
     "FiveWhyVerdict",
     "ImplementedAction",
+    "LinkedNCRValidation",
     "RootCauseFinding",
     "TeamMember",
     "TeamMemberList",
@@ -359,10 +363,44 @@ class ContainmentAction(pydantic.BaseModel):
         return self.verification is not None and self.verification.is_effective
 
 
+class LinkedNCRValidation(pydantic.BaseModel):
+    """The recorded outcome of validating the nonconformity evidence linked to D3.
+
+    Not the evidence itself, and not a second NCR validator: this is the *result* of handing
+    linked Nonconformance Record evidence to ``quality_core.ncr.schema.validate_ncr``, recorded
+    on the report so the D3 to D4 gate can read a verdict it never has to re-derive. ``findings``
+    carries that sub-engine's own message text verbatim; an invalid outcome must carry at least
+    one, so a recorded rejection can never block a transition without saying why.
+
+    ``validate_d3_containment`` (``rca/eight_d_disciplines.py``) produces this record from live
+    evidence; a caller stores it on ``D3Discipline.linked_ncr_validation``. Recording
+    nonconformity evidence alongside interim containment is this platform's traceability
+    convention, not a manual requirement — Process Design Decision #8 in ``ASSUMPTIONS_LOG.md``.
+    """
+
+    is_valid: bool
+    record_count: Annotated[int, pydantic.Field(ge=0)] = 0
+    findings: list[str] = pydantic.Field(default_factory=list)
+
+    @pydantic.model_validator(mode="after")
+    def _require_findings_when_invalid(self) -> "LinkedNCRValidation":
+        if not self.is_valid and not self.findings:
+            raise ValueError(
+                "an invalid linked NCR validation must carry at least one finding message"
+            )
+        return self
+
+
 class D3Discipline(pydantic.BaseModel):
-    """Interim Containment Action(s), defined, verified, and implemented (Ford 8D, D3)."""
+    """Interim Containment Action(s), defined, verified, and implemented (Ford 8D, D3).
+
+    ``linked_ncr_validation`` is optional so a D3 record whose nonconformity evidence has not
+    been validated yet stays representable; an absent outcome blocks nothing. A *recorded
+    invalid* outcome does block the D3 to D4 transition, through :func:`_linked_ncr_deficiency`.
+    """
 
     actions: list[ContainmentAction] = pydantic.Field(default_factory=list)
+    linked_ncr_validation: LinkedNCRValidation | None = None
 
     @pydantic.model_validator(mode="after")
     def _require_at_least_one_action(self) -> "D3Discipline":
@@ -374,10 +412,43 @@ class D3Discipline(pydantic.BaseModel):
     def is_verified(self) -> bool:
         """True only when EVERY containment action is verified effective.
 
-        This is the data the D3 to D4 gate reads; the gate itself — refusing the transition — is
-        E2's job (#205), not this module's.
+        One of the two things the D3 to D4 gate reads (the other being
+        ``linked_ncr_validation``, through :func:`_linked_ncr_deficiency`); the gate itself —
+        refusing the transition — is E2's job (#205), not this module's.
         """
         return all(a.is_verified for a in self.actions)
+
+
+@dataclass(frozen=True)
+class _LinkedNCRDeficiency:
+    """One machine-readable failure from the shared D3 linked-NCR evidence boundary."""
+
+    code: Literal["LINKED_NCR_INVALID"]
+    message: str
+
+
+def _linked_ncr_deficiency(
+    validation: LinkedNCRValidation | None,
+) -> _LinkedNCRDeficiency | None:
+    """Answer, in one place, whether D3's linked nonconformity evidence is acceptable.
+
+    Both consumers of that question — the advisory ``validate_d3_containment`` engine and
+    ``transition_eight_d``'s D3 to D4 gate — call this evaluator instead of each keeping their
+    own copy, mirroring how ``_closure_evidence_deficiencies`` serves both the CLOSED-report
+    model validator and the D8 gate. Two copies could drift; one cannot.
+
+    Returns ``None`` (acceptable) both when no outcome has been recorded — not-yet-linked
+    evidence is a normal in-progress state that blocks nothing — and when the recorded outcome
+    is valid.
+    """
+    if validation is None or validation.is_valid:
+        return None
+    return _LinkedNCRDeficiency(
+        "LINKED_NCR_INVALID",
+        "The linked Nonconformance Record evidence is invalid: "
+        + "; ".join(validation.findings)
+        + ".",
+    )
 
 
 # ==============================================================================

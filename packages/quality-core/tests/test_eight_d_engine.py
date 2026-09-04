@@ -17,6 +17,7 @@ from quality_core.rca import (
     DocumentationUpdate,
     EffectivenessVerification,
     EightDReport,
+    LinkedNCRValidation,
     WarningOverride,
     transition_eight_d,
     validate_five_why_chain,
@@ -187,6 +188,107 @@ def test_d3_requires_every_typed_verification_to_be_effective(evidence: tuple[bo
 def test_d3_missing_discipline_blocks() -> None:
     result = transition_eight_d(_report("D3"), "D4")
     assert [r.code for r in result.reasons] == ["CONTAINMENT_NOT_VERIFIED"]
+
+
+# ---- D3 to D4: the linked-NCR gate (#208) -------------------------------------------
+
+
+def _invalid_ncr() -> LinkedNCRValidation:
+    """A recorded outcome saying the linked nonconformity evidence was rejected."""
+    return LinkedNCRValidation(
+        is_valid=False,
+        findings=["part_lot_id: must not be blank or whitespace-only"],
+    )
+
+
+def test_d3_invalid_linked_ncr_blocks_the_gate_despite_verified_containment() -> None:
+    """THE #208 negative control, against transition_eight_d itself.
+
+    Containment is verified effective, so CONTAINMENT_NOT_VERIFIED cannot fire; the recorded
+    invalid linked NCR must block the transition on its own. Asserts the structured
+    TransitionReason — code, rule_id and message — not merely that the verdict is BLOCKED, so a
+    block wired to the wrong reason cannot pass.
+    """
+    report = _report("D3", d3=_d3(True).model_copy(update={
+        "linked_ncr_validation": _invalid_ncr()
+    }))
+    assert report.d3 is not None and report.d3.is_verified is True
+    result = transition_eight_d(report, "D4")
+    assert (result.verdict, result.previous_state, result.state) == ("BLOCKED", "D3", "D3")
+    assert result.report is report
+    assert [r.code for r in result.reasons] == ["LINKED_NCR_INVALID"]
+    reason = result.reasons[0]
+    assert reason.rule_id == "PDD-8D-008"
+    assert "part_lot_id: must not be blank or whitespace-only" in reason.message
+    assert "before advancing" in reason.message
+
+
+def test_d3_valid_linked_ncr_record_does_not_block_the_gate() -> None:
+    """A recorded *valid* outcome is not a block; the transition advances as before."""
+    report = _report("D3", d3=_d3(True).model_copy(update={
+        "linked_ncr_validation": LinkedNCRValidation(is_valid=True, record_count=2)
+    }))
+    result = transition_eight_d(report, "D4")
+    assert (result.verdict, result.state, result.reasons) == ("ADVANCED", "D4", ())
+
+
+def test_d3_absent_linked_ncr_record_does_not_block_the_gate() -> None:
+    """No recorded outcome blocks nothing: unlinked evidence is a normal in-progress state."""
+    report = _report("D3", d3=_d3(True))
+    assert report.d3 is not None and report.d3.linked_ncr_validation is None
+    result = transition_eight_d(report, "D4")
+    assert (result.verdict, result.state, result.reasons) == ("ADVANCED", "D4", ())
+
+
+def test_d3_unverified_containment_and_invalid_ncr_report_both_reasons() -> None:
+    """The two D3 gate rules are independent: an unverified action and a bad NCR both surface."""
+    report = _report("D3", d3=_d3(False).model_copy(update={
+        "linked_ncr_validation": _invalid_ncr()
+    }))
+    result = transition_eight_d(report, "D4")
+    assert [r.code for r in result.reasons] == [
+        "CONTAINMENT_NOT_VERIFIED",
+        "LINKED_NCR_INVALID",
+    ]
+    assert [r.rule_id for r in result.reasons] == [
+        "RULE-8D-GATE-CONTAINMENT",
+        "PDD-8D-008",
+    ]
+
+
+def test_d3_missing_discipline_raises_no_linked_ncr_reason() -> None:
+    """With no D3 at all there is no recorded outcome to read, so only containment blocks."""
+    result = transition_eight_d(_report("D3", d3=None), "D4")
+    assert "LINKED_NCR_INVALID" not in [r.code for r in result.reasons]
+
+
+def test_d3_linked_ncr_gate_agrees_with_the_advisory_engine() -> None:
+    """The engine's REJECT and the gate's block are the same rule, not two copies of it.
+
+    Feeds the engine's own recorded outcome straight onto the report: whatever
+    validate_d3_containment rejects, transition_eight_d must also refuse, and whatever it
+    accepts, the gate must let through.
+    """
+    from quality_core.rca import validate_d3_containment
+
+    row = {
+        "part_lot_id": "LOT-1",
+        "defect_description": "Bore undersized",
+        "requirement_violated": "Drawing 1 rev A",
+        "quantity_affected": 3,
+        "detection_point": "Final inspection",
+    }
+    for evidence, engine_verdict, gate_verdict in (
+        ([{**row, "part_lot_id": "   "}], "REJECT", "BLOCKED"),
+        ([row], "ACCEPT", "ADVANCED"),
+    ):
+        containment = _d3(True)
+        engine_result = validate_d3_containment(containment, linked_ncr=evidence)
+        assert engine_result.verdict == engine_verdict
+        report = _report("D3", d3=containment.model_copy(update={
+            "linked_ncr_validation": engine_result.linked_ncr_validation
+        }))
+        assert transition_eight_d(report, "D4").verdict == gate_verdict
 
 
 @pytest.mark.parametrize("artifact", ["FMEA", "CONTROL_PLAN"])

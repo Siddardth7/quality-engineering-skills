@@ -240,6 +240,7 @@ EIGHT_D_EXPORTS = (
     "FiveWhyLegType",
     "FiveWhyVerdict",
     "ImplementedAction",
+    "LinkedNCRValidation",
     "RootCauseFinding",
     "TEAM_MEMBER_SCHEMA",
     "TeamMember",
@@ -576,6 +577,59 @@ def test_d3_is_verified_only_when_every_action_is_verified() -> None:
 
     none_verified = D3Discipline(actions=[_containment(effective=None)])
     assert none_verified.is_verified is False
+
+
+# ---- Linked-NCR validation outcome and its shared evaluator (#208) -------------------
+
+
+def test_linked_ncr_validation_defaults_and_invalid_outcome_requires_findings() -> None:
+    """A valid outcome needs nothing extra; an invalid one must say why it is invalid."""
+    accepted = m.LinkedNCRValidation(is_valid=True)
+    assert (accepted.record_count, accepted.findings) == (0, [])
+    rejected = m.LinkedNCRValidation(is_valid=False, findings=["part_lot_id: must not be blank"])
+    assert rejected.findings == ["part_lot_id: must not be blank"]
+    with pytest.raises(pydantic.ValidationError, match="at least one finding message"):
+        m.LinkedNCRValidation(is_valid=False)
+
+
+def test_linked_ncr_validation_rejects_a_negative_record_count() -> None:
+    with pytest.raises(pydantic.ValidationError, match="greater than or equal to 0"):
+        m.LinkedNCRValidation(is_valid=True, record_count=-1)
+
+
+def test_d3_linked_ncr_validation_defaults_to_none_and_round_trips() -> None:
+    """The recorded outcome is optional, so an in-progress D3 record stays representable."""
+    assert D3Discipline(actions=[_containment()]).linked_ncr_validation is None
+    discipline = D3Discipline(
+        actions=[_containment()],
+        linked_ncr_validation=m.LinkedNCRValidation(is_valid=True, record_count=3),
+    )
+    restored = D3Discipline.model_validate(json.loads(discipline.model_dump_json()))
+    assert restored.linked_ncr_validation == discipline.linked_ncr_validation
+
+
+@pytest.mark.parametrize(
+    "validation",
+    [None, m.LinkedNCRValidation(is_valid=True, record_count=1)],
+    ids=["not-recorded", "recorded-valid"],
+)
+def test_linked_ncr_deficiency_accepts_absent_and_valid_outcomes(
+    validation: m.LinkedNCRValidation | None,
+) -> None:
+    """Nothing recorded and a recorded pass are both acceptable — neither blocks anything."""
+    assert m._linked_ncr_deficiency(validation) is None
+
+
+def test_linked_ncr_deficiency_reports_a_recorded_rejection_with_its_own_findings() -> None:
+    """The one shared evaluator both the D3 engine and the D3->D4 gate read."""
+    deficiency = m._linked_ncr_deficiency(
+        m.LinkedNCRValidation(is_valid=False, findings=["first problem", "second problem"])
+    )
+    assert deficiency is not None
+    assert deficiency.code == "LINKED_NCR_INVALID"
+    assert deficiency.message == (
+        "The linked Nonconformance Record evidence is invalid: first problem; second problem."
+    )
 
 
 # ==============================================================================

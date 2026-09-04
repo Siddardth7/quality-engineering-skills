@@ -118,6 +118,7 @@ _ClosureDeficiencyCode = Literal[
     "ROOT_CAUSE_REJECTED",
     "WARNING_OVERRIDE_MISSING",
     "CONTAINMENT_NOT_VERIFIED",
+    "PCA_NOT_VERIFIED",
     "PREVENTION_UPDATE_MISSING",
 ]
 
@@ -622,6 +623,19 @@ class D6Discipline(pydantic.BaseModel):
     implemented_actions: list[ImplementedAction] = pydantic.Field(default_factory=list)
     interim_containment_removed_date: datetime.date | None = None
 
+    @property
+    def is_verified(self) -> bool:
+        """True only when EVERY implemented action is verified effective.
+
+        Read directly by ``eight_d_disciplines.validate_d6_implementation_validation`` and by the
+        D8 to CLOSED closure boundary (:func:`_closure_evidence_deficiencies`) — never recomputed
+        independently by either consumer, mirroring ``D3Discipline.is_verified``.
+        ``implemented_actions`` is guaranteed non-empty by
+        ``_removal_requires_verified_actions``, so the vacuous-truth case cannot arise on a
+        validated instance.
+        """
+        return all(a.is_verified for a in self.implemented_actions)
+
     @pydantic.model_validator(mode="after")
     def _removal_requires_verified_actions(self) -> "D6Discipline":
         if not self.implemented_actions:
@@ -869,6 +883,13 @@ def _closure_evidence_deficiencies(report: EightDReport) -> tuple[_ClosureDefici
             _ClosureDeficiency(
                 "CONTAINMENT_NOT_VERIFIED",
                 "a CLOSED report requires verified-effective D3 containment",
+            )
+        )
+    if report.d6 is None or not report.d6.is_verified:
+        deficiencies.append(
+            _ClosureDeficiency(
+                "PCA_NOT_VERIFIED",
+                "a CLOSED report requires verified-effective D6 permanent corrective actions",
             )
         )
     if report.d7 is None or not any(

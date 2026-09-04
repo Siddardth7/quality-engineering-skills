@@ -54,6 +54,7 @@ from typing import Literal
 import pandas as pd
 import pydantic
 import pytest
+from quality_core.copq.schema import COPQDataset, CostItem
 from quality_core.ncr.schema import NCRDataset, validate_ncr
 from quality_core.rca.eight_d_disciplines import (
     D0Finding,
@@ -66,6 +67,11 @@ from quality_core.rca.eight_d_disciplines import (
     D3ValidationResult,
     D4Finding,
     D4ValidationResult,
+    D5Finding,
+    D5ValidationResult,
+    D6Finding,
+    D6ValidationResult,
+    _d5_traceability_finding,
     _dedupe,
     _five_w_two_h_answers,
     _is_verified_effective,
@@ -75,17 +81,23 @@ from quality_core.rca.eight_d_disciplines import (
     validate_d2_problem_description,
     validate_d3_containment,
     validate_d4_root_cause,
+    validate_d5_pca_selection,
+    validate_d6_implementation_validation,
 )
 from quality_core.rca.eight_d_schema import (
     CandidateCauseTest,
     ContainmentAction,
+    CorrectiveActionCandidate,
     D0Discipline,
     D1Discipline,
     D2Discipline,
     D3Discipline,
     D4Discipline,
+    D5Discipline,
+    D6Discipline,
     EffectivenessVerification,
     EscapePointFinding,
+    ImplementedAction,
     LinkedNCRValidation,
     RootCauseFinding,
     TeamMember,
@@ -1855,3 +1867,490 @@ def test_d4_reports_fishbone_context_without_using_it_as_verdict_authority() -> 
     assert result.verdict == "ACCEPT"
     assert result.fishbone_validation is not None
     assert result.fishbone_validation.verdict == "WARNING"
+
+
+# ==============================================================================
+# 7. D5 — Permanent corrective action selection
+# ==============================================================================
+
+
+def _cs(
+    result: D5ValidationResult | D6ValidationResult,
+) -> list[tuple[str, str]]:
+    """Return (code, severity) pairs for every finding, in order.
+
+    Both fields are asserted together everywhere below: the milestone's standing lesson is that a
+    silently mutable `severity` survives a code-only assertion even at 100% branch coverage.
+    """
+    return [(f.code, f.severity) for f in result.findings]
+
+
+def _pca(
+    *,
+    action_id: str,
+    target: Literal["ROOT_CAUSE", "ESCAPE_POINT"],
+    verified: bool = True,
+    notes: str | None = "FMEA re-run recorded; no new risk introduced.",
+) -> CorrectiveActionCandidate:
+    return CorrectiveActionCandidate(
+        action_id=action_id,
+        target=target,
+        description=f"Corrective action for the {target.lower()}",
+        selection_criteria="Lowest residual risk, fastest to implement.",
+        verified_no_undesirable_effects=verified,
+        verification_notes=notes,
+    )
+
+
+def _d5(*candidates: CorrectiveActionCandidate) -> D5Discipline:
+    """A D5 record; defaults to one clean candidate per target (the schema minimum)."""
+    if not candidates:
+        candidates = (
+            _pca(action_id="PCA-RC", target="ROOT_CAUSE"),
+            _pca(action_id="PCA-EP", target="ESCAPE_POINT"),
+        )
+    return D5Discipline(candidates=list(candidates))
+
+
+def _clean_d4() -> D4Discipline:
+    """A D4 with a CONFIRMED test and both legs accepted — a traceable D4."""
+    return _d4(root_verdict="ACCEPT", escape_verdict="ACCEPT")
+
+
+def test_d5_finding_and_result_to_dict_round_trip() -> None:
+    finding = D5Finding("CODE", "info", "PCA-RC", "msg", "rec")
+    assert finding.to_dict() == {
+        "code": "CODE", "severity": "info", "action_id": "PCA-RC",
+        "message": "msg", "recommendation": "rec",
+    }
+
+    result = validate_d5_pca_selection(_d5(), _clean_d4())
+    payload = result.to_dict()
+    assert result.valid is True
+    assert result.verdict == "ACCEPT"
+    assert result.candidate_count == 2
+    assert (result.root_cause_traceable, result.escape_point_traceable) == (True, True)
+    assert payload["basis"] == "Ford Global 8D / AIAG CQI-20"
+    assert payload["findings"] == [f.to_dict() for f in result.findings]
+    assert payload["recommendations"] is not result.recommendations
+    assert payload["root_cause_traceable"] is True
+
+
+def test_d5_clean_pass_emits_only_d5_ready_and_traces_both_targets() -> None:
+    result = validate_d5_pca_selection(_d5(), _clean_d4())
+    assert _cs(result) == [("D5_READY", "info")]
+    assert (result.root_cause_traceable, result.escape_point_traceable) == (True, True)
+
+
+def test_d5_no_d4_supplied_is_a_warning_and_leaves_traceability_unasked() -> None:
+    result = validate_d5_pca_selection(_d5())
+    assert _cs(result) == [("D4_NOT_SUPPLIED", "warning")]
+    assert (result.verdict, result.valid) == ("WARNING", True)
+    # `None` is "not asked", distinct from `False` ("asked, answer is no").
+    assert result.root_cause_traceable is None
+    assert result.escape_point_traceable is None
+
+
+def test_d5_unverified_undesirable_effects_is_an_error() -> None:
+    d5 = _d5(
+        _pca(action_id="PCA-RC", target="ROOT_CAUSE", verified=False),
+        _pca(action_id="PCA-EP", target="ESCAPE_POINT"),
+    )
+    result = validate_d5_pca_selection(d5, _clean_d4())
+    assert ("PCA_UNDESIRABLE_EFFECTS_NOT_VERIFIED", "error") in _cs(result)
+    assert result.findings[0].action_id == "PCA-RC"
+    assert (result.verdict, result.valid) == ("REJECT", False)
+
+
+def test_d5_verified_but_no_notes_is_a_warning_not_an_error() -> None:
+    d5 = _d5(
+        _pca(action_id="PCA-RC", target="ROOT_CAUSE", verified=True, notes=None),
+        _pca(action_id="PCA-EP", target="ESCAPE_POINT"),
+    )
+    result = validate_d5_pca_selection(d5, _clean_d4())
+    assert ("PCA_VERIFICATION_EVIDENCE_MISSING", "warning") in _cs(result)
+    # error must not be raised for a missing-notes-only candidate: the discipline is a WARNING.
+    assert (result.verdict, result.valid) == ("WARNING", True)
+
+
+def test_d5_undesirable_effects_error_suppresses_the_notes_warning_for_same_candidate() -> None:
+    """The notes check is an `elif`: an unverified candidate never also raises the notes warning."""
+    d5 = _d5(
+        _pca(action_id="PCA-RC", target="ROOT_CAUSE", verified=False, notes=None),
+        _pca(action_id="PCA-EP", target="ESCAPE_POINT"),
+    )
+    codes = [c for c, _ in _cs(validate_d5_pca_selection(d5, _clean_d4()))]
+    assert "PCA_UNDESIRABLE_EFFECTS_NOT_VERIFIED" in codes
+    assert "PCA_VERIFICATION_EVIDENCE_MISSING" not in codes
+
+
+# ---- D5 traceability: the AC1 negative controls -------------------------------------
+
+
+def test_d5_root_cause_pca_with_rejected_five_why_is_flagged_and_positive_control_is_not() -> None:
+    """AC1: a PCA not traceable to the D4 root cause (verdict REJECT) is flagged `error`.
+
+    The positive control (an accepted verdict) does NOT fire the code, so the test distinguishes
+    the two states rather than passing vacuously.
+    """
+    rejected = validate_d5_pca_selection(
+        _d5(), _d4(root_verdict="REJECT", escape_verdict="ACCEPT")
+    )
+    assert ("PCA_NOT_TRACEABLE_ROOT_CAUSE", "error") in _cs(rejected)
+    assert rejected.root_cause_traceable is False
+    assert rejected.escape_point_traceable is True
+    assert (rejected.verdict, rejected.valid) == ("REJECT", False)
+
+    accepted = validate_d5_pca_selection(_d5(), _clean_d4())
+    accepted_codes = [c for c, _ in _cs(accepted)]
+    assert "PCA_NOT_TRACEABLE_ROOT_CAUSE" not in accepted_codes
+    assert accepted.root_cause_traceable is True
+
+
+def test_d5_root_cause_pca_without_any_confirmed_test_is_flagged() -> None:
+    """AC1: D4 that did no proving work (zero CONFIRMED tests) cannot back a traceable RC PCA.
+
+    Even with an ACCEPT five-why verdict, the absence of a CONFIRMED candidate cause fires the
+    error — the `has_confirmed_test=False` branch, reachable only through a ROOT_CAUSE candidate.
+    """
+    no_confirmed = _d4(
+        candidates=[_candidate("ELIMINATED")], root_verdict="ACCEPT", escape_verdict="ACCEPT"
+    )
+    result = validate_d5_pca_selection(_d5(), no_confirmed)
+    assert ("PCA_NOT_TRACEABLE_ROOT_CAUSE", "error") in _cs(result)
+    assert result.root_cause_traceable is False
+    # The escape point is unaffected: its check never consults candidate_causes_tested.
+    assert result.escape_point_traceable is True
+
+
+def test_d5_root_cause_validation_not_run_is_a_warning() -> None:
+    result = validate_d5_pca_selection(_d5(), _d4(root_verdict=None, escape_verdict="ACCEPT"))
+    assert ("PCA_ROOT_CAUSE_VALIDATION_NOT_RUN", "warning") in _cs(result)
+    assert result.root_cause_traceable is False
+    assert (result.verdict, result.valid) == ("WARNING", True)
+
+
+def test_d5_escape_point_rejected_five_why_is_flagged() -> None:
+    result = validate_d5_pca_selection(_d5(), _d4(root_verdict="ACCEPT", escape_verdict="REJECT"))
+    assert ("PCA_NOT_TRACEABLE_ESCAPE_POINT", "error") in _cs(result)
+    assert result.escape_point_traceable is False
+    assert result.root_cause_traceable is True
+    assert (result.verdict, result.valid) == ("REJECT", False)
+
+
+def test_d5_escape_point_validation_not_run_is_a_warning() -> None:
+    result = validate_d5_pca_selection(_d5(), _d4(root_verdict="ACCEPT", escape_verdict=None))
+    assert ("PCA_ESCAPE_POINT_VALIDATION_NOT_RUN", "warning") in _cs(result)
+    assert result.escape_point_traceable is False
+
+
+def test_d5_warning_verdict_is_traceable_no_finding() -> None:
+    """A WARNING five-why verdict (neither None nor REJECT) is still traceable — no finding."""
+    result = validate_d5_pca_selection(
+        _d5(), _d4(root_verdict="WARNING", escape_verdict="WARNING")
+    )
+    assert _cs(result) == [("D5_READY", "info")]
+    assert (result.root_cause_traceable, result.escape_point_traceable) == (True, True)
+
+
+def test_d5_multiple_candidates_per_target_are_each_checked() -> None:
+    """The per-candidate loop must not assume exactly one candidate per target."""
+    d5 = _d5(
+        _pca(action_id="PCA-RC-1", target="ROOT_CAUSE"),
+        _pca(action_id="PCA-RC-2", target="ROOT_CAUSE", verified=False),
+        _pca(action_id="PCA-EP-1", target="ESCAPE_POINT"),
+    )
+    result = validate_d5_pca_selection(d5, _clean_d4())
+    assert result.candidate_count == 3
+    # The second RC candidate's error is raised without masking the first's traceability pass.
+    undesirable = [f for f in result.findings if f.code == "PCA_UNDESIRABLE_EFFECTS_NOT_VERIFIED"]
+    assert [f.action_id for f in undesirable] == ["PCA-RC-2"]
+    assert (result.verdict, result.valid) == ("REJECT", False)
+
+
+def test_d5_error_outranks_concurrent_warning() -> None:
+    result = validate_d5_pca_selection(
+        _d5(), _d4(root_verdict="REJECT", escape_verdict=None)
+    )
+    codes = [c for c, _ in _cs(result)]
+    assert "PCA_NOT_TRACEABLE_ROOT_CAUSE" in codes  # error
+    assert "PCA_ESCAPE_POINT_VALIDATION_NOT_RUN" in codes  # warning
+    assert result.verdict == "REJECT"
+
+
+def test_d5_traceability_helper_confirmed_and_accepted_returns_none() -> None:
+    """The private helper returns None (traceable) when the confirmed test and verdict both pass."""
+    assert (
+        _d5_traceability_finding(
+            "PCA-RC", "ROOT_CAUSE", has_confirmed_test=True, verdict="ACCEPT"
+        )
+        is None
+    )
+
+
+def test_d5_recommendations_are_deduplicated() -> None:
+    """Two RC candidates that both fail traceability collapse to one recommendation string."""
+    d5 = _d5(
+        _pca(action_id="PCA-RC-1", target="ROOT_CAUSE"),
+        _pca(action_id="PCA-RC-2", target="ROOT_CAUSE"),
+        _pca(action_id="PCA-EP-1", target="ESCAPE_POINT"),
+    )
+    result = validate_d5_pca_selection(d5, _d4(root_verdict="REJECT", escape_verdict="ACCEPT"))
+    assert len(result.recommendations) == len(set(result.recommendations))
+
+
+# ==============================================================================
+# 8. D6 — Implement and validate the permanent corrective actions
+# ==============================================================================
+
+
+def _impl(
+    *,
+    action_id: str = "PCA-RC",
+    effective: bool | None = True,
+) -> ImplementedAction:
+    """One implemented PCA; `None` = no verification record, else verified effective/ineffective."""
+    return ImplementedAction(
+        corrective_action_id=action_id,
+        implemented_date=IMPLEMENTED,
+        verification=None if effective is None else _verification(is_effective=effective),
+    )
+
+
+def _d6(
+    *actions: ImplementedAction,
+    removed: datetime.date | None = None,
+) -> D6Discipline:
+    """A D6 record; defaults to one verified action covering the root cause."""
+    if not actions:
+        actions = (_impl(),)
+    return D6Discipline(
+        implemented_actions=list(actions), interim_containment_removed_date=removed
+    )
+
+
+def _d5_both_targets() -> D5Discipline:
+    """A D5 whose two candidates carry the ids `PCA-RC` (ROOT_CAUSE) / `PCA-EP` (ESCAPE_POINT)."""
+    return _d5(
+        _pca(action_id="PCA-RC", target="ROOT_CAUSE"),
+        _pca(action_id="PCA-EP", target="ESCAPE_POINT"),
+    )
+
+
+def _clean_d6_both() -> D6Discipline:
+    """Both targets implemented and verified, ICA removed — the D6_READY shape."""
+    return _d6(
+        _impl(action_id="PCA-RC"),
+        _impl(action_id="PCA-EP"),
+        removed=IMPLEMENTED,
+    )
+
+
+def test_d6_finding_and_result_to_dict_round_trip() -> None:
+    finding = D6Finding("CODE", "info", "PCA-RC", "msg", "rec")
+    assert finding.to_dict() == {
+        "code": "CODE", "severity": "info", "action_id": "PCA-RC",
+        "message": "msg", "recommendation": "rec",
+    }
+
+    result = validate_d6_implementation_validation(_clean_d6_both(), _d5_both_targets())
+    payload = result.to_dict()
+    assert result.valid is True
+    assert result.verdict == "ACCEPT"
+    assert result.implementation_verified is True
+    assert result.action_count == 2
+    assert result.copq_impact is None
+    assert payload["basis"] == "Ford Global 8D / AIAG CQI-20"
+    assert payload["findings"] == [f.to_dict() for f in result.findings]
+    assert payload["recommendations"] is not result.recommendations
+    assert payload["copq_impact"] is None
+
+
+def test_d6_clean_pass_emits_only_d6_ready() -> None:
+    result = validate_d6_implementation_validation(_clean_d6_both(), _d5_both_targets())
+    assert _cs(result) == [("D6_READY", "info")]
+    assert result.implementation_verified is True
+
+
+def test_d6_no_d5_supplied_is_a_warning() -> None:
+    result = validate_d6_implementation_validation(_clean_d6_both())
+    assert _cs(result) == [("D5_NOT_SUPPLIED", "warning")]
+    assert (result.verdict, result.valid) == ("WARNING", True)
+
+
+def test_d6_action_without_verification_is_an_error() -> None:
+    result = validate_d6_implementation_validation(
+        _d6(_impl(action_id="PCA-RC", effective=None)), _d5_both_targets()
+    )
+    assert ("IMPLEMENTED_ACTION_NOT_VERIFIED", "error") in _cs(result)
+    assert result.findings[0].action_id == "PCA-RC"
+    assert result.implementation_verified is False
+    assert (result.verdict, result.valid) == ("REJECT", False)
+
+
+def test_d6_action_verified_ineffective_is_an_error() -> None:
+    result = validate_d6_implementation_validation(
+        _d6(_impl(action_id="PCA-RC", effective=False)), _d5_both_targets()
+    )
+    assert ("IMPLEMENTED_ACTION_VERIFIED_INEFFECTIVE", "error") in _cs(result)
+    assert result.implementation_verified is False
+    assert (result.verdict, result.valid) == ("REJECT", False)
+
+
+def test_d6_unknown_corrective_action_id_is_an_error_case_sensitive() -> None:
+    """AC-adjacent negative control: the D5 cross-reference is exact and case-sensitive.
+
+    `pca-1` is NOT `PCA-RC`; a differently-cased or unknown id fires the unknown-id error rather
+    than silently matching. No fuzzy matching is permitted anywhere.
+    """
+    result = validate_d6_implementation_validation(
+        _d6(_impl(action_id="pca-rc")), _d5_both_targets()
+    )
+    codes = [c for c, _ in _cs(result)]
+    assert ("IMPLEMENTED_ACTION_UNKNOWN_CORRECTIVE_ACTION_ID", "error") in _cs(result)
+    # coverage is also incomplete because the unknown-id action is never counted as covering RC.
+    assert "IMPLEMENTED_ACTION_TARGET_COVERAGE_INCOMPLETE" in codes
+    assert result.verdict == "REJECT"
+
+
+def test_d6_case_sensitive_positive_control_matches_exactly() -> None:
+    """The exact-cased id matches and is counted as covering its target — the positive control."""
+    result = validate_d6_implementation_validation(
+        _clean_d6_both(), _d5_both_targets()
+    )
+    assert "IMPLEMENTED_ACTION_UNKNOWN_CORRECTIVE_ACTION_ID" not in [c for c, _ in _cs(result)]
+
+
+def test_d6_target_coverage_incomplete_is_a_warning() -> None:
+    """Only the root cause is implemented and verified — the escape point is uncovered."""
+    result = validate_d6_implementation_validation(
+        _d6(_impl(action_id="PCA-RC")), _d5_both_targets()
+    )
+    coverage = [f for f in result.findings if f.code == "IMPLEMENTED_ACTION_TARGET_COVERAGE_INCOMPLETE"]
+    assert len(coverage) == 1
+    assert coverage[0].severity == "warning"
+    assert "ESCAPE_POINT" in coverage[0].message
+    assert "ROOT_CAUSE" not in coverage[0].message
+    assert (result.verdict, result.valid) == ("WARNING", True)
+
+
+def test_d6_matched_but_unverified_action_does_not_cover_its_target() -> None:
+    """The `elif action.is_verified` false side: an ID-matched but ineffective action.
+
+    It matches a D5 candidate (so no unknown-id error), but being ineffective it is not added to
+    covered_targets, so both the ineffective error and the incomplete-coverage warning surface.
+    """
+    result = validate_d6_implementation_validation(
+        _d6(
+            _impl(action_id="PCA-RC", effective=False),
+            _impl(action_id="PCA-EP", effective=True),
+        ),
+        _d5_both_targets(),
+    )
+    codes = [c for c, _ in _cs(result)]
+    assert "IMPLEMENTED_ACTION_VERIFIED_INEFFECTIVE" in codes
+    assert "IMPLEMENTED_ACTION_TARGET_COVERAGE_INCOMPLETE" in codes
+    assert "ROOT_CAUSE" in next(
+        f.message for f in result.findings if f.code == "IMPLEMENTED_ACTION_TARGET_COVERAGE_INCOMPLETE"
+    )
+
+
+def test_d6_ica_not_removed_is_a_warning() -> None:
+    """Every action verified but no removal date recorded — the ICA_NOT_REMOVED warning fires."""
+    result = validate_d6_implementation_validation(
+        _d6(_impl(action_id="PCA-RC"), _impl(action_id="PCA-EP"), removed=None),
+        _d5_both_targets(),
+    )
+    assert ("ICA_NOT_REMOVED", "warning") in _cs(result)
+    assert result.implementation_verified is True
+    assert (result.verdict, result.valid) == ("WARNING", True)
+
+
+def test_d6_unverified_actions_do_not_raise_ica_not_removed() -> None:
+    """The ICA check is gated on is_verified: an unverified record never raises it."""
+    result = validate_d6_implementation_validation(
+        _d6(_impl(action_id="PCA-RC", effective=None), _impl(action_id="PCA-EP")),
+        _d5_both_targets(),
+    )
+    assert "ICA_NOT_REMOVED" not in [c for c, _ in _cs(result)]
+    assert result.implementation_verified is False
+
+
+def test_d6_error_outranks_concurrent_warning() -> None:
+    result = validate_d6_implementation_validation(
+        _d6(_impl(action_id="PCA-RC", effective=None)), _d5_both_targets()
+    )
+    codes = [c for c, _ in _cs(result)]
+    assert "IMPLEMENTED_ACTION_NOT_VERIFIED" in codes  # error
+    assert "IMPLEMENTED_ACTION_TARGET_COVERAGE_INCOMPLETE" in codes  # warning
+    assert result.verdict == "REJECT"
+
+
+# ---- D6 COPQ delegation ------------------------------------------------------------
+
+
+def _copq_items_as(shape: str) -> object:
+    """One InternalFailure cost of $500 in each shape estimate_copq accepts."""
+    row = {"category": "InternalFailure", "description": "scrap", "direct_cost": 500.0}
+    if shape == "dataset":
+        return COPQDataset(items=[CostItem(**row)])
+    if shape == "dataframe":
+        return pd.DataFrame([row])
+    if shape == "list-of-dicts":
+        return [row]
+    if shape == "list-of-items":
+        return [CostItem(**row)]
+    if shape == "dict":
+        return {"items": [row]}
+    raise AssertionError(shape)
+
+
+@pytest.mark.parametrize(
+    "shape", ["dataset", "dataframe", "list-of-dicts", "list-of-items", "dict"]
+)
+def test_d6_copq_impact_is_populated_for_every_accepted_shape(shape: str) -> None:
+    result = validate_d6_implementation_validation(
+        _clean_d6_both(), _d5_both_targets(), copq_data=_copq_items_as(shape)
+    )
+    assert result.copq_impact is not None
+    # Non-vacuous: a $500 InternalFailure driver must actually roll up to total_copq.
+    assert result.copq_impact["total_copq"] == 500.0
+    assert result.to_dict()["copq_impact"]["total_copq"] == 500.0
+
+
+def test_d6_absent_copq_data_is_not_an_error() -> None:
+    result = validate_d6_implementation_validation(_clean_d6_both(), _d5_both_targets())
+    assert result.copq_impact is None
+    assert result.verdict == "ACCEPT"
+
+
+def test_d6_malformed_copq_data_propagates_uncaught_type_error() -> None:
+    """Per OPEN QUESTION 3: COPQ exceptions propagate; they are NOT converted into a verdict."""
+    with pytest.raises(TypeError):
+        validate_d6_implementation_validation(
+            _clean_d6_both(), _d5_both_targets(), copq_data=42
+        )
+
+
+def test_d6_structurally_invalid_copq_row_propagates_validation_error() -> None:
+    """A negative cost in a COPQ row raises pydantic.ValidationError, uncaught by the engine."""
+    with pytest.raises(pydantic.ValidationError):
+        validate_d6_implementation_validation(
+            _clean_d6_both(),
+            _d5_both_targets(),
+            copq_data=[
+                {"category": "InternalFailure", "description": "scrap", "direct_cost": -5.0}
+            ],
+        )
+
+
+def test_d6_engine_symbols_are_re_exported_from_quality_core_rca() -> None:
+    """Assert the six new D5/D6 engine symbols are importable from quality_core.rca."""
+    import quality_core.rca as rca
+
+    assert rca.validate_d5_pca_selection is validate_d5_pca_selection
+    assert rca.validate_d6_implementation_validation is validate_d6_implementation_validation
+    assert rca.D5Finding is D5Finding
+    assert rca.D5ValidationResult is D5ValidationResult
+    assert rca.D6Finding is D6Finding
+    assert rca.D6ValidationResult is D6ValidationResult

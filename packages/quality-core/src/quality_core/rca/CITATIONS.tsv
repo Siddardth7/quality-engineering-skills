@@ -66,8 +66,10 @@ RULE-8D-D5	300	Select the best permanent corrective action to eliminate the root
 RULE-8D-D5	1591	Now you are in a position to determine and choose the Permanent Corrective Action (PCA).
 RULE-8D-D5	1692	Finally, the G8D Team must verify that the ACP will eliminate the root cause effectively.
 RULE-8D-D5	1719	Have the criteria been established to choose an ACP for the root cause and the point of escape?
+RULE-8D-D5-001	1723	What evidence (proof) do you have that this will solve the problem at the root level?
 RULE-8D-D6	307	Plan and implement selected Permanent Corrective Actions. Remove the AIC. Validate actions and monitor long-term results.
 RULE-8D-D6	1805	Having established and verified the best ACP for the root cause and the escape point, the next step is the implementation of the ACP.
+RULE-8D-D6-001	1841	Validate the ACPs both for the root cause and for the escape points
 RULE-8D-D7	312	Modify the necessary systems, including policies, practices, and procedures, to prevent the recurrence of this and other similar problems. Make recommendations to systemic improvements, as necessary.
 RULE-8D-D7	2064	Have all changes been documented (for example, FMEA, control plan, flow) of the process)?
 RULE-8D-D8	318	Complete the team's experience, recognizing both individual contributions and the team's, and celebrate success.

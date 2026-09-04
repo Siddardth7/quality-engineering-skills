@@ -121,8 +121,12 @@ def _resolve_manual_key(site: str, src_line: int) -> str:
         return "Ford_8D"  # src_line in (293, 1310, 1313)
     elif site == "RULE-8D-D5":
         return "Ford_8D"  # src_line in (300, 1591, 1692, 1719)
+    elif site == "RULE-8D-D5-001":
+        return "Ford_8D"  # src_line == 1723
     elif site == "RULE-8D-D6":
         return "Ford_8D"  # src_line in (307, 1805)
+    elif site == "RULE-8D-D6-001":
+        return "Ford_8D"  # src_line == 1841
     elif site == "RULE-8D-D7":
         return "Ford_8D"  # src_line in (312, 2064)
     elif site == "RULE-8D-D8":

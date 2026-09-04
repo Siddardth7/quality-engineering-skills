@@ -11,6 +11,15 @@ by ``eight_d_schema._linked_ncr_deficiency`` — the same evaluator ``validate_d
 calls, so the advisory engine and this gate cannot answer "is the linked NCR acceptable"
 differently — and blocking on it is a platform decision carrying no manual clause, declared as
 ``PDD-8D-008`` (Process Design Decision #8 in ``rca/ASSUMPTIONS_LOG.md``).
+
+The D8 to CLOSED closure boundary reads one further piece of evidence, added by E7 (#210): D6's
+permanent corrective actions must be verified effective (``report.d6.is_verified``,
+``PCA_NOT_VERIFIED``). ``RULE-8D-D6`` backs the *substance* — "Validate actions and monitor
+long-term results" — but no manual clause requires refusing a state transition or a CLOSED-report
+construction over it, so that refusal is declared as ``PDD-8D-010`` (Process Design Decision #10
+in ``rca/ASSUMPTIONS_LOG.md``), the same ``PDD-, not RULE-`` reasoning as ``PDD-8D-008``. The
+deficiency itself is evaluated once, in ``eight_d_schema._closure_evidence_deficiencies``, which
+the CLOSED-report model validator and this gate both consume.
 """
 
 from __future__ import annotations
@@ -40,6 +49,7 @@ GateCode = Literal[
     "ILLEGAL_TRANSITION",
     "CONTAINMENT_NOT_VERIFIED",
     "LINKED_NCR_INVALID",
+    "PCA_NOT_VERIFIED",
     "PREVENTION_UPDATE_MISSING",
     "ROOT_CAUSE_REJECTED",
     "ROOT_CAUSE_EVIDENCE_MISSING",
@@ -50,6 +60,13 @@ GateCode = Literal[
 #: no manual clause requires a transition to be refused over nonconformity-record validity. This
 #: one names Process Design Decision #8 in ``rca/ASSUMPTIONS_LOG.md`` instead.
 _LINKED_NCR_RULE_ID = "PDD-8D-008"
+
+#: Rule identifier for the D6 closure-evidence block. Same "PDD-, not RULE-" reasoning as
+#: _LINKED_NCR_RULE_ID: RULE-8D-D6 backs the *substance* (the PCAs must be validated), but no
+#: manual clause requires refusing CLOSED-report construction / the D8 to CLOSED transition
+#: specifically over it — that refusal mechanism is this platform's own, Process Design Decision
+#: #10 in rca/ASSUMPTIONS_LOG.md.
+_PCA_VALIDATION_RULE_ID = "PDD-8D-010"
 
 _NEXT: dict[EightDState, EightDState] = {
     "D0": "D1",
@@ -137,6 +154,10 @@ def _closure_reasons(report: EightDReport) -> tuple[TransitionReason, ...]:
         if deficiency.code == "CONTAINMENT_NOT_VERIFIED":
             reasons.append(
                 TransitionReason(deficiency.code, deficiency.message, "RULE-8D-GATE-CONTAINMENT")
+            )
+        elif deficiency.code == "PCA_NOT_VERIFIED":
+            reasons.append(
+                TransitionReason(deficiency.code, deficiency.message, _PCA_VALIDATION_RULE_ID)
             )
         elif deficiency.code == "PREVENTION_UPDATE_MISSING":
             reasons.append(

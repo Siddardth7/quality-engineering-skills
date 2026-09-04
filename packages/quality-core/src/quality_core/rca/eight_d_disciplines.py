@@ -1,7 +1,8 @@
 """
 eight_d_disciplines.py
 Deterministic 8D discipline engines for D0 (Emergency Response Action readiness), D1
-(team completeness), D2 (problem description), and D3 (interim containment).
+(team completeness), D2 (problem description), D3 (interim containment), and D4 (root cause
+and escape point).
 
 Pure, post-validation checks over already-typed :mod:`quality_core.rca.eight_d_schema` models:
 ``validate_d0_readiness`` reads a ``D0Discipline`` and reports whether the Emergency Response
@@ -10,13 +11,14 @@ Action (ERA) is required, implemented, and verified *effective*; ``validate_d1_t
 ``validate_d2_problem_description`` reads a ``D2Discipline`` plus optional Is/Is-Not scoping data
 and reports whether both stages of Ford 8D's D2 are covered; ``validate_d3_containment`` reads a
 ``D3Discipline`` plus optional linked Nonconformance Record evidence and reports whether every
-interim containment action is verified effective. All four return a verdict on the same
+interim containment action is verified effective; ``validate_d4_root_cause`` validates the
+occurrence and escape 5-Why legs independently. All five return a verdict on the same
 three-value ``ACCEPT`` / ``WARNING`` / ``REJECT`` scale the other RCA engines use.
 
-**Scope.** D0, D1, D2 and D3 only. There is no state machine, no discipline-advancement API, and
+**Scope.** D0, D1, D2, D3 and D4 only. There is no state machine, no discipline-advancement API, and
 no cross-discipline gate enforcement here — those live in ``rca/eight_d.py``. These functions take
 typed discipline instances only; the untrusted-data trust boundary is ``validate_eight_d`` in
-``rca/eight_d_schema.py``, which validates D0/D1/D2/D3 as part of a whole ``EightDReport``. The two
+``rca/eight_d_schema.py``, which validates D0/D1/D2/D3/D4 as part of a whole ``EightDReport``. The two
 exceptions are the optional untrusted-evidence arguments: ``validate_d2_problem_description``'s
 ``is_is_not``, handed straight to ``quality_core.rca.is_is_not.scope_is_is_not``, and
 ``validate_d3_containment``'s ``linked_ncr``, handed straight to
@@ -52,12 +54,13 @@ normative enumeration and this engine follows Figure 12. No free-text token pars
 completeness is judged over the typed answer fields only.
 
 Standards References:
-- Ford Motor Company, Global 8D (G8D) Problem Solving Manual, Sections D0, D1 and D2.
+- Ford Motor Company, Global 8D (G8D) Problem Solving Manual, Sections D0 through D4.
 - AIAG CQI-20 Effective Problem Solving Guide (2nd Edition, 2018), team-definition step,
   problem-description step, and Figure 12 "Problem Identification Questions".
 
 Rules applied: RULE-8D-D0, RULE-8D-D0-001..003, RULE-8D-D1, RULE-8D-D1-001..003, RULE-8D-D2,
-RULE-8D-D2-001..003, RULE-8D-D3 in ``rca/CITATIONS.tsv`` / ``rca/ASSUMPTIONS_LOG.md``.
+RULE-8D-D2-001..003, RULE-8D-D3, and RULE-8D-D4 in ``rca/CITATIONS.tsv`` /
+``rca/ASSUMPTIONS_LOG.md``.
 ``RULE-8D-GATE-CONTAINMENT`` is *mirrored* by ``validate_d3_containment``, not re-cited as a new
 claim: the gate that rule backs stays in ``rca/eight_d.py``. The heuristics that no manual backs
 (``ERA_VERIFICATION_DATE_INCONSISTENT``, ``CHAMPION_TEAM_LEADER_SAME_PERSON``,
@@ -89,10 +92,13 @@ from quality_core.rca.eight_d_schema import (
     D1Discipline,
     D2Discipline,
     D3Discipline,
+    D4Discipline,
     EffectivenessVerification,
     LinkedNCRValidation,
     _linked_ncr_deficiency,
 )
+from quality_core.rca.fishbone import FishboneCategorizationResult, categorize_fishbone
+from quality_core.rca.five_why import FiveWhyValidationResult, validate_five_why_chain
 from quality_core.rca.is_is_not import scope_is_is_not
 from quality_core.rca.schema import IsIsNotMatrix
 
@@ -105,10 +111,13 @@ __all__ = [
     "D2ValidationResult",
     "D3Finding",
     "D3ValidationResult",
+    "D4Finding",
+    "D4ValidationResult",
     "validate_d0_readiness",
     "validate_d1_team",
     "validate_d2_problem_description",
     "validate_d3_containment",
+    "validate_d4_root_cause",
 ]
 
 _STANDARDS_BASIS = "Ford Global 8D / AIAG CQI-20"
@@ -344,8 +353,6 @@ def validate_d0_readiness(discipline: D0Discipline) -> D0ValidationResult:
         findings=findings,
         recommendations=_dedupe(f.recommendation for f in findings),
     )
-
-
 # ==============================================================================
 # 2. D1 — Team completeness
 # ==============================================================================
@@ -1073,4 +1080,222 @@ def validate_d3_containment(
         linked_ncr_validation=ncr_validation,
         findings=findings,
         recommendations=_dedupe(f.recommendation for f in findings),
+    )
+# ==============================================================================
+# 5. D4 — Root cause and escape point
+# ==============================================================================
+
+
+@dataclass
+class D4Finding:
+    """Finding raised while validating supplied D4 evidence."""
+
+    code: str
+    severity: Literal["error", "warning", "info"]
+    leg_type: Literal["occurrence", "escape"] | None
+    message: str
+    recommendation: str
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return serializable dictionary representation of the D4 finding."""
+        return asdict(self)
+
+
+@dataclass
+class D4ValidationResult:
+    """Complete D4 validation result without authored causal claims."""
+
+    basis: str
+    valid: bool
+    verdict: Literal["ACCEPT", "WARNING", "REJECT"]
+    root_cause_statement: str
+    escape_point_statement: str
+    occurrence_validation: FiveWhyValidationResult
+    escape_validation: FiveWhyValidationResult
+    candidate_causes_tested: int
+    confirmed_candidates: int
+    eliminated_candidates: int
+    fishbone_validation: FishboneCategorizationResult | None
+    findings: list[D4Finding]
+    recommendations: list[str]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a nested serializable representation using defensive list copies."""
+        return {
+            "basis": self.basis,
+            "valid": self.valid,
+            "verdict": self.verdict,
+            "root_cause_statement": self.root_cause_statement,
+            "escape_point_statement": self.escape_point_statement,
+            "occurrence_validation": self.occurrence_validation.to_dict(),
+            "escape_validation": self.escape_validation.to_dict(),
+            "candidate_causes_tested": self.candidate_causes_tested,
+            "confirmed_candidates": self.confirmed_candidates,
+            "eliminated_candidates": self.eliminated_candidates,
+            "fishbone_validation": (
+                self.fishbone_validation.to_dict()
+                if self.fishbone_validation is not None
+                else None
+            ),
+            "findings": [finding.to_dict() for finding in self.findings],
+            "recommendations": list(self.recommendations),
+        }
+
+
+def _d4_leg_finding(
+    leg_type: Literal["occurrence", "escape"],
+    result: FiveWhyValidationResult,
+) -> D4Finding:
+    """Translate one 5-Why verdict without changing its meaning or causal text."""
+    label = "Occurrence/root-cause" if leg_type == "occurrence" else "Escape-point"
+    if result.verdict == "REJECT":
+        return D4Finding(
+            code=f"{leg_type.upper()}_CHAIN_REJECTED",
+            severity="error",
+            leg_type=leg_type,
+            message=f"{label} 5-Why evidence was rejected by the RCA validator.",
+            recommendation=f"Resolve the reported {leg_type} 5-Why findings and revalidate the supplied evidence.",
+        )
+    if result.verdict == "WARNING":
+        return D4Finding(
+            code=f"{leg_type.upper()}_CHAIN_WARNING",
+            severity="warning",
+            leg_type=leg_type,
+            message=f"{label} 5-Why evidence passed with warnings.",
+            recommendation=f"Review the reported {leg_type} 5-Why warnings before closing D4.",
+        )
+    return D4Finding(
+        code=f"{leg_type.upper()}_CHAIN_ACCEPTED",
+        severity="info",
+        leg_type=leg_type,
+        message=f"{label} 5-Why evidence was accepted.",
+        recommendation=f"Retain the validated {leg_type} evidence with the 8D record.",
+    )
+
+
+def validate_d4_root_cause(
+    discipline: D4Discipline,
+    occurrence_chain: Any,
+    escape_chain: Any,
+    fishbone_evidence: Any | None = None,
+) -> D4ValidationResult:
+    """Validate caller-supplied D4 occurrence and escape evidence independently.
+
+    The supplied D4 statements are passed unchanged as explicit terminal causes. This function
+    does not infer, rank, rewrite, or generate a root cause from candidate or fishbone evidence.
+    Empty candidate-test evidence blocks acceptance as an internal platform decision.
+    """
+    occurrence = validate_five_why_chain(
+        occurrence_chain,
+        root_cause=discipline.root_cause.statement,
+        leg_type="occurrence",
+    )
+    escape = validate_five_why_chain(
+        escape_chain,
+        root_cause=discipline.escape_point.statement,
+        leg_type="escape",
+    )
+
+    fishbone = categorize_fishbone(fishbone_evidence) if fishbone_evidence is not None else None
+
+    confirmed = sum(cause.result == "CONFIRMED" for cause in discipline.candidate_causes_tested)
+    eliminated = sum(cause.result == "ELIMINATED" for cause in discipline.candidate_causes_tested)
+    findings = [
+        _d4_leg_finding("occurrence", occurrence),
+        _d4_leg_finding("escape", escape),
+    ]
+
+    submitted_terminals: tuple[
+        tuple[Literal["occurrence", "escape"], str, str], ...
+    ] = (
+        ("occurrence", occurrence.link_evaluations[-1].because, discipline.root_cause.statement),
+        ("escape", escape.link_evaluations[-1].because, discipline.escape_point.statement),
+    )
+    for leg_type, submitted_terminal, supplied_statement in submitted_terminals:
+        if submitted_terminal != supplied_statement:
+            findings.append(
+                D4Finding(
+                    code=f"{leg_type.upper()}_TERMINAL_CAUSE_MISMATCH",
+                    severity="error",
+                    leg_type=leg_type,
+                    message=(
+                        f"The submitted {leg_type} chain terminal evidence does not match the "
+                        "caller-supplied D4 statement."
+                    ),
+                    recommendation=(
+                        "Reconcile the submitted chain and D4 statement; the validator will not "
+                        "infer or author a replacement cause."
+                    ),
+                )
+            )
+
+    if not discipline.candidate_causes_tested:
+        findings.append(
+            D4Finding(
+                code="NO_CANDIDATE_CAUSE_TESTS",
+                severity="error",
+                leg_type=None,
+                message="D4 records no tested candidate causes to support the supplied root cause.",
+                recommendation="Record at least one tested candidate cause and its caller-supplied evidence and result.",
+            )
+        )
+
+    metadata: tuple[
+        tuple[
+            Literal["occurrence", "escape"],
+            str | None,
+            str | None,
+            str,
+        ],
+        ...,
+    ] = (
+        ("occurrence", discipline.root_cause.five_why_leg_type, discipline.root_cause.five_why_verdict, occurrence.verdict),
+        ("escape", discipline.escape_point.five_why_leg_type, discipline.escape_point.five_why_verdict, escape.verdict),
+    )
+    for leg_type, supplied_leg, supplied_verdict, validated_verdict in metadata:
+        if supplied_leg is not None and supplied_leg != leg_type:
+            findings.append(
+                D4Finding(
+                    code=f"{leg_type.upper()}_LEG_TYPE_MISMATCH",
+                    severity="warning",
+                    leg_type=leg_type,
+                    message=f"Caller-supplied leg type '{supplied_leg}' does not match the validated '{leg_type}' leg.",
+                    recommendation="Correct the supplied leg metadata; it does not override fresh validation.",
+                )
+            )
+        if supplied_verdict is not None and supplied_verdict != validated_verdict:
+            findings.append(
+                D4Finding(
+                    code=f"{leg_type.upper()}_VERDICT_MISMATCH",
+                    severity="warning",
+                    leg_type=leg_type,
+                    message=f"Caller-supplied verdict '{supplied_verdict}' differs from fresh validation verdict '{validated_verdict}'.",
+                    recommendation="Update the supplied verdict metadata to reflect the fresh validation result.",
+                )
+            )
+
+    if any(finding.severity == "error" for finding in findings):
+        verdict: Literal["ACCEPT", "WARNING", "REJECT"] = "REJECT"
+        valid = False
+    elif any(finding.severity == "warning" for finding in findings):
+        verdict = "WARNING"
+        valid = True
+    else:
+        verdict = "ACCEPT"
+        valid = True
+
+    return D4ValidationResult(
+        basis=_STANDARDS_BASIS,
+        valid=valid,
+        verdict=verdict,
+        root_cause_statement=discipline.root_cause.statement,
+        escape_point_statement=discipline.escape_point.statement,
+        occurrence_validation=occurrence,
+        escape_validation=escape,
+        candidate_causes_tested=len(discipline.candidate_causes_tested),
+        confirmed_candidates=confirmed,
+        eliminated_candidates=eliminated,
+        fishbone_validation=fishbone,
+        findings=findings,
+        recommendations=_dedupe(finding.recommendation for finding in findings),
     )

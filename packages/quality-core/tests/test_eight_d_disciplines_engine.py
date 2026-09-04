@@ -49,6 +49,7 @@ from __future__ import annotations
 
 import datetime
 from pathlib import Path
+from typing import Literal
 
 import pandas as pd
 import pydantic
@@ -63,6 +64,8 @@ from quality_core.rca.eight_d_disciplines import (
     D2ValidationResult,
     D3Finding,
     D3ValidationResult,
+    D4Finding,
+    D4ValidationResult,
     _dedupe,
     _five_w_two_h_answers,
     _is_verified_effective,
@@ -71,15 +74,20 @@ from quality_core.rca.eight_d_disciplines import (
     validate_d1_team,
     validate_d2_problem_description,
     validate_d3_containment,
+    validate_d4_root_cause,
 )
 from quality_core.rca.eight_d_schema import (
+    CandidateCauseTest,
     ContainmentAction,
     D0Discipline,
     D1Discipline,
     D2Discipline,
     D3Discipline,
+    D4Discipline,
     EffectivenessVerification,
+    EscapePointFinding,
     LinkedNCRValidation,
+    RootCauseFinding,
     TeamMember,
 )
 from quality_core.rca.is_is_not import scope_is_is_not
@@ -183,7 +191,9 @@ def _partial_is_is_not_rows() -> list[dict[str, str | None]]:
     return rows
 
 
-def _codes(result: D0ValidationResult | D1ValidationResult | D2ValidationResult) -> list[str]:
+def _codes(
+    result: D0ValidationResult | D1ValidationResult | D2ValidationResult | D4ValidationResult,
+) -> list[str]:
     """Return the finding codes of a result, in order."""
     return [f.code for f in result.findings]
 
@@ -1100,7 +1110,7 @@ def test_d2_scoping_reject_indexes_the_first_recommendation_without_fallback() -
 
 
 def test_engine_symbols_are_re_exported_from_quality_core_rca() -> None:
-    """Assert the D0/D1/D2 engine surface is importable from the quality_core.rca package."""
+    """Assert the D0/D1/D2/D4 engine surface is importable from quality_core.rca."""
     import quality_core.rca as rca
 
     assert rca.validate_d0_readiness is validate_d0_readiness
@@ -1112,6 +1122,9 @@ def test_engine_symbols_are_re_exported_from_quality_core_rca() -> None:
     assert rca.D2Finding is D2Finding
     assert rca.D2ValidationResult is D2ValidationResult
     assert rca.validate_d2_problem_description is validate_d2_problem_description
+    assert rca.validate_d4_root_cause is validate_d4_root_cause
+    assert rca.D4Finding is D4Finding
+    assert rca.D4ValidationResult is D4ValidationResult
     for name in (
         "D0Finding",
         "D0ValidationResult",
@@ -1122,6 +1135,9 @@ def test_engine_symbols_are_re_exported_from_quality_core_rca() -> None:
         "validate_d0_readiness",
         "validate_d1_team",
         "validate_d2_problem_description",
+        "D4Finding",
+        "D4ValidationResult",
+        "validate_d4_root_cause",
     ):
         assert name in rca.__all__
 
@@ -1643,3 +1659,199 @@ def test_d3_engine_symbols_are_re_exported_from_quality_core_rca() -> None:
     assert rca.validate_d3_containment is validate_d3_containment
     for name in ("D3Finding", "D3ValidationResult", "validate_d3_containment"):
         assert name in rca.__all__
+# ==============================================================================
+# 8. D4 — root cause and escape point
+# ==============================================================================
+ROOT_CAUSE = "The engineering work instruction approval process did not require maintenance interval review."
+ESCAPE_POINT = "The document control process did not require cross-functional review."
+
+_OCCURRENCE_CHAIN = [
+    {"step_number": 1, "why": "Why did the fixture fail?", "because": "The fixture maintenance interval was omitted."},
+    {"step_number": 2, "why": "Why was the fixture maintenance interval omitted?", "because": "The maintenance procedure lacked an interval requirement."},
+    {"step_number": 3, "why": "Why did the procedure lack an interval requirement?", "because": ROOT_CAUSE},
+]
+_ESCAPE_CHAIN = [
+    {"step_number": 1, "why": "Why did inspection miss the defect?", "because": "The inspection checklist did not include the fixture dimension."},
+    {"step_number": 2, "why": "Why did the checklist lack the fixture dimension?", "because": "The quality procedure omitted fixture verification."},
+    {"step_number": 3, "why": "Why did the quality procedure omit fixture verification?", "because": ESCAPE_POINT},
+]
+_WARNING_CHAIN = [
+    {"step_number": 1, "why": "Why did the bearing overheat?", "because": "The grease dried up completely."},
+    {"step_number": 2, "why": "Why did warehouse inventory mismatch yesterday?", "because": "Barcode scanner battery voltage dropped."},
+    {"step_number": 3, "why": "Why did scanner battery drop?", "because": "Charging dock maintenance procedure was missing."},
+]
+_CIRCULAR_CHAIN = [
+    {"step_number": 1, "why": "Why did conveyor stop?", "because": "The drive belt jammed in the pulley."},
+    {"step_number": 2, "why": "Why did drive belt jam?", "because": "The motor shaft stopped turning."},
+    {"step_number": 3, "why": "Why did motor shaft stop turning?", "because": "The drive belt jammed in the pulley."},
+]
+_TERMINAL_BLAME_CHAIN = [
+    {"step_number": 1, "why": "Why was hole off-center?", "because": "The drill fixture was misaligned."},
+    {"step_number": 2, "why": "Why was drill fixture misaligned?", "because": "The operator forgot to tighten clamp bolts."},
+]
+
+
+def _candidate(result: Literal["CONFIRMED", "ELIMINATED"] = "CONFIRMED") -> CandidateCauseTest:
+    return CandidateCauseTest(
+        description="Fixture maintenance interval missing",
+        test_data="Released maintenance schedule has no interval requirement.",
+        result=result,
+    )
+
+
+def _d4(
+    *,
+    candidates: list[CandidateCauseTest] | None = None,
+    root_statement: str = ROOT_CAUSE,
+    escape_statement: str = ESCAPE_POINT,
+    root_leg: Literal["occurrence", "escape", "systemic"] | None = None,
+    root_verdict: Literal["ACCEPT", "WARNING", "REJECT"] | None = None,
+    escape_leg: Literal["occurrence", "escape", "systemic"] | None = None,
+    escape_verdict: Literal["ACCEPT", "WARNING", "REJECT"] | None = None,
+) -> D4Discipline:
+    return D4Discipline(
+        candidate_causes_tested=[_candidate()] if candidates is None else candidates,
+        root_cause=RootCauseFinding(
+            statement=root_statement,
+            verification_evidence="Revision history confirms the missing approval control.",
+            five_why_leg_type=root_leg,
+            five_why_verdict=root_verdict,
+        ),
+        escape_point=EscapePointFinding(
+            statement=escape_statement,
+            verification_evidence="Control-plan revision history confirms the missing review.",
+            five_why_leg_type=escape_leg,
+            five_why_verdict=escape_verdict,
+        ),
+    )
+
+
+def test_d4_finding_and_accepted_result_serialize_without_authoring_a_cause() -> None:
+    finding = D4Finding("CODE", "info", None, "msg", "rec")
+    assert finding.to_dict() == {
+        "code": "CODE", "severity": "info", "leg_type": None,
+        "message": "msg", "recommendation": "rec",
+    }
+
+    result = validate_d4_root_cause(_d4(candidates=[_candidate(), _candidate("ELIMINATED")]), _OCCURRENCE_CHAIN, _ESCAPE_CHAIN)
+    payload = result.to_dict()
+    assert result.valid is True
+    assert result.verdict == "ACCEPT"
+    assert result.root_cause_statement == ROOT_CAUSE
+    assert result.escape_point_statement == ESCAPE_POINT
+    assert result.occurrence_validation.leg_type == "occurrence"
+    assert result.escape_validation.leg_type == "escape"
+    assert result.candidate_causes_tested == 2
+    assert (result.confirmed_candidates, result.eliminated_candidates) == (1, 1)
+    assert _codes(result) == ["OCCURRENCE_CHAIN_ACCEPTED", "ESCAPE_CHAIN_ACCEPTED"]
+    assert payload["occurrence_validation"]["root_cause"] == ROOT_CAUSE
+    assert payload["findings"] == [finding.to_dict() for finding in result.findings]
+    assert payload["recommendations"] is not result.recommendations
+    assert payload["fishbone_validation"] is None
+
+
+def test_d4_same_chain_is_validated_independently_for_each_leg() -> None:
+    result = validate_d4_root_cause(_d4(), _OCCURRENCE_CHAIN, _OCCURRENCE_CHAIN)
+    assert result.occurrence_validation.leg_type == "occurrence"
+    assert result.escape_validation.leg_type == "escape"
+    assert result.occurrence_validation.root_cause == ROOT_CAUSE
+    assert result.escape_validation.root_cause == ESCAPE_POINT
+
+
+def test_d4_rejects_circular_occurrence_but_retains_accepted_escape_result() -> None:
+    result = validate_d4_root_cause(
+        _d4(root_statement="The drive belt jammed in the pulley."),
+        _CIRCULAR_CHAIN,
+        _ESCAPE_CHAIN,
+    )
+    assert (result.verdict, result.valid) == ("REJECT", False)
+    assert result.occurrence_validation.verdict == "REJECT"
+    assert result.escape_validation.verdict == "ACCEPT"
+    assert _codes(result) == ["OCCURRENCE_CHAIN_REJECTED", "ESCAPE_CHAIN_ACCEPTED"]
+
+
+def test_d4_rejects_circular_escape_but_retains_accepted_occurrence_result() -> None:
+    result = validate_d4_root_cause(
+        _d4(escape_statement="The drive belt jammed in the pulley."),
+        _OCCURRENCE_CHAIN,
+        _CIRCULAR_CHAIN,
+    )
+    assert (result.verdict, result.valid) == ("REJECT", False)
+    assert result.occurrence_validation.verdict == "ACCEPT"
+    assert result.escape_validation.verdict == "REJECT"
+    assert _codes(result) == ["OCCURRENCE_CHAIN_ACCEPTED", "ESCAPE_CHAIN_REJECTED"]
+
+
+def test_d4_rejects_terminal_operator_blame_in_occurrence_but_retains_escape() -> None:
+    result = validate_d4_root_cause(
+        _d4(root_statement="The operator forgot to tighten clamp bolts."),
+        _TERMINAL_BLAME_CHAIN,
+        _ESCAPE_CHAIN,
+    )
+    assert (result.verdict, result.valid) == ("REJECT", False)
+    assert result.occurrence_validation.verdict == "REJECT"
+    assert result.escape_validation.verdict == "ACCEPT"
+    assert _codes(result) == ["OCCURRENCE_CHAIN_REJECTED", "ESCAPE_CHAIN_ACCEPTED"]
+
+
+def test_d4_rejects_terminal_operator_blame_in_escape_but_retains_occurrence() -> None:
+    result = validate_d4_root_cause(
+        _d4(escape_statement="The operator forgot to tighten clamp bolts."),
+        _OCCURRENCE_CHAIN,
+        _TERMINAL_BLAME_CHAIN,
+    )
+    assert (result.verdict, result.valid) == ("REJECT", False)
+    assert result.occurrence_validation.verdict == "ACCEPT"
+    assert result.escape_validation.verdict == "REJECT"
+    assert _codes(result) == ["OCCURRENCE_CHAIN_ACCEPTED", "ESCAPE_CHAIN_REJECTED"]
+
+
+def test_d4_rejects_chain_terminal_that_disagrees_with_supplied_statement() -> None:
+    result = validate_d4_root_cause(_d4(), _TERMINAL_BLAME_CHAIN, _ESCAPE_CHAIN)
+    assert (result.verdict, result.valid) == ("REJECT", False)
+    assert result.occurrence_validation.root_cause == ROOT_CAUSE
+    assert "OCCURRENCE_TERMINAL_CAUSE_MISMATCH" in _codes(result)
+
+
+def test_d4_propagates_warning_from_both_legs() -> None:
+    warning_terminal = "Charging dock maintenance procedure was missing."
+    result = validate_d4_root_cause(
+        _d4(root_statement=warning_terminal, escape_statement=warning_terminal),
+        _WARNING_CHAIN,
+        _WARNING_CHAIN,
+    )
+    assert (result.verdict, result.valid) == ("WARNING", True)
+    assert _codes(result) == ["OCCURRENCE_CHAIN_WARNING", "ESCAPE_CHAIN_WARNING"]
+
+
+def test_d4_empty_candidate_evidence_blocks_an_otherwise_accepted_result() -> None:
+    result = validate_d4_root_cause(_d4(candidates=[]), _OCCURRENCE_CHAIN, _ESCAPE_CHAIN)
+    assert (result.verdict, result.valid) == ("REJECT", False)
+    assert result.candidate_causes_tested == 0
+    assert _codes(result)[-1] == "NO_CANDIDATE_CAUSE_TESTS"
+
+
+def test_d4_reports_stale_leg_and_verdict_metadata_without_bypassing_validation() -> None:
+    result = validate_d4_root_cause(
+        _d4(root_leg="escape", root_verdict="WARNING", escape_leg="occurrence", escape_verdict="WARNING"),
+        _OCCURRENCE_CHAIN,
+        _ESCAPE_CHAIN,
+    )
+    assert (result.verdict, result.valid) == ("WARNING", True)
+    assert _codes(result) == [
+        "OCCURRENCE_CHAIN_ACCEPTED", "ESCAPE_CHAIN_ACCEPTED",
+        "OCCURRENCE_LEG_TYPE_MISMATCH", "OCCURRENCE_VERDICT_MISMATCH",
+        "ESCAPE_LEG_TYPE_MISMATCH", "ESCAPE_VERDICT_MISMATCH",
+    ]
+
+
+def test_d4_reports_fishbone_context_without_using_it_as_verdict_authority() -> None:
+    result = validate_d4_root_cause(
+        _d4(),
+        _OCCURRENCE_CHAIN,
+        _ESCAPE_CHAIN,
+        fishbone_evidence=[{"category": "Machine", "cause": "Fixture wear"}],
+    )
+    assert result.verdict == "ACCEPT"
+    assert result.fishbone_validation is not None
+    assert result.fishbone_validation.verdict == "WARNING"

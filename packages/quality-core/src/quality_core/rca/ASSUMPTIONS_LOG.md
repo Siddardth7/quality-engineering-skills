@@ -563,9 +563,8 @@ outputs of D4, and defines root cause as an event that must be *proven*, not ass
 engine therefore validates a supplied root cause against evidence; it never authors one (see
 "Process Design Decisions" below).
 
-**Applied In:** Not yet applied — reserved for E6 (`rca/eight_d.py` D4 engine, #209), which will
-delegate the causal-chain verdict to `quality_core.rca.five_why.validate_five_why_chain`. This
-entry seeds the citation only (#218).
+**Applied In:** `rca/eight_d_disciplines.py` (`validate_d4_root_cause`, E6/#209), which
+delegates each causal-chain verdict to `quality_core.rca.five_why.validate_five_why_chain`.
 
 ---
 
@@ -909,3 +908,12 @@ from the cited `RULE-8D-*` entries above for exactly that reason.
      requires. `quality_core.ncr`'s own §8.7 citation rows in `ncr/CITATIONS.tsv` are untouched by
      this epic and remain separately tracked as an existing gap (#220); this declaration does not
      claim to close that gap, only to avoid deepening it.
+
+9. **D4 contextual-evidence policy (E6, #209).** An empty `candidate_causes_tested` list rejects
+   D4 because the supplied root cause then has no recorded candidate test; the engine does not
+   infer which candidate corresponds to the root-cause statement. Optional fishbone evidence is
+   delegated to `categorize_fishbone` and reported as context only: its causes are never selected,
+   ranked, rewritten, or used to replace either supplied D4 statement. Caller-supplied 5-Why leg
+   and verdict metadata is compared with fresh validation and a mismatch produces a warning; it
+   never overrides the validator result. These are platform policies, not quantified requirements
+   from the cited manuals, and have no `CITATIONS.tsv` rows.

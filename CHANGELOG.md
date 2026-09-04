@@ -38,6 +38,9 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
   excerpts (#221) are recorded as Process Design Decision #8 and carry no citation row. **D3
   only** — D4–D8 disciplines, the D7 and D8→CLOSED gates and the closure evidence boundary, and
   any MCP, skill, or exporter surface remain out of scope (#208).
+- D4 root-cause and escape-point validation for the 8D discipline engine, with independent
+  occurrence/escape 5-Why checks, candidate-test evidence gating, optional contextual fishbone
+  categorization, and a strict no-root-cause-authorship boundary (#209).
 - Deterministic 8D state machine and gate engine (E2, Milestone 11), with an explicit
   `current_discipline` separate from report lifecycle status, adjacent-only transitions,
   provenance-backed D3 verification, D7 FMEA/Control Plan update evidence, and defense-in-depth

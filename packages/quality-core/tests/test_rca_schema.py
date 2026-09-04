@@ -83,6 +83,8 @@ def test_rca_module_all_exports() -> None:
         "D3Finding",
         "D3ValidationResult",
         "D4Discipline",
+        "D4Finding",
+        "D4ValidationResult",
         "D5Discipline",
         "D6Discipline",
         "D7Discipline",
@@ -121,6 +123,7 @@ def test_rca_module_all_exports() -> None:
         "validate_d1_team",
         "validate_d2_problem_description",
         "validate_d3_containment",
+        "validate_d4_root_cause",
         "validate_documentation_updates",
         "validate_eight_d",
         "validate_team_members",
@@ -1092,4 +1095,3 @@ def test_nan_handling_in_all_validators() -> None:
     res_list_dict_in = validate_is_is_not(list_dict_in)
     assert res_list_dict_in.rows[0].distinctions is None
     assert res_list_dict_in.rows[0].changes is None
-

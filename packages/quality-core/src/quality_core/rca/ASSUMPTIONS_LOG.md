@@ -565,6 +565,9 @@ engine therefore validates a supplied root cause against evidence; it never auth
 
 **Applied In:** `rca/eight_d_disciplines.py` (`validate_d4_root_cause`, E6/#209), which
 delegates each causal-chain verdict to `quality_core.rca.five_why.validate_five_why_chain`.
+Additionally *read* — never re-derived — by `validate_d5_pca_selection`'s D4→D5 traceability
+check, E7 (#210): that check consults `candidate_causes_tested[].result` and the already-recorded
+`five_why_verdict` on each D4 finding, and recomputes neither.
 
 ---
 
@@ -585,8 +588,36 @@ effects before implementation, against criteria established for each.
 verification *before* implementation, so PCA traceability (every PCA traced to a root cause or
 escape point) is a requirement of the discipline, not a platform embellishment.
 
-**Applied In:** Not yet applied — reserved for E7 (`rca/eight_d.py` D5 engine, #210). This entry
-seeds the citation only (#218).
+**Applied In:** `packages/quality-core/src/quality_core/rca/eight_d_disciplines.py`
+(`validate_d5_pca_selection`, `PCA_UNDESIRABLE_EFFECTS_NOT_VERIFIED`), E7 (#210). (The earlier
+"reserved for E7 (`rca/eight_d.py`)" pointer named the state-machine module by mistake; a
+discipline engine lives in `eight_d_disciplines.py`.)
+
+---
+
+## RULE-8D-D5-001: PCA selection is justified by evidence at the root level (D5)
+
+**Decision:** A selected permanent corrective action owes *evidence* that it solves the problem at
+the root level; D5's own evaluation questions frame PCA justification as an evidence question, not
+a declaration.
+
+**Source:**
+- Ford Motor Company, *Global 8D (G8D) Problem Solving Manual*, D5 Evaluation Questions:
+> What evidence (proof) do you have that this will solve the problem at the root level?
+
+**Rationale:** This question is what makes "is this PCA justified?" a checkable concern of D5 at
+all, and it is the evidentiary principle the D4→D5 traceability check rests on. **What the manual
+does not supply is a checkable rule of that shape.** It asks for evidence; it does not say which
+recorded artifact counts as that evidence, nor that a PCA must be refused when D4 has recorded no
+confirmed candidate-cause test or no accepted 5-Why verdict. The *substance* of "the root cause
+must be proven against test data" comes from `RULE-8D-D4`; composing the two into a structural,
+per-candidate check is this platform's engineering translation and is declared as Process Design
+Decision #11 below. Nothing here is presented as a manual-mandated algorithm.
+
+**Applied In:** `packages/quality-core/src/quality_core/rca/eight_d_disciplines.py`
+(`validate_d5_pca_selection`, `PCA_NOT_TRACEABLE_ROOT_CAUSE` /
+`PCA_NOT_TRACEABLE_ESCAPE_POINT` / `PCA_ROOT_CAUSE_VALIDATION_NOT_RUN` /
+`PCA_ESCAPE_POINT_VALIDATION_NOT_RUN`), E7 (#210).
 
 ---
 
@@ -605,8 +636,39 @@ results monitored.
 construction, and the manual sequences its removal with validated permanent action. Ongoing
 monitoring is named as part of the same discipline.
 
-**Applied In:** Not yet applied — reserved for E7 (`rca/eight_d.py` D6 engine, #210). This entry
-seeds the citation only (#218).
+**Applied In:** `packages/quality-core/src/quality_core/rca/eight_d_disciplines.py`
+(`validate_d6_implementation_validation`, `IMPLEMENTED_ACTION_NOT_VERIFIED` /
+`IMPLEMENTED_ACTION_VERIFIED_INEFFECTIVE` / `ICA_NOT_REMOVED`), E7 (#210). (The earlier
+"reserved for E7 (`rca/eight_d.py`)" pointer named the state-machine module by mistake; a
+discipline engine lives in `eight_d_disciplines.py`.) This rule also backs the *substance* of the
+D8→CLOSED `PCA_NOT_VERIFIED` closure deficiency in `rca/eight_d_schema.py` /
+`rca/eight_d.py` — but **not** the refusal mechanism itself, which is declared as `PDD-8D-010`
+under Process Design Decision #10 below.
+
+---
+
+## RULE-8D-D6-001: D6 validation covers both the root cause and the escape point (D6)
+
+**Decision:** The D6 validation step is carried out for *both* targets — the root cause and the
+escape point — not for the root cause alone.
+
+**Source:**
+- Ford Motor Company, *Global 8D (G8D) Problem Solving Manual*, Section D6, CHECK step of the Deming cycle:
+> Validate the ACPs both for the root cause and for the escape points
+
+**Rationale:** The manual states the two-target scope of D6 validation directly, which is the
+substantive requirement behind reporting a D6 record whose validated actions reach only one of the
+two targets. **The manual quantifies nothing beyond that scope**: it does not define how coverage
+is computed from a record, and it does not say a partially covered D6 must be refused. Reading
+coverage off the set of targets reached by *verified, D5-matched* implemented actions, and
+reporting a gap at `severity="warning"` rather than `"error"`, are this platform's choices —
+`D6Discipline` itself requires only one implemented action in total, so a hard rejection would
+assert a completeness rule stronger than the schema, on a record that may simply be
+mid-implementation. Declared as Process Design Decision #11 below.
+
+**Applied In:** `packages/quality-core/src/quality_core/rca/eight_d_disciplines.py`
+(`validate_d6_implementation_validation`, `IMPLEMENTED_ACTION_TARGET_COVERAGE_INCOMPLETE`),
+E7 (#210).
 
 ---
 
@@ -917,3 +979,97 @@ from the cited `RULE-8D-*` entries above for exactly that reason.
    and verdict metadata is compared with fresh validation and a mismatch produces a warning; it
    never overrides the validator result. These are platform policies, not quantified requirements
    from the cited manuals, and have no `CITATIONS.tsv` rows.
+
+10. **D6 closure gate: verified-effective PCAs required before CLOSED (E7, #210).** A CLOSED 8D
+    report must carry a D6 whose every `ImplementedAction` is verified effective
+    (`D6Discipline.is_verified`). The rule is evaluated once, in
+    `eight_d_schema._closure_evidence_deficiencies`, and read by both closure entry paths — the
+    `EightDReport` CLOSED-state model validator and `transition_eight_d`'s D8→CLOSED gate — as
+    the deficiency code `PCA_NOT_VERIFIED`, exactly the one-evaluator-two-consumers shape
+    `CONTAINMENT_NOT_VERIFIED` already uses for D3. `RULE-8D-D6` backs the *substance* ("Plan and
+    implement selected Permanent Corrective Actions... Validate actions and monitor long-term
+    results"); **refusing CLOSED-report construction, or the D8→CLOSED transition, specifically
+    over it is this platform's own mechanism and carries no manual clause.** That gate reason is
+    identified as `PDD-8D-010` in `rca/eight_d.py`, mirroring `PDD-8D-008`; the `PDD-` prefix is
+    deliberately not `RULE-`, which is reserved for identifiers naming a `CITATIONS.tsv` row
+    backed by an on-box manual quote. **Scope:** only the D8→CLOSED closure boundary reads this;
+    no D4→D5 or D5→D6 `transition_eight_d` gate is added by this epic.
+
+11. **D5/D6 engine heuristics with no manual behind them (E7, #210).** The D5 and D6 engines in
+    `rca/eight_d_disciplines.py` raise findings that no manual states. None is presented as a
+    standards requirement and none carries a `CITATIONS.tsv` row.
+    - **`PCA_VERIFICATION_EVIDENCE_MISSING`** — WARNING when a candidate is marked
+      `verified_no_undesirable_effects=True` but records no `verification_notes`. No manual says
+      the verification must be written down in a notes field; this is the same kind of
+      field-presence translation as `TEAM_MEMBER_ROLE_UNDEFINED` at D1, and is a warning for the
+      same reason. (The *verification itself* is not a heuristic:
+      `PCA_UNDESIRABLE_EFFECTS_NOT_VERIFIED` is an `error` on the strength of `RULE-8D-D5`'s own
+      "Verify that both decisions will be successful when implemented without causing undesirable
+      effects" — a stated precondition, not an undefined adjective.)
+    - **`D4_NOT_SUPPLIED` / `D5_NOT_SUPPLIED` are warnings, never errors.** Absent
+      cross-discipline evidence is a normal in-progress state, mirroring `IS_IS_NOT_NOT_PROVIDED`
+      at D2 and `LINKED_NCR_NOT_PROVIDED` at D3. When the record is absent the dependent checks
+      are *skipped*, never guessed at.
+    - **D4→D5 traceability is structural, not semantic, and adds no schema field.** The check
+      asks whether D4 did the proving work `RULE-8D-D4` requires — at least one
+      `candidate_causes_tested` entry with `result == "CONFIRMED"` for `ROOT_CAUSE`-targeted
+      candidates, and a `five_why_verdict` on the targeted finding that is not `REJECT` — and it
+      reads `five_why_verdict` exactly as the D4 engine recorded it rather than recomputing an
+      equivalent. It does **not** compare a candidate's `description` with
+      `RootCauseFinding.statement` or `CandidateCauseTest.description`: that would be the fuzzy
+      string matching `D4Discipline`'s own docstring disclaims for having no standards basis, and
+      this epic does not reintroduce it under another name. No `root_cause_id` /
+      `escape_point_id` link field is added to `CorrectiveActionCandidate` either —
+      `D4Discipline` carries exactly one `root_cause` and one `escape_point`, so
+      `CorrectiveActionCandidate.target` already disambiguates which finding a candidate
+      addresses. **Consequence, stated plainly:** whether a *specific* PCA really eliminates the
+      *specific* finding it names remains a human judgment call this tool does not automate.
+      `PCA_ROOT_CAUSE_VALIDATION_NOT_RUN` / `PCA_ESCAPE_POINT_VALIDATION_NOT_RUN` are warnings
+      (validation not yet run is in-progress, not wrong); `PCA_NOT_TRACEABLE_*` is an `error`
+      (D4 recorded a rejected chain, or no proof at all).
+    - **`IMPLEMENTED_ACTION_UNKNOWN_CORRECTIVE_ACTION_ID` is an exact-match structural check.**
+      `ImplementedAction.corrective_action_id` is compared for exact, case-sensitive equality
+      against the set of `D5Discipline.candidates[].action_id` — the same equality
+      `_check_candidate_coverage` already uses to enforce `action_id` uniqueness. These are
+      assigned identifiers, not free-text statements, so equality is the whole rule and this is
+      explicitly *not* the banned fuzzy statement matching. Case sensitivity is deliberate:
+      `"pca-1"` and `"PCA-1"` are different identifiers, and silently equating them would let a
+      typo pass as a reference. This resolves the cross-discipline reference `ImplementedAction`'s
+      own docstring records as unenforced at the schema layer. No manual requires the
+      cross-reference, so the rule is this platform's; it is an `error` because a supplied D5
+      makes the reference checkable and an unmatched id is a data defect, not an in-progress
+      state.
+    - **`IMPLEMENTED_ACTION_TARGET_COVERAGE_INCOMPLETE` is a `warning`, not an `error`.**
+      `RULE-8D-D6-001` states the two-target scope of D6 validation, but `D6Discipline` requires
+      only one implemented action in total (unlike `D5Discipline`, which enforces per-target
+      coverage at the schema level). Making the engine check a hard REJECT would impose a
+      completeness rule stronger than the schema itself asserts on a record that may simply be
+      mid-implementation, so the gap is surfaced without blocking. Coverage is computed only from
+      *verified, D5-matched* actions — an unverified or unmatched action is not evidence a target
+      was covered.
+    - **`ICA_NOT_REMOVED` is a `warning`.** `RULE-8D-D6` names "Remove the AIC" as part of D6, but
+      neither manual quantifies when removal must be recorded, and a verified D6 with containment
+      still deliberately in place is a legitimate state. The inverse case — a removal date on an
+      unverified record — is impossible to construct
+      (`D6Discipline._removal_requires_verified_actions`) and is therefore not re-checked by the
+      engine.
+    - **`PROCUREMENT-GAP` (Cost of Poor Quality / PAF model).**
+      `validate_d6_implementation_validation` accepts optional `copq_data` and *calls* the
+      already-implemented `quality_core.copq.estimator.estimate_copq`, storing that engine's own
+      result payload on `D6ValidationResult.copq_impact`. It authors **no** PAF/COPQ arithmetic,
+      taxonomy, benchmark, or methodology claim of its own, and no COPQ quotation or paraphrase
+      appears anywhere in `rca/`. The COPQ reference manuals (ASQ CSSGB Body of Knowledge / CSSC
+      Lean Six Sigma manual) are **not on this machine** — `~/Documents/Upskill/SixSigma/COPQ/`
+      does not exist, verified this session — so `rca/` cannot independently re-verify
+      `quality_core.copq`'s own citation base. `copq/CITATIONS.tsv` and `copq/ASSUMPTIONS_LOG.md`
+      were built in an earlier session on another machine and are untouched by this epic. This
+      declaration exists so the D6→COPQ integration is never mistaken for a claim this epic
+      verified. No tracking issue is known for a COPQ procurement gap (unlike NCR's #221); none is
+      invented here.
+    - **`copq_data` exceptions propagate uncaught.** `estimate_copq` /
+      `copq.schema.validate_copq`'s `TypeError`, `ValueError`, and `pydantic.ValidationError` are
+      not converted into findings, mirroring `validate_d2_problem_description`'s `is_is_not` path
+      rather than `validate_d3_containment`'s `linked_ncr` path. D3 catches because an invalid
+      linked NCR must resolve to a verdict the D3→D4 *gate* can consume without an unhandled
+      exception reaching it; COPQ impact gates nothing, so there is no gate-safety reason to
+      swallow the error.

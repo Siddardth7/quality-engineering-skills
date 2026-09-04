@@ -9,6 +9,48 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- 8D discipline engines for D5 (permanent corrective action selection) and D6 (implement and
+  validate) in `quality_core.rca.eight_d_disciplines` (E7, Milestone 11).
+  `validate_d5_pca_selection` reads a typed `D5Discipline` plus the optional same-report
+  `D4Discipline` and rejects a candidate that is not recorded as verified free of undesirable
+  effects (`PCA_UNDESIRABLE_EFFECTS_NOT_VERIFIED`), per Ford Global 8D's "Verify that both
+  decisions will be successful when implemented without causing undesirable effects"
+  (`RULE-8D-D5`). **D4→D5 traceability is structural, not semantic**: a candidate is traceable
+  only when D4 recorded a `CONFIRMED` candidate-cause test (for `ROOT_CAUSE` targets) and a
+  `five_why_verdict` on the targeted finding that is not `REJECT` — the verdict is *read* exactly
+  as the D4 engine recorded it, never recomputed. No text similarity between a candidate's
+  `description` and `RootCauseFinding.statement` is computed anywhere: that is the fuzzy string
+  matching `D4Discipline`'s own docstring disclaims, and it is not reintroduced under another
+  name. No schema field is added to `D4Discipline`, `RootCauseFinding`, `EscapePointFinding` or
+  `CorrectiveActionCandidate`.
+  `validate_d6_implementation_validation` reads a typed `D6Discipline` plus the optional
+  same-report `D5Discipline` and optional COPQ cost data, rejecting an implemented action with no
+  effectiveness verification (`IMPLEMENTED_ACTION_NOT_VERIFIED`), one whose validation concluded
+  it is not effective (`IMPLEMENTED_ACTION_VERIFIED_INEFFECTIVE`), or one naming a
+  `corrective_action_id` that matches no D5 candidate (`IMPLEMENTED_ACTION_UNKNOWN_CORRECTIVE_ACTION_ID`
+  — an exact, case-sensitive match on an assigned identifier, resolving the cross-discipline
+  reference `ImplementedAction`'s docstring recorded as unenforced). Both engines return the house
+  `ACCEPT`/`WARNING`/`REJECT` verdict with per-finding severities, de-duplicated recommendations,
+  and `to_dict()` serialization. Optional cost context is a **pure delegation** to
+  `quality_core.copq.estimator.estimate_copq`; no PAF/COPQ arithmetic or methodology claim is
+  authored in `rca/`, and its exceptions propagate uncaught because COPQ impact gates nothing.
+  **Verified-effective D6 actions are now part of the closure contract:** `D6Discipline` gains an
+  `is_verified` property mirroring `D3Discipline.is_verified`, and
+  `_closure_evidence_deficiencies` gains one `PCA_NOT_VERIFIED` deficiency — **one rule read by
+  both closure entry paths**, the `EightDReport` CLOSED-state model validator and
+  `transition_eight_d`'s D8→CLOSED gate, never a second copy. Refusing closure over it is a
+  platform decision with no manual clause behind it, identified as `PDD-8D-010`. Two new
+  `CITATIONS.tsv` rows, Ford Global 8D only — `RULE-8D-D5-001` ("What evidence (proof) do you have
+  that this will solve the problem at the root level?") and `RULE-8D-D6-001` ("Validate the ACPs
+  both for the root cause and for the escape points") — with both stale `RULE-8D-D5` /
+  `RULE-8D-D6` **Applied In** pointers corrected to name `eight_d_disciplines.py` rather than the
+  state-machine module. The heuristics no manual backs
+  (`PCA_VERIFICATION_EVIDENCE_MISSING`, `D4_NOT_SUPPLIED`, `D5_NOT_SUPPLIED`,
+  `IMPLEMENTED_ACTION_UNKNOWN_CORRECTIVE_ACTION_ID`,
+  `IMPLEMENTED_ACTION_TARGET_COVERAGE_INCOMPLETE`, `ICA_NOT_REMOVED`) and a `PROCUREMENT-GAP`
+  declaration for the unprocured COPQ sources are recorded as Process Design Decisions #10 and #11
+  and carry no citation row. **D5 and D6 only** — no D0–D4 behaviour change, no D7/D8 engine, no
+  new D4→D5 or D5→D6 transition gate, and no MCP, skill, or exporter surface (#210).
 - 8D discipline engine for D3 (interim containment) plus NCR linkage in
   `quality_core.rca.eight_d_disciplines` (E5, Milestone 11): `validate_d3_containment` reads a
   typed `D3Discipline` and optional linked Nonconformance Record evidence, emitting one finding

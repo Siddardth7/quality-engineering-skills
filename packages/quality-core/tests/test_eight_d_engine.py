@@ -12,11 +12,13 @@ import quality_core.rca as rca
 from quality_core.rca import (
     ContainmentAction,
     D3Discipline,
+    D6Discipline,
     D7Discipline,
     D8Discipline,
     DocumentationUpdate,
     EffectivenessVerification,
     EightDReport,
+    ImplementedAction,
     LinkedNCRValidation,
     WarningOverride,
     transition_eight_d,
@@ -42,6 +44,22 @@ def _d3(*effective: bool | None) -> D3Discipline:
     return D3Discipline(actions=[
         ContainmentAction(
             description=f"Containment {index}", implemented_date=DAY,
+            verification=None if value is None else _verification(value),
+        )
+        for index, value in enumerate(effective)
+    ])
+
+
+def _d6(*effective: bool | None) -> D6Discipline:
+    """D6 counterpart of `_d3`: one implemented PCA per supplied verification outcome.
+
+    Added by E7 (#210), when verified-effective D6 permanent corrective actions became part of
+    the shared closure-evidence contract (`PCA_NOT_VERIFIED`). `None` means "no verification
+    record at all", exactly as in `_d3`.
+    """
+    return D6Discipline(implemented_actions=[
+        ImplementedAction(
+            corrective_action_id=f"PCA-{index}", implemented_date=DAY,
             verification=None if value is None else _verification(value),
         )
         for index, value in enumerate(effective)
@@ -97,7 +115,10 @@ def _report(state: str, **updates: object) -> EightDReport:
         "current_discipline": "D8" if state == "CLOSED" else state,
     }
     if state == "CLOSED":
-        values.update(d3=_d3(True), d7=_d7(), d8=_d8(), root_cause_validation=_validation())
+        values.update(
+            d3=_d3(True), d6=_d6(True), d7=_d7(), d8=_d8(),
+            root_cause_validation=_validation(),
+        )
     values.update(updates)
     return EightDReport(**values)
 
@@ -105,7 +126,8 @@ def _report(state: str, **updates: object) -> EightDReport:
 @pytest.mark.parametrize("current,target", sorted(LEGAL))
 def test_every_adjacent_transition_advances_with_gate_evidence(current: str, target: str) -> None:
     report = _report(
-        current, d3=_d3(True), d7=_d7(), d8=_d8(), root_cause_validation=_validation()
+        current, d3=_d3(True), d6=_d6(True), d7=_d7(), d8=_d8(),
+        root_cause_validation=_validation(),
     )
     before = report.model_dump()
     result = transition_eight_d(report, target)
@@ -311,7 +333,7 @@ def test_d7_missing_discipline_blocks() -> None:
 def test_d8_accepts_eligible_root_cause_evidence(verdict: str, override: bool) -> None:
     validation = _validation(verdict)
     result = transition_eight_d(_report(
-        "D8", d3=_d3(True), d7=_d7(), d8=_d8(verdict, override=override),
+        "D8", d3=_d3(True), d6=_d6(True), d7=_d7(), d8=_d8(verdict, override=override),
         root_cause_validation=validation,
     ), "CLOSED")
     assert result.verdict == "ADVANCED"
@@ -329,7 +351,7 @@ def test_d8_rejects_missing_rejected_or_unapproved_warning_evidence(
 ) -> None:
     validation = None if d8 is None else _validation(d8.linked_five_why_verdict)
     result = transition_eight_d(_report(
-        "D8", d3=_d3(True), d7=_d7(), d8=d8, root_cause_validation=validation,
+        "D8", d3=_d3(True), d6=_d6(True), d7=_d7(), d8=d8, root_cause_validation=validation,
     ), "CLOSED")
     assert code in [r.code for r in result.reasons]
     assert result.reasons[0].rule_id == "RULE-8D-GATE-CLOSURE"
@@ -338,7 +360,7 @@ def test_d8_rejects_missing_rejected_or_unapproved_warning_evidence(
 
 def test_d8_rejects_missing_typed_root_cause_validation() -> None:
     result = transition_eight_d(
-        _report("D8", d3=_d3(True), d7=_d7(), d8=_d8("ACCEPT")), "CLOSED"
+        _report("D8", d3=_d3(True), d6=_d6(True), d7=_d7(), d8=_d8("ACCEPT")), "CLOSED"
     )
     assert [reason.code for reason in result.reasons] == ["ROOT_CAUSE_EVIDENCE_MISSING"]
     assert "provenance-bearing root_cause_validation" in result.reasons[0].message
@@ -346,7 +368,7 @@ def test_d8_rejects_missing_typed_root_cause_validation() -> None:
 
 def test_d8_defense_in_depth_collects_root_cause_then_prevention_reasons() -> None:
     report = _report(
-        "D8", d3=_d3(True), d8=_d8("REJECT"), d7=_d7("OTHER"),
+        "D8", d3=_d3(True), d6=_d6(True), d8=_d8("REJECT"), d7=_d7("OTHER"),
         root_cause_validation=_validation("REJECT")
     )
     result = transition_eight_d(report, "CLOSED")
@@ -364,7 +386,8 @@ def test_d8_requires_verdict_to_match_typed_validation() -> None:
 def test_engine_defensively_rejects_constructed_verdict_mismatch() -> None:
     report = EightDReport.model_construct(
         report_id="8D-205", initiated_date=DAY, status="OPEN", current_discipline="D8",
-        d3=_d3(True), d7=_d7(), d8=_d8("ACCEPT"), root_cause_validation=_validation("WARNING"),
+        d3=_d3(True), d6=_d6(True), d7=_d7(), d8=_d8("ACCEPT"),
+        root_cause_validation=_validation("WARNING"),
     )
     result = transition_eight_d(report, "CLOSED")
     assert result.reasons[0].code == "ROOT_CAUSE_EVIDENCE_MISSING"
@@ -375,7 +398,8 @@ def test_d8_invalid_validation_blocks_even_when_verdict_is_not_reject() -> None:
     invalid = _validation("REJECT")
     invalid.verdict = "ACCEPT"
     report = _report(
-        "D8", d3=_d3(True), d7=_d7(), d8=_d8("ACCEPT"), root_cause_validation=invalid
+        "D8", d3=_d3(True), d6=_d6(True), d7=_d7(), d8=_d8("ACCEPT"),
+        root_cause_validation=invalid
     )
     result = transition_eight_d(report, "CLOSED")
     assert [reason.code for reason in result.reasons] == ["ROOT_CAUSE_REJECTED"]
@@ -400,6 +424,8 @@ def test_direct_closed_rejects_invalid_nonreject_and_warning_without_override() 
     [
         ("d3_missing", "CONTAINMENT_NOT_VERIFIED"),
         ("d3_unverified", "CONTAINMENT_NOT_VERIFIED"),
+        ("d6_missing", "PCA_NOT_VERIFIED"),
+        ("d6_unverified", "PCA_NOT_VERIFIED"),
         ("d7_missing", "PREVENTION_UPDATE_MISSING"),
         ("d8_missing", "ROOT_CAUSE_EVIDENCE_MISSING"),
         ("validation_missing", "ROOT_CAUSE_EVIDENCE_MISSING"),
@@ -417,6 +443,10 @@ def test_direct_and_transition_closure_paths_reject_same_evidence_deficiencies(
         values["d3"] = None
     elif case == "d3_unverified":
         values["d3"] = _d3(None).model_dump()
+    elif case == "d6_missing":
+        values["d6"] = None
+    elif case == "d6_unverified":
+        values["d6"] = _d6(False).model_dump()
     elif case == "d7_missing":
         values["d7"] = None
     elif case == "d8_missing":
@@ -475,10 +505,60 @@ def test_shared_closure_evaluator_rejects_missing_d3_on_direct_path() -> None:
 
 def test_shared_closure_evaluator_rejects_missing_d3_on_transition_path() -> None:
     report = _report(
-        "D8", d3=None, d7=_d7(), d8=_d8(), root_cause_validation=_validation()
+        "D8", d3=None, d6=_d6(True), d7=_d7(), d8=_d8(),
+        root_cause_validation=_validation()
     )
     result = transition_eight_d(report, "CLOSED")
     assert "CONTAINMENT_NOT_VERIFIED" in [reason.code for reason in result.reasons]
+
+
+# ---- D8 to CLOSED: the D6 PCA-verification gate (#210) ------------------------------
+
+
+@pytest.mark.parametrize("d6", [None, _d6(False), _d6(None), _d6(True, False)])
+def test_d8_to_closed_blocks_on_missing_or_unverified_d6(d6: D6Discipline | None) -> None:
+    """AC2: an unverified (or missing) D6 blocks D8->CLOSED.
+
+    Asserts the structured TransitionReason - code, rule_id AND message fragment - not merely that
+    the verdict is BLOCKED, so a block wired to the wrong reason or rule_id cannot pass.
+    """
+    report = _report(
+        "D8", d3=_d3(True), d6=d6, d7=_d7(), d8=_d8(),
+        root_cause_validation=_validation(),
+    )
+    result = transition_eight_d(report, "CLOSED")
+    assert (result.verdict, result.previous_state, result.state) == ("BLOCKED", "D8", "D8")
+    assert result.report is report
+    reason = next(r for r in result.reasons if r.code == "PCA_NOT_VERIFIED")
+    assert reason.rule_id == "PDD-8D-010"
+    assert "verified-effective D6 permanent corrective actions" in reason.message
+
+
+@pytest.mark.parametrize("d6_updates", [{"d6": None}, {"d6": _d6(False).model_dump()}])
+def test_direct_closed_reconstruction_rejects_unverified_d6(
+    d6_updates: dict[str, object],
+) -> None:
+    """AC2, the construction path: a CLOSED report with an unverified D6 cannot be built."""
+    values = _report("CLOSED").model_dump()
+    values.update(d6_updates)
+    with pytest.raises(
+        pydantic.ValidationError,
+        match="verified-effective D6 permanent corrective actions",
+    ):
+        EightDReport.model_validate(values)
+
+
+def test_d8_to_closed_verified_d6_positive_control_advances() -> None:
+    """The positive control: a fully verified D6 reaches CLOSED cleanly through both paths."""
+    values = _report("CLOSED").model_dump()  # _report already sets d6=_d6(True)
+    direct = EightDReport.model_validate(values)
+    assert direct.status == "CLOSED"
+
+    values["status"] = "OPEN"
+    result = transition_eight_d(EightDReport.model_validate(values), "CLOSED")
+    assert result.verdict == "ADVANCED"
+    assert "PCA_NOT_VERIFIED" not in [r.code for r in result.reasons]
+    assert result.report.status == "CLOSED"
 
 
 def test_result_equality_determinism_json_serialization_and_copy_isolation() -> None:

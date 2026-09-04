@@ -1,8 +1,9 @@
 """
 eight_d_disciplines.py
 Deterministic 8D discipline engines for D0 (Emergency Response Action readiness), D1
-(team completeness), D2 (problem description), D3 (interim containment), and D4 (root cause
-and escape point).
+(team completeness), D2 (problem description), D3 (interim containment), D4 (root cause
+and escape point), D5 (permanent corrective action selection), and D6 (implementation and
+validation).
 
 Pure, post-validation checks over already-typed :mod:`quality_core.rca.eight_d_schema` models:
 ``validate_d0_readiness`` reads a ``D0Discipline`` and reports whether the Emergency Response
@@ -12,18 +13,36 @@ Action (ERA) is required, implemented, and verified *effective*; ``validate_d1_t
 and reports whether both stages of Ford 8D's D2 are covered; ``validate_d3_containment`` reads a
 ``D3Discipline`` plus optional linked Nonconformance Record evidence and reports whether every
 interim containment action is verified effective; ``validate_d4_root_cause`` validates the
-occurrence and escape 5-Why legs independently. All five return a verdict on the same
-three-value ``ACCEPT`` / ``WARNING`` / ``REJECT`` scale the other RCA engines use.
+occurrence and escape 5-Why legs independently; ``validate_d5_pca_selection`` reads a
+``D5Discipline`` plus the optional same-report ``D4Discipline`` and reports whether each selected
+permanent corrective action is verified free of undesirable effects and traceable to a D4 finding
+that was actually proven; ``validate_d6_implementation_validation`` reads a ``D6Discipline`` plus
+the optional same-report ``D5Discipline`` and optional COPQ cost data and reports whether every
+implemented PCA is verified effective. All seven return a verdict on the same three-value
+``ACCEPT`` / ``WARNING`` / ``REJECT`` scale the other RCA engines use.
 
-**Scope.** D0, D1, D2, D3 and D4 only. There is no state machine, no discipline-advancement API, and
-no cross-discipline gate enforcement here — those live in ``rca/eight_d.py``. These functions take
-typed discipline instances only; the untrusted-data trust boundary is ``validate_eight_d`` in
-``rca/eight_d_schema.py``, which validates D0/D1/D2/D3/D4 as part of a whole ``EightDReport``. The two
-exceptions are the optional untrusted-evidence arguments: ``validate_d2_problem_description``'s
-``is_is_not``, handed straight to ``quality_core.rca.is_is_not.scope_is_is_not``, and
-``validate_d3_containment``'s ``linked_ncr``, handed straight to
-``quality_core.ncr.schema.validate_ncr`` — the modules that own those trust boundaries — with no
-independent type check here.
+**Scope.** D0 through D6 only. There is no state machine and no discipline-advancement API here —
+those live in ``rca/eight_d.py``. These functions take typed discipline instances only; the
+untrusted-data trust boundary is ``validate_eight_d`` in ``rca/eight_d_schema.py``, which
+validates D0-D6 as part of a whole ``EightDReport``. The exceptions are the optional
+untrusted-evidence arguments: ``validate_d2_problem_description``'s ``is_is_not``, handed straight
+to ``quality_core.rca.is_is_not.scope_is_is_not``; ``validate_d3_containment``'s ``linked_ncr``,
+handed straight to ``quality_core.ncr.schema.validate_ncr``; and
+``validate_d6_implementation_validation``'s ``copq_data``, handed straight to
+``quality_core.copq.estimator.estimate_copq`` — the modules that own those trust boundaries —
+with no independent type check here.
+
+**The optional cross-discipline arguments (D5's ``d4``, D6's ``d5``) are a documented, narrow
+exception to "one typed discipline argument per engine", and are still advisory.** #210's
+acceptance criteria are explicitly cross-discipline (a D5 PCA must be traceable to D4; a D6
+implemented action must name a D5 candidate), and no single-discipline argument can satisfy them.
+Both arguments are same-report, already-typed models, both default to ``None``, and neither engine
+calls, wraps, or duplicates ``transition_eight_d``. Neither adds a D4 to D5 or D5 to D6 gate:
+"cross-discipline gate enforcement" in the sense used elsewhere in this docstring means *refusing
+a state transition*, and that still happens only in ``rca/eight_d.py``. The one place E7 does
+touch enforcement is the D8 to CLOSED closure boundary, where verified-effective D6 actions became
+a shared ``_closure_evidence_deficiencies`` requirement (``PCA_NOT_VERIFIED``, ``PDD-8D-010``) —
+one rule read by both the CLOSED-report model validator and the closure gate, never a second copy.
 
 **D3 is an advisory pre-flight check that shares its rules with the gate.**
 ``validate_d3_containment`` *reads* ``D3Discipline.is_verified``, the same predicate
@@ -59,8 +78,8 @@ Standards References:
   problem-description step, and Figure 12 "Problem Identification Questions".
 
 Rules applied: RULE-8D-D0, RULE-8D-D0-001..003, RULE-8D-D1, RULE-8D-D1-001..003, RULE-8D-D2,
-RULE-8D-D2-001..003, RULE-8D-D3, and RULE-8D-D4 in ``rca/CITATIONS.tsv`` /
-``rca/ASSUMPTIONS_LOG.md``.
+RULE-8D-D2-001..003, RULE-8D-D3, RULE-8D-D4, RULE-8D-D5, RULE-8D-D5-001, RULE-8D-D6 and
+RULE-8D-D6-001 in ``rca/CITATIONS.tsv`` / ``rca/ASSUMPTIONS_LOG.md``.
 ``RULE-8D-GATE-CONTAINMENT`` is *mirrored* by ``validate_d3_containment``, not re-cited as a new
 claim: the gate that rule backs stays in ``rca/eight_d.py``. The heuristics that no manual backs
 (``ERA_VERIFICATION_DATE_INCONSISTENT``, ``CHAMPION_TEAM_LEADER_SAME_PERSON``,
@@ -68,23 +87,36 @@ claim: the gate that rule backs stays in ``rca/eight_d.py``. The heuristics that
 ``DEGENERATE_PROBLEM_STATEMENT``, ``QUANTIFICATION_NOT_NUMERIC``, and the three NCR-linkage
 findings ``LINKED_NCR_NOT_PROVIDED`` / ``LINKED_NCR_INVALID`` / ``LINKED_NCR_VALID``) are declared
 as Process Design Decisions #6, #7 and #8 in ``rca/ASSUMPTIONS_LOG.md`` and carry no citation row.
+The D5/D6 heuristics with no manual behind them — ``PCA_VERIFICATION_EVIDENCE_MISSING``,
+``D4_NOT_SUPPLIED``, ``D5_NOT_SUPPLIED``, ``IMPLEMENTED_ACTION_UNKNOWN_CORRECTIVE_ACTION_ID``,
+``IMPLEMENTED_ACTION_TARGET_COVERAGE_INCOMPLETE`` and ``ICA_NOT_REMOVED`` — are declared the same
+way, as Process Design Decision #11, and carry no citation row either.
 
 **PROCUREMENT-GAP (ISO 9001:2015 §8.7 / IATF 16949:2016 §8.7).** The licensed excerpts for the
 nonconforming-output clauses that stand behind ``quality_core.ncr`` are not on this machine, so no
 ISO/IATF quotation or paraphrase appears anywhere in ``rca/``: this engine only *calls* the
 already-implemented ``validate_ncr`` and asserts nothing of its own about §8.7. The gap is
 declared under Process Design Decision #8 in ``rca/ASSUMPTIONS_LOG.md``.
+
+**PROCUREMENT-GAP (Cost of Poor Quality).** The same applies to
+``validate_d6_implementation_validation``'s optional ``copq_data``: it only *calls* the
+already-implemented ``quality_core.copq.estimator.estimate_copq`` and authors no PAF/COPQ
+arithmetic, taxonomy, or methodology claim of its own; the COPQ reference manuals are not on this
+machine, so ``rca/`` cannot re-verify ``quality_core.copq``'s own citation base. Declared in full
+under Process Design Decision #11 in ``rca/ASSUMPTIONS_LOG.md`` — not duplicated here.
 """
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import pandas as pd
 import pydantic
 
+from quality_core.copq.estimator import estimate_copq
+from quality_core.copq.schema import COPQDataset, CostItem
 from quality_core.io.validate import clean_pydantic_message
 from quality_core.ncr.schema import NCRDataset, validate_ncr
 from quality_core.rca.eight_d_schema import (
@@ -93,6 +125,8 @@ from quality_core.rca.eight_d_schema import (
     D2Discipline,
     D3Discipline,
     D4Discipline,
+    D5Discipline,
+    D6Discipline,
     EffectivenessVerification,
     LinkedNCRValidation,
     _linked_ncr_deficiency,
@@ -113,11 +147,17 @@ __all__ = [
     "D3ValidationResult",
     "D4Finding",
     "D4ValidationResult",
+    "D5Finding",
+    "D5ValidationResult",
+    "D6Finding",
+    "D6ValidationResult",
     "validate_d0_readiness",
     "validate_d1_team",
     "validate_d2_problem_description",
     "validate_d3_containment",
     "validate_d4_root_cause",
+    "validate_d5_pca_selection",
+    "validate_d6_implementation_validation",
 ]
 
 _STANDARDS_BASIS = "Ford Global 8D / AIAG CQI-20"
@@ -1298,4 +1338,601 @@ def validate_d4_root_cause(
         fishbone_validation=fishbone,
         findings=findings,
         recommendations=_dedupe(finding.recommendation for finding in findings),
+    )
+
+
+# ==============================================================================
+# 6. D5 — Permanent corrective action selection
+# ==============================================================================
+
+
+@dataclass
+class D5Finding:
+    """Finding raised against one D5 corrective-action candidate, or against the record."""
+
+    code: str
+    severity: Literal["error", "warning", "info"]
+    action_id: str | None
+    message: str
+    recommendation: str
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return serializable dictionary representation of the D5 finding."""
+        return asdict(self)
+
+
+@dataclass
+class D5ValidationResult:
+    """Complete D5 (permanent corrective action selection) validation result.
+
+    ``root_cause_traceable`` / ``escape_point_traceable`` are ``None`` when no ``D4Discipline``
+    was supplied — the question was not asked, which is not the same answer as "no". When D4 *was*
+    supplied, each is ``True`` only if every candidate carrying that ``target`` cleared the
+    structural traceability check described on :func:`validate_d5_pca_selection`.
+    """
+
+    basis: str
+    valid: bool
+    verdict: Literal["ACCEPT", "WARNING", "REJECT"]
+    candidate_count: int
+    root_cause_traceable: bool | None
+    escape_point_traceable: bool | None
+    findings: list[D5Finding]
+    recommendations: list[str]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return serializable dictionary representation of the D5 result."""
+        return {
+            "basis": self.basis,
+            "valid": self.valid,
+            "verdict": self.verdict,
+            "candidate_count": self.candidate_count,
+            "root_cause_traceable": self.root_cause_traceable,
+            "escape_point_traceable": self.escape_point_traceable,
+            "findings": [f.to_dict() for f in self.findings],
+            "recommendations": list(self.recommendations),
+        }
+
+
+def _d5_traceability_finding(
+    candidate_id: str,
+    target: Literal["ROOT_CAUSE", "ESCAPE_POINT"],
+    *,
+    has_confirmed_test: bool,
+    verdict: str | None,
+) -> D5Finding | None:
+    """Answer the structural traceability question for one candidate; ``None`` means traceable.
+
+    ``has_confirmed_test`` is only meaningful for a ``ROOT_CAUSE`` candidate — callers pass
+    ``True`` for an ``ESCAPE_POINT`` candidate, because ``D4Discipline.candidate_causes_tested``
+    is a single flat list scoped to root-cause testing by ``RULE-8D-D4``'s own text ("testing each
+    possible cause against the description of the Problem with the test data") and the schema
+    carries no escape-point analogue to read.
+    """
+    label = "root cause" if target == "ROOT_CAUSE" else "escape point"
+    if not has_confirmed_test:
+        return D5Finding(
+            code=f"PCA_NOT_TRACEABLE_{target}",
+            severity="error",
+            action_id=candidate_id,
+            message=(
+                f"Corrective action candidate '{candidate_id}' targets the {label}, but D4 "
+                "records no candidate cause with result CONFIRMED, so no root cause has been "
+                "proven against test data for the candidate to be traceable to (RULE-8D-D4)."
+            ),
+            recommendation=(
+                "Record the candidate cause test that confirms the root cause in D4 before "
+                "claiming a permanent corrective action for it (RULE-8D-D5-001)."
+            ),
+        )
+    if verdict == "REJECT":
+        return D5Finding(
+            code=f"PCA_NOT_TRACEABLE_{target}",
+            severity="error",
+            action_id=candidate_id,
+            message=(
+                f"Corrective action candidate '{candidate_id}' targets the {label}, but D4's "
+                f"recorded five_why_verdict for that finding is REJECT, so the causal chain "
+                "behind it was not accepted."
+            ),
+            recommendation=(
+                f"Resolve the rejected {label} 5-Why chain in D4 and re-record its verdict "
+                "before selecting a permanent corrective action against it."
+            ),
+        )
+    if verdict is None:
+        return D5Finding(
+            code=f"PCA_{target}_VALIDATION_NOT_RUN",
+            severity="warning",
+            action_id=candidate_id,
+            message=(
+                f"Corrective action candidate '{candidate_id}' targets the {label}, but D4 "
+                "records no five_why_verdict for that finding, so its causal chain has not been "
+                "validated yet."
+            ),
+            recommendation=(
+                f"Run the {label} 5-Why validation in D4 and record its verdict, so the "
+                "selected permanent corrective action rests on a validated finding."
+            ),
+        )
+    return None
+
+
+def validate_d5_pca_selection(
+    discipline: D5Discipline,
+    d4: D4Discipline | None = None,
+) -> D5ValidationResult:
+    """Validate D5 permanent corrective action (PCA) selection and its traceability to D4.
+
+    Ford Global 8D requires a PCA for the root cause *and* one for the escape point, and requires
+    both decisions verified as successful "without causing undesirable effects" before
+    implementation (RULE-8D-D5). Its own D5 evaluation questions frame that justification as an
+    evidence question — "What evidence (proof) do you have that this will solve the problem at the
+    root level?" (RULE-8D-D5-001). This engine reports one finding per candidate that fails either
+    the verification precondition or the structural traceability check below, and rejects when any
+    error is found.
+
+    **This traceability check is structural, not semantic.** It proves that D4, as a whole, did
+    the proving work RULE-8D-D4 requires before a PCA can legitimately target its finding: at
+    least one candidate cause was tested and confirmed (for ``ROOT_CAUSE``-targeted candidates),
+    and the D4 engine's own five-why validation of that finding did not conclude REJECT. It does
+    **not** prove that this specific PCA's ``description`` actually addresses the *content* of the
+    CONFIRMED test or of ``root_cause.statement`` — establishing that would require fuzzy string
+    matching between ``CorrectiveActionCandidate.description`` and ``RootCauseFinding.statement``
+    / ``CandidateCauseTest.description``, which ``D4Discipline``'s own docstring already disclaims
+    for carrying no standards basis, and this engine does not reintroduce it under a different
+    name. Whether the *specific* PCA under review really eliminates the specific finding it claims
+    to target remains a human judgment call this tool does not automate. The structural
+    composition itself — treating "D4 proved nothing" as "this PCA is not traceable" — is this
+    platform's translation, Process Design Decision #11 in ``rca/ASSUMPTIONS_LOG.md``; neither
+    quoted passage states a checkable rule of that shape.
+
+    ``five_why_verdict`` is *read* exactly as the E6 D4 engine populated it and is never
+    recomputed here, mirroring how this module never re-derives ``is_verified`` /
+    ``is_effective`` predicates elsewhere. ``D5Discipline``'s own model validator already
+    guarantees both targets are covered and every ``action_id`` is unique
+    (``_check_candidate_coverage``), so neither is re-checked.
+
+    Parameters
+    ----------
+    discipline : D5Discipline
+        A validated D5 discipline record; guaranteed to carry at least one ``ROOT_CAUSE`` and one
+        ``ESCAPE_POINT`` candidate.
+    d4 : D4Discipline | None, optional
+        The same report's already-typed D4 record. ``None`` means D4 evidence has not been
+        supplied on this call — a warning, never a rejection, because absent cross-discipline
+        evidence is a normal in-progress state (mirroring ``IS_IS_NOT_NOT_PROVIDED`` at D2 and
+        ``LINKED_NCR_NOT_PROVIDED`` at D3).
+
+    Returns
+    -------
+    D5ValidationResult
+        Verdict, candidate count, per-target traceability flags, findings, and de-duplicated
+        recommendations.
+    """
+    findings: list[D5Finding] = []
+    root_cause_traceable: bool | None = None
+    escape_point_traceable: bool | None = None
+
+    if d4 is None:
+        findings.append(
+            D5Finding(
+                code="D4_NOT_SUPPLIED",
+                severity="warning",
+                action_id=None,
+                message=(
+                    "No D4 record was supplied, so no corrective action candidate could be "
+                    "traced to a proven root cause or escape point."
+                ),
+                recommendation=(
+                    "Supply the report's D4 record so each permanent corrective action can be "
+                    "traced to the finding it claims to address."
+                ),
+            )
+        )
+    else:
+        root_cause_traceable = True
+        escape_point_traceable = True
+
+    has_confirmed_test = d4 is not None and any(
+        cause.result == "CONFIRMED" for cause in d4.candidate_causes_tested
+    )
+
+    for candidate in discipline.candidates:
+        if not candidate.verified_no_undesirable_effects:
+            findings.append(
+                D5Finding(
+                    code="PCA_UNDESIRABLE_EFFECTS_NOT_VERIFIED",
+                    severity="error",
+                    action_id=candidate.action_id,
+                    message=(
+                        f"Corrective action candidate '{candidate.action_id}' is not recorded as "
+                        "verified free of undesirable effects; D5 requires verifying that the "
+                        "decision will be successful when implemented without causing "
+                        "undesirable effects (RULE-8D-D5)."
+                    ),
+                    recommendation=(
+                        "Verify the selected permanent corrective action will succeed without "
+                        "causing undesirable effects, then record that verification before "
+                        "implementing it at D6."
+                    ),
+                )
+            )
+        elif candidate.verification_notes is None:
+            findings.append(
+                D5Finding(
+                    code="PCA_VERIFICATION_EVIDENCE_MISSING",
+                    severity="warning",
+                    action_id=candidate.action_id,
+                    message=(
+                        f"Corrective action candidate '{candidate.action_id}' is marked verified "
+                        "free of undesirable effects but records no verification_notes, so the "
+                        "evidence behind that verification is not written down."
+                    ),
+                    recommendation=(
+                        "Record verification_notes describing the evidence behind the "
+                        "no-undesirable-effects verification."
+                    ),
+                )
+            )
+
+        if d4 is None:
+            continue
+
+        if candidate.target == "ROOT_CAUSE":
+            finding = _d5_traceability_finding(
+                candidate.action_id,
+                "ROOT_CAUSE",
+                has_confirmed_test=has_confirmed_test,
+                verdict=d4.root_cause.five_why_verdict,
+            )
+            if finding is not None:
+                findings.append(finding)
+                root_cause_traceable = False
+        else:
+            finding = _d5_traceability_finding(
+                candidate.action_id,
+                "ESCAPE_POINT",
+                has_confirmed_test=True,
+                verdict=d4.escape_point.five_why_verdict,
+            )
+            if finding is not None:
+                findings.append(finding)
+                escape_point_traceable = False
+
+    verdict: Literal["ACCEPT", "WARNING", "REJECT"]
+    if any(f.severity == "error" for f in findings):
+        verdict, valid = "REJECT", False
+    elif any(f.severity == "warning" for f in findings):
+        verdict, valid = "WARNING", True
+    else:
+        findings.append(
+            D5Finding(
+                code="D5_READY",
+                severity="info",
+                action_id=None,
+                message=(
+                    f"All {len(discipline.candidates)} corrective action candidate(s) are "
+                    "verified free of undesirable effects and traceable to a proven D4 finding."
+                ),
+                recommendation=(
+                    "Permanent corrective action selection is complete; proceed to D6 "
+                    "implementation and validation."
+                ),
+            )
+        )
+        verdict, valid = "ACCEPT", True
+
+    return D5ValidationResult(
+        basis=_STANDARDS_BASIS,
+        valid=valid,
+        verdict=verdict,
+        candidate_count=len(discipline.candidates),
+        root_cause_traceable=root_cause_traceable,
+        escape_point_traceable=escape_point_traceable,
+        findings=findings,
+        recommendations=_dedupe(f.recommendation for f in findings),
+    )
+
+
+# ==============================================================================
+# 7. D6 — Implement and validate the permanent corrective actions
+# ==============================================================================
+
+
+@dataclass
+class D6Finding:
+    """Finding raised against one D6 implemented action, or against the record."""
+
+    code: str
+    severity: Literal["error", "warning", "info"]
+    action_id: str | None
+    message: str
+    recommendation: str
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return serializable dictionary representation of the D6 finding."""
+        return asdict(self)
+
+
+@dataclass
+class D6ValidationResult:
+    """Complete D6 (implementation and validation) validation result.
+
+    ``implementation_verified`` is read directly from ``D6Discipline.is_verified`` — never
+    recomputed by counting findings — so it cannot drift from the same predicate the D8 to CLOSED
+    closure boundary reads through ``eight_d_schema._closure_evidence_deficiencies``.
+
+    ``copq_impact`` carries ``quality_core.copq.estimator.estimate_copq``'s own
+    ``COPQEstimationResult.to_dict()`` payload when cost data was supplied, and ``None`` when it
+    was not. No PAF/COPQ arithmetic or methodology claim is authored here.
+    """
+
+    basis: str
+    valid: bool
+    verdict: Literal["ACCEPT", "WARNING", "REJECT"]
+    implementation_verified: bool
+    action_count: int
+    copq_impact: dict[str, Any] | None
+    findings: list[D6Finding]
+    recommendations: list[str]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return serializable dictionary representation of the D6 result."""
+        return {
+            "basis": self.basis,
+            "valid": self.valid,
+            "verdict": self.verdict,
+            "implementation_verified": self.implementation_verified,
+            "action_count": self.action_count,
+            "copq_impact": self.copq_impact,
+            "findings": [f.to_dict() for f in self.findings],
+            "recommendations": list(self.recommendations),
+        }
+
+
+def validate_d6_implementation_validation(
+    discipline: D6Discipline,
+    d5: D5Discipline | None = None,
+    copq_data: (
+        Sequence[CostItem | dict[str, Any]]
+        | COPQDataset
+        | pd.DataFrame
+        | dict[str, Any]
+        | None
+    ) = None,
+) -> D6ValidationResult:
+    """Validate D6: the selected PCAs as implemented, validated, and cross-referenced to D5.
+
+    Ford Global 8D requires the selected permanent corrective actions to be planned and
+    implemented, the interim containment action removed, and the actions validated with long-term
+    results monitored (RULE-8D-D6); its CHECK step names both targets explicitly — "Validate the
+    ACPs both for the root cause and for the escape points" (RULE-8D-D6-001). This engine reports
+    one finding per implemented action that is unverified, verified ineffective, or names a
+    ``corrective_action_id`` no D5 candidate carries, and rejects when any error is found.
+
+    **Advisory pre-flight check that shares the closure rule with the gate.**
+    ``implementation_verified`` *mirrors* — and never redefines — ``discipline.is_verified``, the
+    same predicate ``eight_d_schema._closure_evidence_deficiencies`` reads for the
+    ``PCA_NOT_VERIFIED`` closure deficiency that blocks both direct CLOSED-report construction and
+    the D8 to CLOSED transition (``PDD-8D-010``). One rule, one definition: this engine does not
+    keep a second copy of it, and does not call ``transition_eight_d``.
+
+    **The D5 cross-reference is an exact string match, not fuzzy matching.**
+    ``corrective_action_id`` and ``action_id`` are assigned identifiers, not free-text statements,
+    so equality is the whole rule — the same equality ``D5Discipline`` already uses to enforce
+    ``action_id`` uniqueness. This is explicitly *not* the statement-to-statement matching
+    ``D4Discipline``'s docstring disclaims, and it resolves the cross-discipline reference
+    ``ImplementedAction``'s own docstring records as unenforced at the schema layer. The match is
+    case-sensitive by design: ``"pca-1"`` and ``"PCA-1"`` are different identifiers, and silently
+    equating them would let a typo pass as a reference.
+
+    ``D6Discipline._removal_requires_verified_actions`` already makes an
+    ``interim_containment_removed_date`` on an unverified record impossible to construct, so that
+    direction is not re-checked here; only the inverse (verified actions, containment still not
+    recorded as removed) is reported, as a warning.
+
+    Parameters
+    ----------
+    discipline : D6Discipline
+        A validated D6 discipline record; guaranteed by its own model validator to carry at least
+        one implemented action.
+    d5 : D5Discipline | None, optional
+        The same report's already-typed D5 record. ``None`` means it was not supplied on this
+        call: a warning, and both the ID cross-reference and the target-coverage check are
+        skipped rather than guessed at.
+    copq_data : Sequence[CostItem | dict] | COPQDataset | DataFrame | dict | None, optional
+        Untrusted cost-of-quality data in any shape ``estimate_copq`` accepts, passed through
+        unchanged with no pre-parsing or pre-validation here. ``None`` means none was supplied,
+        which is not an error and produces ``copq_impact=None``.
+
+    Returns
+    -------
+    D6ValidationResult
+        Verdict, implementation summary, findings, optional COPQ payload, and de-duplicated
+        recommendations.
+
+    Raises
+    ------
+    TypeError
+        Propagated unmodified from ``estimate_copq`` / ``validate_copq`` when ``copq_data`` is a
+        type they reject. Unlike ``validate_d3_containment``'s ``linked_ncr`` path, this one is
+        deliberately *not* caught: COPQ impact is optional financial context that gates nothing,
+        so there is no gate-safety reason to convert the error into a verdict. This follows
+        ``validate_d2_problem_description``'s ``is_is_not`` precedent.
+    ValueError
+        Propagated unmodified from ``estimate_copq`` on a negative, infinite, or NaN cost value.
+    pydantic.ValidationError
+        Propagated unmodified from ``validate_copq`` when ``copq_data`` contains structurally
+        invalid rows.
+    """
+    findings: list[D6Finding] = []
+
+    candidate_targets: dict[str, str] = (
+        {} if d5 is None else {c.action_id: c.target for c in d5.candidates}
+    )
+    covered_targets: set[str] = set()
+
+    for action in discipline.implemented_actions:
+        verification = action.verification
+        if verification is None:
+            findings.append(
+                D6Finding(
+                    code="IMPLEMENTED_ACTION_NOT_VERIFIED",
+                    severity="error",
+                    action_id=action.corrective_action_id,
+                    message=(
+                        f"The permanent corrective action '{action.corrective_action_id}' "
+                        f"implemented on {action.implemented_date} carries no effectiveness "
+                        "verification record."
+                    ),
+                    recommendation=(
+                        "Validate the implemented permanent corrective action and record who "
+                        "verified it, when, and on what evidence, before removing the interim "
+                        "containment action."
+                    ),
+                )
+            )
+        elif not action.is_verified:
+            findings.append(
+                D6Finding(
+                    code="IMPLEMENTED_ACTION_VERIFIED_INEFFECTIVE",
+                    severity="error",
+                    action_id=action.corrective_action_id,
+                    message=(
+                        f"The validation of permanent corrective action "
+                        f"'{action.corrective_action_id}' recorded by "
+                        f"{verification.verified_by} on {verification.verified_date} concluded "
+                        "the action is not effective."
+                    ),
+                    recommendation=(
+                        "Replace or strengthen the permanent corrective action and re-validate "
+                        "it: the validation must compare like-for-like data before and after "
+                        "implementation."
+                    ),
+                )
+            )
+
+        if d5 is None:
+            continue
+        if action.corrective_action_id not in candidate_targets:
+            findings.append(
+                D6Finding(
+                    code="IMPLEMENTED_ACTION_UNKNOWN_CORRECTIVE_ACTION_ID",
+                    severity="error",
+                    action_id=action.corrective_action_id,
+                    message=(
+                        f"Implemented action names corrective_action_id "
+                        f"'{action.corrective_action_id}', which matches no D5 candidate "
+                        "action_id (the comparison is an exact, case-sensitive match on the "
+                        "assigned identifier)."
+                    ),
+                    recommendation=(
+                        "Correct corrective_action_id so it names one of the D5 candidates "
+                        "exactly, or add the missing candidate to D5."
+                    ),
+                )
+            )
+        elif action.is_verified:
+            covered_targets.add(candidate_targets[action.corrective_action_id])
+
+    if d5 is None:
+        findings.append(
+            D6Finding(
+                code="D5_NOT_SUPPLIED",
+                severity="warning",
+                action_id=None,
+                message=(
+                    "No D5 record was supplied, so no implemented action could be cross-"
+                    "referenced to a selected corrective action candidate and target coverage "
+                    "could not be assessed."
+                ),
+                recommendation=(
+                    "Supply the report's D5 record so every implemented action can be matched to "
+                    "the corrective action candidate it implements."
+                ),
+            )
+        )
+    elif not {"ROOT_CAUSE", "ESCAPE_POINT"} <= covered_targets:
+        missing = sorted({"ROOT_CAUSE", "ESCAPE_POINT"} - covered_targets)
+        findings.append(
+            D6Finding(
+                code="IMPLEMENTED_ACTION_TARGET_COVERAGE_INCOMPLETE",
+                severity="warning",
+                action_id=None,
+                message=(
+                    "No verified, D5-matched implemented action covers: "
+                    + ", ".join(missing)
+                    + ". D6 validates the corrective actions both for the root cause and for the "
+                    "escape point (RULE-8D-D6-001)."
+                ),
+                recommendation=(
+                    "Implement and validate a permanent corrective action for each outstanding "
+                    "target so both the root cause and the escape point are covered."
+                ),
+            )
+        )
+
+    if discipline.is_verified and discipline.interim_containment_removed_date is None:
+        findings.append(
+            D6Finding(
+                code="ICA_NOT_REMOVED",
+                severity="warning",
+                action_id=None,
+                message=(
+                    "Every implemented action is verified effective but no "
+                    "interim_containment_removed_date is recorded; D6 removes the interim "
+                    "containment action once the permanent corrective actions are validated "
+                    "(RULE-8D-D6)."
+                ),
+                recommendation=(
+                    "Remove the interim containment action and record the date, or state why it "
+                    "must remain in place."
+                ),
+            )
+        )
+
+    copq_impact: dict[str, Any] | None = None
+    if copq_data is not None:
+        # estimate_copq's own `items` annotation is narrower than the shapes it accepts at
+        # runtime: anything that is not a COPQDataset or a list is forwarded to
+        # copq.schema.validate_copq, which additionally accepts a DataFrame and a plain dict.
+        # The cast records that, and keeps every COPQ rule inside quality_core.copq.
+        copq_impact = estimate_copq(
+            items=cast("Sequence[CostItem | dict[str, Any]] | COPQDataset", copq_data)
+        ).to_dict()
+
+    verdict: Literal["ACCEPT", "WARNING", "REJECT"]
+    if any(f.severity == "error" for f in findings):
+        verdict, valid = "REJECT", False
+    elif any(f.severity == "warning" for f in findings):
+        verdict, valid = "WARNING", True
+    else:
+        findings.append(
+            D6Finding(
+                code="D6_READY",
+                severity="info",
+                action_id=None,
+                message=(
+                    f"All {len(discipline.implemented_actions)} implemented action(s) are "
+                    "verified effective, matched to a D5 candidate, and cover both the root "
+                    "cause and the escape point."
+                ),
+                recommendation=(
+                    "Permanent corrective actions are implemented and validated; proceed to D7 "
+                    "prevention."
+                ),
+            )
+        )
+        verdict, valid = "ACCEPT", True
+
+    return D6ValidationResult(
+        basis=_STANDARDS_BASIS,
+        valid=valid,
+        verdict=verdict,
+        implementation_verified=discipline.is_verified,
+        action_count=len(discipline.implemented_actions),
+        copq_impact=copq_impact,
+        findings=findings,
+        recommendations=_dedupe(f.recommendation for f in findings),
     )

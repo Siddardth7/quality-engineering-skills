@@ -775,6 +775,29 @@ def test_implemented_action_is_verified_reflects_effectiveness() -> None:
     assert _implemented(effective=None).is_verified is False
 
 
+def test_d6_is_verified_only_when_every_action_is_verified() -> None:
+    """D6Discipline.is_verified mirrors D3Discipline.is_verified: all-or-nothing over actions.
+
+    This is the exact predicate the D8->CLOSED closure boundary reads for PCA_NOT_VERIFIED, so a
+    single unverified or ineffective action must flip it to False.
+    """
+    all_good = D6Discipline(
+        implemented_actions=[_implemented(), _implemented(action_id="PCA-2")]
+    )
+    assert all_good.is_verified is True
+
+    mixed = D6Discipline(
+        implemented_actions=[
+            _implemented(effective=True),
+            _implemented(effective=False, action_id="PCA-2"),
+        ]
+    )
+    assert mixed.is_verified is False
+
+    none_verified = D6Discipline(implemented_actions=[_implemented(effective=None)])
+    assert none_verified.is_verified is False
+
+
 def test_d6_requires_at_least_one_implemented_action() -> None:
     with pytest.raises(pydantic.ValidationError, match="at least one implemented action"):
         D6Discipline(implemented_actions=[])

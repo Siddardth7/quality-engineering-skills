@@ -882,6 +882,44 @@ def test_d7_is_documented_reflects_presence_of_updates() -> None:
     assert documented.is_documented is True
 
 
+def _d7_with(*artifact_types: str) -> D7Discipline:
+    """A D7 record carrying one DocumentationUpdate per given artifact_type."""
+    return D7Discipline(
+        systemic_changes_description="PM schedule updated",
+        documentation_updates=[
+            DocumentationUpdate(
+                artifact_type=at,  # type: ignore[arg-type]
+                artifact_reference=f"DOC-{i}",
+                updated_date=DAY_2,
+            )
+            for i, at in enumerate(artifact_types)
+        ],
+    )
+
+
+def test_d7_has_qualifying_update_is_false_when_no_updates() -> None:
+    assert _d7_with().has_qualifying_update is False
+
+
+@pytest.mark.parametrize("artifact_type", ["PROCESS_FLOW", "WORK_INSTRUCTION", "OTHER"])
+def test_d7_has_qualifying_update_false_for_non_named_artifacts(artifact_type: str) -> None:
+    """Non-qualifying updates leave has_qualifying_update False even though is_documented is True —
+    this is the exact difference between the two properties."""
+    discipline = _d7_with(artifact_type)
+    assert discipline.is_documented is True
+    assert discipline.has_qualifying_update is False
+
+
+@pytest.mark.parametrize("artifact_type", ["FMEA", "CONTROL_PLAN"])
+def test_d7_has_qualifying_update_true_for_named_artifact(artifact_type: str) -> None:
+    assert _d7_with(artifact_type).has_qualifying_update is True
+
+
+def test_d7_has_qualifying_update_true_when_qualifying_mixed_with_non_qualifying() -> None:
+    discipline = _d7_with("OTHER", "FMEA")
+    assert discipline.has_qualifying_update is True
+
+
 def test_d7_rejects_blank_description() -> None:
     with pytest.raises(pydantic.ValidationError):
         D7Discipline(systemic_changes_description="   ")

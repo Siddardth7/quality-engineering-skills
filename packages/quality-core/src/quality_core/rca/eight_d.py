@@ -134,10 +134,13 @@ def _linked_ncr_reason(report: EightDReport) -> TransitionReason | None:
 
 
 def _prevention_reason(report: EightDReport) -> TransitionReason | None:
-    qualified = report.d7 is not None and any(
-        update.artifact_type in {"FMEA", "CONTROL_PLAN"}
-        for update in report.d7.documentation_updates
-    )
+    """Block D7 to D8 until D7 records an FMEA or Control Plan documentation update.
+
+    Delegates the predicate to ``D7Discipline.has_qualifying_update``, the single shared fact the
+    D8 to CLOSED closure boundary (``_closure_evidence_deficiencies``) and the advisory
+    ``validate_d7_prevention`` engine also read, and never re-derives it here.
+    """
+    qualified = report.d7 is not None and report.d7.has_qualifying_update
     if qualified:
         return None
     return TransitionReason(

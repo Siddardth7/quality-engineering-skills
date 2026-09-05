@@ -676,6 +676,15 @@ class DocumentationUpdate(pydantic.BaseModel):
         return _blank_to_none(v)
 
 
+#: The artifact types the manual names as the record of a D7 change: "Have all changes been
+#: documented (for example, FMEA, control plan, flow of process)?" (``RULE-8D-D7``,
+#: ``RULE-8D-GATE-PREVENTION``). Defined once here and read by
+#: :attr:`D7Discipline.has_qualifying_update` and by ``eight_d_disciplines``'
+#: ``validate_d7_prevention`` (only to name the types it found), so no consumer keeps a second
+#: literal copy of the set.
+_QUALIFYING_ARTIFACT_TYPES: frozenset[str] = frozenset({"FMEA", "CONTROL_PLAN"})
+
+
 class D7Discipline(pydantic.BaseModel):
     """Modify the systems, policies, and procedures that permitted the problem (Ford 8D, D7)."""
 
@@ -696,6 +705,28 @@ class D7Discipline(pydantic.BaseModel):
         ``documentation_updates`` itself.
         """
         return bool(self.documentation_updates)
+
+    @property
+    def has_qualifying_update(self) -> bool:
+        """True iff at least one documentation update's ``artifact_type`` is FMEA or CONTROL_PLAN.
+
+        The manual names the FMEA and the control plan explicitly as the artifacts a D7 change
+        must be documented in (``RULE-8D-D7``, ``RULE-8D-GATE-PREVENTION``). This property is the
+        single definition of that fact: the D7→D8 transition gate (``eight_d.py``'s
+        ``_prevention_reason``), the D8→CLOSED closure boundary
+        (``_closure_evidence_deficiencies``, ``PREVENTION_UPDATE_MISSING``) and the advisory
+        pre-flight engine ``validate_d7_prevention`` (``eight_d_disciplines.py``, E8/#211) all
+        read it; none recomputes an equivalent boolean of its own, mirroring ``is_verified`` at
+        D3/D6.
+
+        Broader than ``is_documented``: ``is_documented`` is ``True`` for an ``OTHER``- or
+        ``WORK_INSTRUCTION``-type update alone, whereas this property additionally requires the
+        artifact type to be one the manual names.
+        """
+        return any(
+            update.artifact_type in _QUALIFYING_ARTIFACT_TYPES
+            for update in self.documentation_updates
+        )
 
 
 # ==============================================================================
@@ -892,10 +923,7 @@ def _closure_evidence_deficiencies(report: EightDReport) -> tuple[_ClosureDefici
                 "a CLOSED report requires verified-effective D6 permanent corrective actions",
             )
         )
-    if report.d7 is None or not any(
-        update.artifact_type in {"FMEA", "CONTROL_PLAN"}
-        for update in report.d7.documentation_updates
-    ):
+    if report.d7 is None or not report.d7.has_qualifying_update:
         deficiencies.append(
             _ClosureDeficiency(
                 "PREVENTION_UPDATE_MISSING",

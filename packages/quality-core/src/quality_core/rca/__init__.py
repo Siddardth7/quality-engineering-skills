@@ -33,6 +33,8 @@ from quality_core.rca.eight_d_disciplines import (
     D5ValidationResult,
     D6Finding,
     D6ValidationResult,
+    D7Finding,
+    D7ValidationResult,
     validate_d0_readiness,
     validate_d1_team,
     validate_d2_problem_description,
@@ -40,6 +42,7 @@ from quality_core.rca.eight_d_disciplines import (
     validate_d4_root_cause,
     validate_d5_pca_selection,
     validate_d6_implementation_validation,
+    validate_d7_prevention,
 )
 from quality_core.rca.eight_d_schema import (
     CONTAINMENT_ACTION_SCHEMA,
@@ -175,6 +178,8 @@ __all__ = [
     "D6Finding",
     "D6ValidationResult",
     "D7Discipline",
+    "D7Finding",
+    "D7ValidationResult",
     "D8Discipline",
     "DOCUMENTATION_UPDATE_SCHEMA",
     "DocumentationUpdate",
@@ -213,6 +218,7 @@ __all__ = [
     "validate_d4_root_cause",
     "validate_d5_pca_selection",
     "validate_d6_implementation_validation",
+    "validate_d7_prevention",
     "validate_documentation_updates",
     "validate_eight_d",
     "validate_team_members",

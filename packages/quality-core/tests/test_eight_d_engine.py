@@ -186,6 +186,11 @@ def test_valid_direct_closed_reconstruction_is_terminal() -> None:
         ({"d8": None}, "requires D8"),
         ({"root_cause_validation": None}, "requires provenance-bearing"),
         ({"d7": None}, "requires a D7 FMEA or Control Plan update"),
+        # Present-but-non-qualifying d7: reaches D7Discipline.has_qualifying_update rather than
+        # short-circuiting on `report.d7 is None`. Under a `has_qualifying_update -> True`
+        # mutation this direct-construction (model-validator) path silently ACCEPTS the bad
+        # report; every other d7 case here uses None and never consults the predicate. (#211.)
+        ({"d7": _d7("OTHER").model_dump()}, "requires a D7 FMEA or Control Plan update"),
     ],
 )
 def test_direct_closed_reconstruction_rejects_contradictions(
@@ -327,6 +332,21 @@ def test_d7_rejects_missing_or_nonqualifying_updates(artifact: str | None) -> No
 
 def test_d7_missing_discipline_blocks() -> None:
     assert transition_eight_d(_report("D7"), "D8").reasons[0].code == "PREVENTION_UPDATE_MISSING"
+
+
+@pytest.mark.parametrize(
+    "artifact,expected_qualifying,expected_verdict",
+    [("FMEA", True, "ADVANCED"), ("OTHER", False, "BLOCKED")],
+)
+def test_d7_gate_verdict_agrees_with_has_qualifying_update(
+    artifact: str, expected_qualifying: bool, expected_verdict: str
+) -> None:
+    """Tripwire (#211 §8): the D7->D8 gate verdict and D7Discipline.has_qualifying_update read the
+    one shared predicate, so they must never disagree — an ADVANCED gate on a non-qualifying
+    record, or a BLOCKED gate on a qualifying one, would mean the two silently diverged again."""
+    discipline = _d7(artifact)
+    assert discipline.has_qualifying_update is expected_qualifying
+    assert transition_eight_d(_report("D7", d7=discipline), "D8").verdict == expected_verdict
 
 
 @pytest.mark.parametrize("verdict,override", [("ACCEPT", False), ("WARNING", True)])

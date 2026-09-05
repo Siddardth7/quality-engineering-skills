@@ -48,12 +48,14 @@ Tests:
 from __future__ import annotations
 
 import datetime
+from dataclasses import asdict
 from pathlib import Path
 from typing import Literal
 
 import pandas as pd
 import pydantic
 import pytest
+from quality_core.controlplan.schema import ControlPlanDataset, ControlPlanRow
 from quality_core.copq.schema import COPQDataset, CostItem
 from quality_core.ncr.schema import NCRDataset, validate_ncr
 from quality_core.rca.eight_d_disciplines import (
@@ -71,6 +73,9 @@ from quality_core.rca.eight_d_disciplines import (
     D5ValidationResult,
     D6Finding,
     D6ValidationResult,
+    D7Finding,
+    D7ValidationResult,
+    _control_plan_findings,
     _d5_traceability_finding,
     _dedupe,
     _five_w_two_h_answers,
@@ -83,6 +88,7 @@ from quality_core.rca.eight_d_disciplines import (
     validate_d4_root_cause,
     validate_d5_pca_selection,
     validate_d6_implementation_validation,
+    validate_d7_prevention,
 )
 from quality_core.rca.eight_d_schema import (
     CandidateCauseTest,
@@ -95,6 +101,8 @@ from quality_core.rca.eight_d_schema import (
     D4Discipline,
     D5Discipline,
     D6Discipline,
+    D7Discipline,
+    DocumentationUpdate,
     EffectivenessVerification,
     EscapePointFinding,
     ImplementedAction,
@@ -104,6 +112,7 @@ from quality_core.rca.eight_d_schema import (
 )
 from quality_core.rca.is_is_not import scope_is_is_not
 from quality_core.rca.schema import IsIsNotMatrix
+from quality_core.schema.action import Action
 
 IMPLEMENTED = datetime.date(2026, 3, 1)
 
@@ -2354,3 +2363,435 @@ def test_d6_engine_symbols_are_re_exported_from_quality_core_rca() -> None:
     assert rca.D5ValidationResult is D5ValidationResult
     assert rca.D6Finding is D6Finding
     assert rca.D6ValidationResult is D6ValidationResult
+
+
+# ==============================================================================
+# 10. D7 — Prevent recurrence
+# ==============================================================================
+#
+# Every case asserts (code, severity) pairs, not just the verdict: the milestone's standing
+# lesson is that a silently mutable `severity` survives a code-only assertion even at 100%
+# branch coverage. SME decisions under test (spec §1, RESOLVED 2026-09-04):
+#   1. PREVENTION_ARTIFACT_UPDATE_MISSING is `error` (REJECT-tier).
+#   2. CONTROL_PLAN_EVIDENCE_NOT_PROVIDED warns only when a CONTROL_PLAN update is declared.
+#   3. FMEA residual-AP delta is never gating; ap_reduced=False stays `info`.
+
+
+def _d7_disc(*artifact_types: str) -> D7Discipline:
+    """A D7 record carrying one DocumentationUpdate per given artifact_type (none => empty)."""
+    return D7Discipline(
+        systemic_changes_description="PM schedule updated; approval control added.",
+        documentation_updates=[
+            DocumentationUpdate(
+                artifact_type=at,  # type: ignore[arg-type]
+                artifact_reference=f"DOC-{i}",
+                updated_date=IMPLEMENTED,
+            )
+            for i, at in enumerate(artifact_types)
+        ],
+    )
+
+
+def _d7_pairs(result: D7ValidationResult) -> list[tuple[str, str]]:
+    """(code, severity) for every finding, in order — asserted together everywhere below."""
+    return [(f.code, f.severity) for f in result.findings]
+
+
+def _d7_codes(result: D7ValidationResult) -> list[str]:
+    return [f.code for f in result.findings]
+
+
+def _d7_finding(result: D7ValidationResult, code: str) -> D7Finding:
+    return next(f for f in result.findings if f.code == code)
+
+
+def _cp_row(**over: object) -> dict[str, object]:
+    """One structurally-valid Control Plan row as a dict, with overrides."""
+    base: dict[str, object] = {
+        "characteristic": "Bore diameter",
+        "lsl": 9.9,
+        "usl": 10.1,
+        "target": 10.0,
+        "measurement_method": "Air gauge",
+        "sample_size": 5,
+        "frequency": "per shift",
+        "reaction_plan": "Quarantine lot and notify quality engineer.",
+    }
+    base.update(over)
+    return base
+
+
+# ---- 10.1 dataclass serialization -----------------------------------------------------
+
+
+def test_d7_finding_to_dict_shape() -> None:
+    finding = D7Finding(
+        code="CODE", severity="warning", artifact_type="CONTROL_PLAN", message="m", recommendation="r"
+    )
+    assert finding.to_dict() == {
+        "code": "CODE",
+        "severity": "warning",
+        "artifact_type": "CONTROL_PLAN",
+        "message": "m",
+        "recommendation": "r",
+    }
+
+
+def test_d7_finding_to_dict_keeps_none_artifact_type() -> None:
+    finding = D7Finding(code="C", severity="info", artifact_type=None, message="m", recommendation="r")
+    assert finding.to_dict()["artifact_type"] is None
+
+
+def test_d7_validation_result_to_dict_nests_findings_and_payloads() -> None:
+    result = validate_d7_prevention(
+        _d7_disc("CONTROL_PLAN"),
+        d4=_clean_d4(),
+        control_plan_evidence=[_cp_row()],
+        fmea_action=Action(owner="Eng", s_after=2, o_after=2, d_after=2),
+        fmea_before=(9, 9, 9),
+    )
+    payload = result.to_dict()
+    assert set(payload) == {
+        "basis",
+        "valid",
+        "verdict",
+        "prevention_documented",
+        "has_qualifying_update",
+        "root_cause_traceable",
+        "control_plan_evidence",
+        "fmea_effectiveness",
+        "findings",
+        "recommendations",
+    }
+    assert payload["findings"] == [f.to_dict() for f in result.findings]
+    assert payload["control_plan_evidence"] is not None
+    assert payload["fmea_effectiveness"] is not None
+    assert payload["recommendations"] == list(result.recommendations)
+
+
+def test_d7_validation_result_to_dict_keeps_absent_payloads_none() -> None:
+    result = validate_d7_prevention(_d7_disc("FMEA"))
+    payload = result.to_dict()
+    assert payload["control_plan_evidence"] is None
+    assert payload["fmea_effectiveness"] is None
+    assert payload["root_cause_traceable"] is None
+
+
+# ---- 10.2 qualifying-update check + D4 traceability -----------------------------------
+
+
+def test_d7_no_qualifying_update_rejects_and_does_not_double_report_traceability() -> None:
+    """has_qualifying_update=False -> REJECT via PREVENTION_ARTIFACT_UPDATE_MISSING (error), and
+    root_cause_traceable=False WITHOUT a second traceability finding even though d4 ACCEPTs."""
+    result = validate_d7_prevention(_d7_disc("OTHER"), d4=_clean_d4())
+    assert result.verdict == "REJECT"
+    assert result.valid is False
+    assert result.has_qualifying_update is False
+    assert result.root_cause_traceable is False
+    assert _d7_pairs(result) == [("PREVENTION_ARTIFACT_UPDATE_MISSING", "error")]
+    assert "PREVENTION_NOT_TRACEABLE_ROOT_CAUSE" not in _d7_codes(result)
+    assert "PREVENTION_ROOT_CAUSE_VALIDATION_NOT_RUN" not in _d7_codes(result)
+
+
+def test_d7_empty_updates_also_rejects() -> None:
+    result = validate_d7_prevention(_d7_disc())
+    assert result.verdict == "REJECT"
+    assert ("PREVENTION_ARTIFACT_UPDATE_MISSING", "error") in _d7_pairs(result)
+
+
+@pytest.mark.parametrize(
+    "artifacts,expected_named",
+    [
+        (("FMEA",), "FMEA"),
+        (("CONTROL_PLAN",), "CONTROL_PLAN"),
+        (("OTHER", "CONTROL_PLAN", "FMEA"), "CONTROL_PLAN, FMEA"),
+    ],
+)
+def test_d7_qualifying_update_recorded_names_only_qualifying_types(
+    artifacts: tuple[str, ...], expected_named: str
+) -> None:
+    result = validate_d7_prevention(_d7_disc(*artifacts), d4=_clean_d4())
+    recorded = _d7_finding(result, "PREVENTION_ARTIFACT_UPDATE_RECORDED")
+    assert recorded.severity == "info"
+    assert recorded.message.endswith(f"{expected_named}.")
+
+
+def test_d7_no_d4_supplied_warns_and_leaves_traceability_unasked() -> None:
+    result = validate_d7_prevention(_d7_disc("FMEA"), d4=None)
+    assert result.verdict == "WARNING"
+    assert result.valid is True
+    assert result.root_cause_traceable is None
+    assert ("D4_NOT_SUPPLIED", "warning") in _d7_pairs(result)
+
+
+def test_d7_d4_root_cause_rejected_is_an_error() -> None:
+    result = validate_d7_prevention(_d7_disc("FMEA"), d4=_d4(root_verdict="REJECT"))
+    assert result.verdict == "REJECT"
+    assert result.root_cause_traceable is False
+    assert ("PREVENTION_NOT_TRACEABLE_ROOT_CAUSE", "error") in _d7_pairs(result)
+
+
+def test_d7_d4_root_cause_not_validated_is_a_warning() -> None:
+    result = validate_d7_prevention(_d7_disc("FMEA"), d4=_d4(root_verdict=None))
+    assert result.verdict == "WARNING"
+    assert result.root_cause_traceable is False
+    assert ("PREVENTION_ROOT_CAUSE_VALIDATION_NOT_RUN", "warning") in _d7_pairs(result)
+
+
+@pytest.mark.parametrize("verdict", ["ACCEPT", "WARNING"])
+def test_d7_d4_root_cause_non_reject_is_traceable(verdict: str) -> None:
+    """Both a non-REJECT verdict (ACCEPT and WARNING) makes the root cause traceable with no
+    traceability finding of its own — the boundary is at REJECT/None, not mid-scale."""
+    result = validate_d7_prevention(
+        _d7_disc("FMEA"), d4=_d4(root_verdict=verdict)  # type: ignore[arg-type]
+    )
+    assert result.root_cause_traceable is True
+    assert "PREVENTION_NOT_TRACEABLE_ROOT_CAUSE" not in _d7_codes(result)
+    assert "PREVENTION_ROOT_CAUSE_VALIDATION_NOT_RUN" not in _d7_codes(result)
+
+
+# ---- 10.3 Control Plan evidence -------------------------------------------------------
+
+
+def test_d7_no_control_plan_evidence_and_no_control_plan_update_is_silent() -> None:
+    """SME decision 2: absence warns ONLY when a CONTROL_PLAN update is declared. An FMEA-only
+    D7 with no evidence must NOT raise CONTROL_PLAN_EVIDENCE_NOT_PROVIDED."""
+    result = validate_d7_prevention(_d7_disc("FMEA"), d4=_clean_d4())
+    assert result.control_plan_evidence is None
+    assert "CONTROL_PLAN_EVIDENCE_NOT_PROVIDED" not in _d7_codes(result)
+
+
+def test_d7_control_plan_update_declared_but_no_evidence_warns() -> None:
+    result = validate_d7_prevention(_d7_disc("CONTROL_PLAN"), d4=_clean_d4())
+    assert result.verdict == "WARNING"
+    assert ("CONTROL_PLAN_EVIDENCE_NOT_PROVIDED", "warning") in _d7_pairs(result)
+    assert result.control_plan_evidence is None
+
+
+def test_d7_valid_control_plan_evidence_is_info_with_real_payload() -> None:
+    result = validate_d7_prevention(
+        _d7_disc("CONTROL_PLAN"), d4=_clean_d4(), control_plan_evidence=[_cp_row()]
+    )
+    valid = _d7_finding(result, "CONTROL_PLAN_EVIDENCE_VALID")
+    assert valid.severity == "info"
+    assert valid.artifact_type == "CONTROL_PLAN"
+    assert result.control_plan_evidence is not None
+    row = result.control_plan_evidence["rows"][0]
+    assert row["characteristic"] == "Bore diameter"
+    assert row["measurement_method"] == "Air gauge"
+
+
+def test_d7_invalid_control_plan_evidence_is_error_with_sub_engine_text() -> None:
+    """usl<=lsl is rejected inside validate_control_plan; its own words come through with no
+    leaked 'Value error, ' prefix."""
+    result = validate_d7_prevention(
+        _d7_disc("CONTROL_PLAN"),
+        d4=_clean_d4(),
+        control_plan_evidence=[_cp_row(usl=1.0, lsl=5.0, target=None)],
+    )
+    assert result.verdict == "REJECT"
+    invalid = _d7_finding(result, "CONTROL_PLAN_EVIDENCE_INVALID")
+    assert invalid.severity == "error"
+    assert "usl must be greater than lsl" in invalid.message
+    assert "Value error," not in invalid.message
+    assert result.control_plan_evidence is None
+
+
+def test_d7_control_plan_evidence_of_unsupported_type_is_caught_not_raised() -> None:
+    """A bare dict is unsupported by validate_control_plan (no dict branch -> TypeError). Unlike
+    the FMEA path, this TypeError must be CAUGHT and surfaced, never raised out of the engine."""
+    result = validate_d7_prevention(
+        _d7_disc("CONTROL_PLAN"), d4=_clean_d4(), control_plan_evidence={"rows": []}
+    )
+    invalid = _d7_finding(result, "CONTROL_PLAN_EVIDENCE_INVALID")
+    assert invalid.severity == "error"
+    assert "Expected ControlPlanDataset" in invalid.message
+
+
+def test_d7_control_plan_evidence_accepts_dataset_instance() -> None:
+    dataset = ControlPlanDataset(rows=[ControlPlanRow(**_cp_row())])  # type: ignore[arg-type]
+    result = validate_d7_prevention(
+        _d7_disc("CONTROL_PLAN"), d4=_clean_d4(), control_plan_evidence=dataset
+    )
+    assert "CONTROL_PLAN_EVIDENCE_VALID" in _d7_codes(result)
+
+
+# ---- 10.4 FMEA residual-risk evidence -------------------------------------------------
+
+
+def test_d7_no_fmea_evidence_is_silent() -> None:
+    result = validate_d7_prevention(_d7_disc("FMEA"), d4=_clean_d4())
+    assert result.fmea_effectiveness is None
+    assert "FMEA_RESIDUAL_RISK" not in _d7_codes(result)
+
+
+@pytest.mark.parametrize(
+    "action,before",
+    [
+        (Action(owner="Eng"), None),
+        (None, (5, 5, 5)),
+    ],
+)
+def test_d7_partial_fmea_evidence_warns(action: Action | None, before: object) -> None:
+    result = validate_d7_prevention(
+        _d7_disc("FMEA"), d4=_clean_d4(), fmea_action=action, fmea_before=before  # type: ignore[arg-type]
+    )
+    assert result.verdict == "WARNING"
+    assert ("FMEA_RESIDUAL_RISK_EVIDENCE_INCOMPLETE", "warning") in _d7_pairs(result)
+    assert result.fmea_effectiveness is None
+
+
+def test_d7_fmea_residual_risk_ap_reduced_true_is_info() -> None:
+    action = Action(owner="Eng", s_after=2, o_after=2, d_after=2)
+    before = (9, 9, 9)
+    result = validate_d7_prevention(
+        _d7_disc("FMEA"), d4=_clean_d4(), fmea_action=action, fmea_before=before
+    )
+    finding = _d7_finding(result, "FMEA_RESIDUAL_RISK")
+    assert finding.severity == "info"
+    assert finding.artifact_type == "FMEA"
+    expected = asdict(action.effectiveness(*before))
+    assert expected["ap_reduced"] is True
+    assert result.fmea_effectiveness == expected
+    assert "reduced" in finding.message
+
+
+def test_d7_fmea_residual_risk_ap_not_reduced_stays_info_never_gates() -> None:
+    """SME decision 3: ap_reduced=False must stay `info` and never escalate the verdict."""
+    action = Action(owner="Eng")  # no *_after overrides -> unchanged ratings
+    before = (2, 2, 2)
+    result = validate_d7_prevention(
+        _d7_disc("FMEA"), d4=_clean_d4(), fmea_action=action, fmea_before=before
+    )
+    finding = _d7_finding(result, "FMEA_RESIDUAL_RISK")
+    assert finding.severity == "info"
+    expected = asdict(action.effectiveness(*before))
+    assert expected["ap_reduced"] is False
+    assert result.fmea_effectiveness == expected
+    assert "not reduced" in finding.message
+    # An all-info, ap_reduced=False report still ACCEPTs — the residual-AP delta never gates.
+    assert result.verdict == "ACCEPT"
+
+
+def test_d7_fmea_action_as_dict_matches_action_object_result() -> None:
+    payload = {"owner": "Eng", "s_after": 2, "o_after": 2, "d_after": 2}
+    before = (9, 9, 9)
+    result = validate_d7_prevention(
+        _d7_disc("FMEA"), d4=_clean_d4(), fmea_action=payload, fmea_before=before
+    )
+    assert "FMEA_RESIDUAL_RISK" in _d7_codes(result)
+    assert result.fmea_effectiveness == asdict(Action(**payload).effectiveness(*before))
+
+
+def test_d7_fmea_action_dict_missing_owner_propagates_validation_error() -> None:
+    """The FMEA path is deliberately NOT wrapped: a bad Action dict raises uncaught."""
+    with pytest.raises(pydantic.ValidationError):
+        validate_d7_prevention(
+            _d7_disc("FMEA"), fmea_action={"status": "Open"}, fmea_before=(5, 5, 5)
+        )
+
+
+def test_d7_fmea_before_out_of_range_propagates_value_error() -> None:
+    with pytest.raises(ValueError):
+        validate_d7_prevention(
+            _d7_disc("FMEA"), fmea_action=Action(owner="Eng"), fmea_before=(11, 5, 5)
+        )
+
+
+# ---- 10.5 verdict aggregation ---------------------------------------------------------
+
+
+def test_d7_all_clean_accepts_with_d7_ready() -> None:
+    result = validate_d7_prevention(
+        _d7_disc("FMEA"),
+        d4=_clean_d4(),
+        control_plan_evidence=None,
+        fmea_action=Action(owner="Eng", s_after=2, o_after=2, d_after=2),
+        fmea_before=(9, 9, 9),
+    )
+    assert result.verdict == "ACCEPT"
+    assert result.valid is True
+    assert ("D7_READY", "info") in _d7_pairs(result)
+    assert all(sev == "info" for _, sev in _d7_pairs(result))
+
+
+def test_d7_error_outranks_warning() -> None:
+    """One error (invalid CP evidence) + one warning (D4 not supplied) -> REJECT."""
+    result = validate_d7_prevention(
+        _d7_disc("FMEA"),
+        d4=None,
+        control_plan_evidence=[_cp_row(usl=1.0, lsl=5.0, target=None)],
+    )
+    pairs = _d7_pairs(result)
+    assert ("D4_NOT_SUPPLIED", "warning") in pairs
+    assert ("CONTROL_PLAN_EVIDENCE_INVALID", "error") in pairs
+    assert result.verdict == "REJECT"
+    assert "D7_READY" not in _d7_codes(result)
+
+
+def test_d7_warnings_without_error_do_not_escalate() -> None:
+    result = validate_d7_prevention(_d7_disc("CONTROL_PLAN"), d4=None)
+    pairs = _d7_pairs(result)
+    assert ("D4_NOT_SUPPLIED", "warning") in pairs
+    assert ("CONTROL_PLAN_EVIDENCE_NOT_PROVIDED", "warning") in pairs
+    assert result.verdict == "WARNING"
+    assert result.valid is True
+
+
+def test_d7_prevention_documented_reflects_is_documented_not_qualifying() -> None:
+    """prevention_documented is the broader is_documented: True for an OTHER-only update, while
+    has_qualifying_update is False for the same record."""
+    result = validate_d7_prevention(_d7_disc("OTHER"))
+    assert result.prevention_documented is True
+    assert result.has_qualifying_update is False
+
+
+def test_d7_recommendations_are_deduplicated_and_ordered() -> None:
+    result = validate_d7_prevention(
+        _d7_disc("FMEA"),
+        d4=_clean_d4(),
+        fmea_action=Action(owner="Eng", s_after=2, o_after=2, d_after=2),
+        fmea_before=(9, 9, 9),
+    )
+    # No recommendation appears twice, and the list preserves first-seen order.
+    assert len(result.recommendations) == len(set(result.recommendations))
+    assert result.recommendations == list(
+        dict.fromkeys(f.recommendation for f in result.findings)
+    )
+
+
+# ---- 10.6 _control_plan_findings unit cases ------------------------------------------
+
+
+def test_control_plan_findings_pydantic_error_uses_location_message_format() -> None:
+    with pytest.raises(pydantic.ValidationError) as excinfo:
+        ControlPlanRow(**{k: v for k, v in _cp_row().items() if k != "characteristic"})
+    messages = _control_plan_findings(excinfo.value)
+    assert any(m.startswith("characteristic:") for m in messages)
+    assert all(not m.startswith("Value error,") for m in messages)
+
+
+def test_control_plan_findings_empty_location_yields_bare_message() -> None:
+    """A row model-validator error (usl<=lsl) has empty loc -> message alone, no leading ': '."""
+    with pytest.raises(pydantic.ValidationError) as excinfo:
+        ControlPlanRow(**_cp_row(usl=1.0, lsl=5.0, target=None))
+    messages = _control_plan_findings(excinfo.value)
+    assert messages == ("usl must be greater than lsl",)
+
+
+def test_control_plan_findings_non_pydantic_exception_returns_str() -> None:
+    assert _control_plan_findings(TypeError("bad type")) == ("bad type",)
+    assert _control_plan_findings(ValueError("plain value error")) == ("plain value error",)
+
+
+# ---- 10.7 package re-export smoke test ------------------------------------------------
+
+
+def test_d7_engine_symbols_are_re_exported_from_quality_core_rca() -> None:
+    import quality_core.rca as rca
+
+    assert rca.D7Finding is D7Finding
+    assert rca.D7ValidationResult is D7ValidationResult
+    assert rca.validate_d7_prevention is validate_d7_prevention
+    for name in ("D7Finding", "D7ValidationResult", "validate_d7_prevention"):
+        assert name in rca.__all__

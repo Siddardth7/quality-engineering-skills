@@ -9,6 +9,27 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- 8D discipline engine for D7 (prevent recurrence) in
+  `quality_core.rca.eight_d_disciplines` (E8, Milestone 11). `validate_d7_prevention` reads a
+  typed `D7Discipline` and reports a missing qualifying documentation update
+  (`PREVENTION_ARTIFACT_UPDATE_MISSING`, `error`), reusing `quality_core.scoring.action_priority`
+  for FMEA residual-risk context and `quality_core.controlplan` for Control Plan evidence —
+  imports run downward only, and neither engine is reimplemented.
+  **A residual Action Priority that did not fall is never gating** (`FMEA_RESIDUAL_RISK` stays
+  `info`): no on-box manual states a "D7 must reduce Action Priority" threshold, and inventing one
+  would be the same class of un-cited standard this repo refuses elsewhere.
+
+### Changed
+- **The D7 qualifying-update predicate now has exactly one definition.**
+  `artifact_type in {"FMEA", "CONTROL_PLAN"}` had been hand-written twice in shipped code — in
+  `eight_d_schema._closure_evidence_deficiencies` and in `eight_d._prevention_reason` — two
+  agreeing copies of one rule that review and every prior mutation battery missed precisely
+  because they agreed. Both now read `D7Discipline.has_qualifying_update`, backed by a single
+  `_QUALIFYING_ARTIFACT_TYPES` set, as does the new D7 engine. Behaviour-preserving: reason codes,
+  messages and `RULE-8D-GATE-PREVENTION` are unchanged. Proven by mutation — neutralising the one
+  property fails the transition gate, the closure boundary and the advisory engine together,
+  including a direct-construction case that no test previously reached because every fixture
+  passed `d7=None` and short-circuited before the predicate ran.
 - 8D discipline engines for D5 (permanent corrective action selection) and D6 (implement and
   validate) in `quality_core.rca.eight_d_disciplines` (E7, Milestone 11).
   `validate_d5_pca_selection` reads a typed `D5Discipline` plus the optional same-report

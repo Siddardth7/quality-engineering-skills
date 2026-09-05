@@ -2,8 +2,8 @@
 eight_d_disciplines.py
 Deterministic 8D discipline engines for D0 (Emergency Response Action readiness), D1
 (team completeness), D2 (problem description), D3 (interim containment), D4 (root cause
-and escape point), D5 (permanent corrective action selection), and D6 (implementation and
-validation).
+and escape point), D5 (permanent corrective action selection), D6 (implementation and
+validation), and D7 (prevent recurrence).
 
 Pure, post-validation checks over already-typed :mod:`quality_core.rca.eight_d_schema` models:
 ``validate_d0_readiness`` reads a ``D0Discipline`` and reports whether the Emergency Response
@@ -18,22 +18,28 @@ occurrence and escape 5-Why legs independently; ``validate_d5_pca_selection`` re
 permanent corrective action is verified free of undesirable effects and traceable to a D4 finding
 that was actually proven; ``validate_d6_implementation_validation`` reads a ``D6Discipline`` plus
 the optional same-report ``D5Discipline`` and optional COPQ cost data and reports whether every
-implemented PCA is verified effective. All seven return a verdict on the same three-value
-``ACCEPT`` / ``WARNING`` / ``REJECT`` scale the other RCA engines use.
+implemented PCA is verified effective; ``validate_d7_prevention`` reads a ``D7Discipline`` plus
+the optional same-report ``D4Discipline``, optional Control Plan evidence and optional FMEA
+residual-risk evidence, and reports whether the prevention change is documented in an artifact the
+manual names. All eight return a verdict on the same three-value ``ACCEPT`` / ``WARNING`` /
+``REJECT`` scale the other RCA engines use.
 
-**Scope.** D0 through D6 only. There is no state machine and no discipline-advancement API here —
+**Scope.** D0 through D7 only. There is no state machine and no discipline-advancement API here —
 those live in ``rca/eight_d.py``. These functions take typed discipline instances only; the
 untrusted-data trust boundary is ``validate_eight_d`` in ``rca/eight_d_schema.py``, which
-validates D0-D6 as part of a whole ``EightDReport``. The exceptions are the optional
+validates D0-D7 as part of a whole ``EightDReport``. The exceptions are the optional
 untrusted-evidence arguments: ``validate_d2_problem_description``'s ``is_is_not``, handed straight
 to ``quality_core.rca.is_is_not.scope_is_is_not``; ``validate_d3_containment``'s ``linked_ncr``,
-handed straight to ``quality_core.ncr.schema.validate_ncr``; and
+handed straight to ``quality_core.ncr.schema.validate_ncr``;
 ``validate_d6_implementation_validation``'s ``copq_data``, handed straight to
-``quality_core.copq.estimator.estimate_copq`` — the modules that own those trust boundaries —
-with no independent type check here.
+``quality_core.copq.estimator.estimate_copq``; and ``validate_d7_prevention``'s
+``control_plan_evidence`` / ``fmea_action``, handed straight to
+``quality_core.controlplan.schema.validate_control_plan`` and
+``quality_core.schema.action.Action`` — the modules that own those trust boundaries — with no
+independent type check here.
 
-**The optional cross-discipline arguments (D5's ``d4``, D6's ``d5``) are a documented, narrow
-exception to "one typed discipline argument per engine", and are still advisory.** #210's
+**The optional cross-discipline arguments (D5's ``d4``, D6's ``d5``, D7's ``d4``) are a
+documented, narrow exception to "one typed discipline argument per engine", and are still advisory.** #210's
 acceptance criteria are explicitly cross-discipline (a D5 PCA must be traceable to D4; a D6
 implemented action must name a D5 candidate), and no single-discipline argument can satisfy them.
 Both arguments are same-report, already-typed models, both default to ``None``, and neither engine
@@ -78,10 +84,11 @@ Standards References:
   problem-description step, and Figure 12 "Problem Identification Questions".
 
 Rules applied: RULE-8D-D0, RULE-8D-D0-001..003, RULE-8D-D1, RULE-8D-D1-001..003, RULE-8D-D2,
-RULE-8D-D2-001..003, RULE-8D-D3, RULE-8D-D4, RULE-8D-D5, RULE-8D-D5-001, RULE-8D-D6 and
-RULE-8D-D6-001 in ``rca/CITATIONS.tsv`` / ``rca/ASSUMPTIONS_LOG.md``.
-``RULE-8D-GATE-CONTAINMENT`` is *mirrored* by ``validate_d3_containment``, not re-cited as a new
-claim: the gate that rule backs stays in ``rca/eight_d.py``. The heuristics that no manual backs
+RULE-8D-D2-001..003, RULE-8D-D3, RULE-8D-D4, RULE-8D-D5, RULE-8D-D5-001, RULE-8D-D6,
+RULE-8D-D6-001 and RULE-8D-D7 in ``rca/CITATIONS.tsv`` / ``rca/ASSUMPTIONS_LOG.md``.
+``RULE-8D-GATE-CONTAINMENT`` is *mirrored* by ``validate_d3_containment``, and
+``RULE-8D-GATE-PREVENTION`` by ``validate_d7_prevention``, neither re-cited as a new claim: the
+gates those rules back stay in ``rca/eight_d.py``. The heuristics that no manual backs
 (``ERA_VERIFICATION_DATE_INCONSISTENT``, ``CHAMPION_TEAM_LEADER_SAME_PERSON``,
 ``DUPLICATE_TEAM_MEMBER``, the field-presence reading of "roles ... clear",
 ``DEGENERATE_PROBLEM_STATEMENT``, ``QUANTIFICATION_NOT_NUMERIC``, and the three NCR-linkage
@@ -90,7 +97,24 @@ as Process Design Decisions #6, #7 and #8 in ``rca/ASSUMPTIONS_LOG.md`` and carr
 The D5/D6 heuristics with no manual behind them — ``PCA_VERIFICATION_EVIDENCE_MISSING``,
 ``D4_NOT_SUPPLIED``, ``D5_NOT_SUPPLIED``, ``IMPLEMENTED_ACTION_UNKNOWN_CORRECTIVE_ACTION_ID``,
 ``IMPLEMENTED_ACTION_TARGET_COVERAGE_INCOMPLETE`` and ``ICA_NOT_REMOVED`` — are declared the same
-way, as Process Design Decision #11, and carry no citation row either.
+way, as Process Design Decision #11, and carry no citation row either. The D7 heuristics with no
+manual behind them — the structural D4→D7 traceability reading
+(``PREVENTION_NOT_TRACEABLE_ROOT_CAUSE`` / ``PREVENTION_ROOT_CAUSE_VALIDATION_NOT_RUN``), the
+Control-Plan-evidence optionality findings (``CONTROL_PLAN_EVIDENCE_NOT_PROVIDED`` /
+``CONTROL_PLAN_EVIDENCE_INVALID`` / ``CONTROL_PLAN_EVIDENCE_VALID``) and the informational
+``FMEA_RESIDUAL_RISK`` / ``FMEA_RESIDUAL_RISK_EVIDENCE_INCOMPLETE`` framing — are declared as
+Process Design Decision #12 and carry no citation row either. **No manual states an
+Action-Priority-must-improve threshold for D7**, so ``ap_reduced=False`` never raises severity
+above ``info``; inventing such a threshold would assert a rule no source states.
+
+**D7 is an advisory pre-flight check that shares its rule with the gate.**
+``validate_d7_prevention`` *reads* ``D7Discipline.has_qualifying_update``, extracted in E8/#211 as
+the single definition of "this D7 record names an FMEA or Control Plan artifact" and now read by
+all three consumers — ``eight_d.py``'s D7→D8 ``_prevention_reason`` gate,
+``eight_d_schema._closure_evidence_deficiencies``' ``PREVENTION_UPDATE_MISSING`` closure
+deficiency, and this engine. Before E8 the predicate was hand-written twice, identically, in the
+two gates; it is now written once, so this engine's ``REJECT`` and the gates' block cannot
+disagree about the same record.
 
 **PROCUREMENT-GAP (ISO 9001:2015 §8.7 / IATF 16949:2016 §8.7).** The licensed excerpts for the
 nonconforming-output clauses that stand behind ``quality_core.ncr`` are not on this machine, so no
@@ -104,6 +128,17 @@ already-implemented ``quality_core.copq.estimator.estimate_copq`` and authors no
 arithmetic, taxonomy, or methodology claim of its own; the COPQ reference manuals are not on this
 machine, so ``rca/`` cannot re-verify ``quality_core.copq``'s own citation base. Declared in full
 under Process Design Decision #11 in ``rca/ASSUMPTIONS_LOG.md`` — not duplicated here.
+
+**PROCUREMENT-GAP (AIAG-VDA FMEA Handbook / AIAG APQP and Control Plan manual).**
+``validate_d7_prevention`` only *calls* the already-implemented
+``quality_core.controlplan.schema.validate_control_plan`` and
+``quality_core.schema.action.Action.effectiveness`` (which reuses
+``quality_core.scoring.action_priority`` / ``rpn``), and authors **no** AIAG-VDA FMEA or AIAG
+APQP/Control-Plan standards claim of its own: no quotation or paraphrase of either manual appears
+anywhere in ``rca/``. Those two callees own their own, pre-existing, independently gated citation
+manifests (``controlplan/CITATIONS.tsv``, ``scoring_CITATIONS.tsv``), untouched by this epic; what
+this epic cannot do is *re-verify* them, because neither manual is on this machine. Declared in
+full under Process Design Decision #12 in ``rca/ASSUMPTIONS_LOG.md`` — not duplicated here.
 """
 
 from __future__ import annotations
@@ -115,11 +150,13 @@ from typing import Any, Literal, cast
 import pandas as pd
 import pydantic
 
+from quality_core.controlplan.schema import ControlPlanDataset, validate_control_plan
 from quality_core.copq.estimator import estimate_copq
 from quality_core.copq.schema import COPQDataset, CostItem
 from quality_core.io.validate import clean_pydantic_message
 from quality_core.ncr.schema import NCRDataset, validate_ncr
 from quality_core.rca.eight_d_schema import (
+    _QUALIFYING_ARTIFACT_TYPES,
     D0Discipline,
     D1Discipline,
     D2Discipline,
@@ -127,6 +164,7 @@ from quality_core.rca.eight_d_schema import (
     D4Discipline,
     D5Discipline,
     D6Discipline,
+    D7Discipline,
     EffectivenessVerification,
     LinkedNCRValidation,
     _linked_ncr_deficiency,
@@ -135,6 +173,7 @@ from quality_core.rca.fishbone import FishboneCategorizationResult, categorize_f
 from quality_core.rca.five_why import FiveWhyValidationResult, validate_five_why_chain
 from quality_core.rca.is_is_not import scope_is_is_not
 from quality_core.rca.schema import IsIsNotMatrix
+from quality_core.schema.action import Action, Effectiveness
 
 __all__ = [
     "D0Finding",
@@ -151,6 +190,8 @@ __all__ = [
     "D5ValidationResult",
     "D6Finding",
     "D6ValidationResult",
+    "D7Finding",
+    "D7ValidationResult",
     "validate_d0_readiness",
     "validate_d1_team",
     "validate_d2_problem_description",
@@ -158,6 +199,7 @@ __all__ = [
     "validate_d4_root_cause",
     "validate_d5_pca_selection",
     "validate_d6_implementation_validation",
+    "validate_d7_prevention",
 ]
 
 _STANDARDS_BASIS = "Ford Global 8D / AIAG CQI-20"
@@ -1933,6 +1975,405 @@ def validate_d6_implementation_validation(
         implementation_verified=discipline.is_verified,
         action_count=len(discipline.implemented_actions),
         copq_impact=copq_impact,
+        findings=findings,
+        recommendations=_dedupe(f.recommendation for f in findings),
+    )
+
+
+# ==============================================================================
+# 8. D7 — Prevent recurrence
+# ==============================================================================
+
+
+def _control_plan_findings(exc: Exception) -> tuple[str, ...]:
+    """Turn a ``validate_control_plan`` failure into text carrying the sub-engine's own words.
+
+    A deliberate second copy of ``_ncr_linkage_findings``' formatting, **by necessity, not by
+    preference**: the two callees raise from different packages and there is no shared home both
+    call sites could import a single helper from without either violating the downward-only import
+    direction or adding a new shared module outside this epic's scope. Named distinctly so it is
+    never mistaken for the NCR one, and kept in exact behavioural lockstep with it — same catch
+    shape, same ``"{location}: {message}"`` format, same ``str(exc)`` fallback for a non-pydantic
+    exception (``validate_control_plan`` raises a bare ``TypeError`` for an unsupported input
+    type).
+    """
+    if isinstance(exc, pydantic.ValidationError):
+        messages: list[str] = []
+        for error in exc.errors():
+            message = clean_pydantic_message(str(error["msg"]))
+            location = ".".join(str(part) for part in error["loc"])
+            messages.append(f"{location}: {message}" if location else message)
+        return tuple(messages)
+    return (str(exc),)
+
+
+@dataclass
+class D7Finding:
+    """Finding raised against the D7 prevention record or its supplied linkage evidence."""
+
+    code: str
+    severity: Literal["error", "warning", "info"]
+    artifact_type: (
+        Literal["FMEA", "CONTROL_PLAN", "PROCESS_FLOW", "WORK_INSTRUCTION", "OTHER"] | None
+    )
+    message: str
+    recommendation: str
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return serializable dictionary representation of the D7 finding."""
+        return asdict(self)
+
+
+@dataclass
+class D7ValidationResult:
+    """Complete D7 (prevent recurrence) validation result.
+
+    ``has_qualifying_update`` is read directly from ``D7Discipline.has_qualifying_update`` — never
+    recomputed by counting findings or re-testing ``artifact_type`` — so it cannot drift from the
+    same predicate the D7→D8 transition gate and the D8→CLOSED closure boundary both block on.
+    ``prevention_documented`` is the separate, broader ``D7Discipline.is_documented``: any update
+    at all, including a ``WORK_INSTRUCTION``- or ``OTHER``-typed one.
+    """
+
+    basis: str
+    valid: bool
+    verdict: Literal["ACCEPT", "WARNING", "REJECT"]
+    prevention_documented: bool
+    has_qualifying_update: bool
+    root_cause_traceable: bool | None
+    control_plan_evidence: dict[str, Any] | None
+    fmea_effectiveness: dict[str, Any] | None
+    findings: list[D7Finding]
+    recommendations: list[str]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return serializable dictionary representation of the D7 result."""
+        return {
+            "basis": self.basis,
+            "valid": self.valid,
+            "verdict": self.verdict,
+            "prevention_documented": self.prevention_documented,
+            "has_qualifying_update": self.has_qualifying_update,
+            "root_cause_traceable": self.root_cause_traceable,
+            "control_plan_evidence": self.control_plan_evidence,
+            "fmea_effectiveness": self.fmea_effectiveness,
+            "findings": [f.to_dict() for f in self.findings],
+            "recommendations": list(self.recommendations),
+        }
+
+
+def validate_d7_prevention(
+    discipline: D7Discipline,
+    d4: D4Discipline | None = None,
+    control_plan_evidence: ControlPlanDataset | pd.DataFrame | list[Any] | None = None,
+    fmea_action: Action | dict[str, Any] | None = None,
+    fmea_before: tuple[int, int, int] | None = None,
+) -> D7ValidationResult:
+    """Validate D7: the prevention documentation update, its D4 traceability, and its evidence.
+
+    Ford Global 8D's D7 requires modifying the systems, policies, practices and procedures that
+    permitted the problem, and its evaluation question asks "Have all changes been documented
+    (for example, FMEA, control plan, flow of process)?" (``RULE-8D-D7``, repeated at five
+    checkpoints and cited for the gate as ``RULE-8D-GATE-PREVENTION``). **What that passage
+    establishes** is that the FMEA and the control plan are the artifacts a D7 change is recorded
+    in. **What this engine does** with it is narrower and is this platform's translation: it
+    reports whether the record names at least one such artifact, and — when the caller supplies
+    them — validates the linked Control Plan and reports FMEA residual risk. The manual states no
+    threshold, no evidence format, and no completeness algorithm; none is invented here.
+
+    **Advisory pre-flight check that shares its rule with the gate.** ``has_qualifying_update``
+    *reads* — and never redefines — ``D7Discipline.has_qualifying_update``, the one predicate
+    ``eight_d.py``'s D7→D8 ``_prevention_reason`` gate and
+    ``eight_d_schema._closure_evidence_deficiencies``' ``PREVENTION_UPDATE_MISSING`` closure
+    deficiency both block on. One rule, one definition: this engine keeps no second copy of it and
+    does not call ``transition_eight_d``. ``PREVENTION_ARTIFACT_UPDATE_MISSING`` is reported at
+    ``severity="error"`` for the same reason ``ERA_NOT_IMPLEMENTED`` (D0),
+    ``CONTAINMENT_ACTION_NOT_VERIFIED`` (D3) and ``IMPLEMENTED_ACTION_NOT_VERIFIED`` (D6) are —
+    the advisory engine reports as an error the exact fact the gate blocks on, even where the
+    schema itself permits the underlying state to be constructed.
+
+    **D4→D7 traceability is structural, not semantic.** The check proves only that D4 as a whole
+    did the proving work — a non-``REJECT`` ``five_why_verdict`` on the root-cause finding — and
+    that D7 recorded a qualifying artifact update at all. It does **not**, and cannot without
+    fuzzy string matching, prove that a specific ``DocumentationUpdate.artifact_reference``
+    implements a fix for the specific ``RootCauseFinding.statement``: ``DocumentationUpdate``
+    carries no ``target`` field (unlike ``CorrectiveActionCandidate.target`` at D5) and no link
+    identifier to ``D4Discipline`` at all, so — unlike D6's exact-match ``corrective_action_id``
+    cross-reference — no structural per-artifact match is possible, only a report-level "was D4
+    proven at all" check. That is the same fuzzy matching ``D4Discipline``'s own docstring
+    disclaims for having no standards basis, and this epic does not reintroduce it under another
+    name. **Whether the specific FMEA or Control Plan change genuinely addresses the specific root
+    cause remains a human judgment call this tool does not automate.**
+
+    **Bidirectional PFMEA linkage is deliberately not checked here.**
+    ``quality_core.controlplan.validate_pfmea_linkage`` exists and is importable downward, but it
+    takes a ``ControlPlanDataset`` *and* a ``RelationalFMEA``, and ``D7Discipline`` carries no
+    FMEA payload to build one from — ``DocumentationUpdate.artifact_reference`` is a bare string,
+    not a linkable dataset. There is therefore nothing on this record for it to check. Linkage
+    checking stays at the MCP tool layer, where the caller holds both documents.
+
+    Parameters
+    ----------
+    discipline : D7Discipline
+        A validated D7 discipline record. The untrusted-data trust boundary is
+        ``validate_eight_d``, as for every other discipline engine here.
+    d4 : D4Discipline | None, optional
+        The same report's already-typed D4 record. ``None`` means it was not supplied on this
+        call: a warning, and the traceability check is skipped rather than guessed at
+        (``root_cause_traceable=None``).
+    control_plan_evidence : ControlPlanDataset | DataFrame | list | None, optional
+        Untrusted Control Plan evidence in any shape
+        ``quality_core.controlplan.schema.validate_control_plan`` accepts, passed through
+        unchanged with no pre-parsing or pre-validation here. ``None`` means none was supplied,
+        which warns only when the record itself declares a ``CONTROL_PLAN`` update.
+    fmea_action : Action | dict | None, optional
+        The re-rated ``quality_core.schema.action.Action`` recording the post-update FMEA
+        ratings, or a dict ``Action`` accepts. Required together with ``fmea_before``.
+    fmea_before : tuple[int, int, int] | None, optional
+        The pre-update ``(severity, occurrence, detection)`` triple the D7 change is measured
+        against. Required together with ``fmea_action``.
+
+    Returns
+    -------
+    D7ValidationResult
+        Verdict, prevention summary, findings, optional Control Plan and FMEA residual-risk
+        payloads, and de-duplicated recommendations.
+
+    Raises
+    ------
+    pydantic.ValidationError
+        Propagated unmodified from ``Action(**fmea_action)`` when the supplied dict is not a valid
+        ``Action``. Unlike the ``control_plan_evidence`` path, this one is deliberately *not*
+        caught: FMEA residual risk is optional, informational context that gates nothing, so there
+        is no gate-safety reason to convert the error into a verdict. Mirrors
+        ``validate_d6_implementation_validation``'s ``copq_data`` path.
+    ValueError
+        Propagated unmodified from ``Action.effectiveness`` (via
+        ``quality_core.scoring.action_priority`` / ``rpn``) when any supplied rating is outside
+        the 1..10 scale.
+    """
+    findings: list[D7Finding] = []
+
+    if not discipline.has_qualifying_update:
+        findings.append(
+            D7Finding(
+                code="PREVENTION_ARTIFACT_UPDATE_MISSING",
+                severity="error",
+                artifact_type=None,
+                message=(
+                    "D7 records no FMEA or Control Plan documentation update; Ford Global 8D asks "
+                    "whether all changes have been documented (for example, FMEA, control plan, "
+                    "flow of process) at this checkpoint (RULE-8D-D7, RULE-8D-GATE-PREVENTION), "
+                    "and this is the same evidence the D7 to D8 and D8 to CLOSED gates require."
+                ),
+                recommendation=(
+                    "Record a documentation_updates entry with artifact_type FMEA or "
+                    "CONTROL_PLAN before advancing past D7."
+                ),
+            )
+        )
+    else:
+        qualifying_types = sorted(
+            {
+                update.artifact_type
+                for update in discipline.documentation_updates
+                if update.artifact_type in _QUALIFYING_ARTIFACT_TYPES
+            }
+        )
+        findings.append(
+            D7Finding(
+                code="PREVENTION_ARTIFACT_UPDATE_RECORDED",
+                severity="info",
+                artifact_type=None,
+                message=(
+                    "D7 records a qualifying documentation update: "
+                    f"{', '.join(qualifying_types)}."
+                ),
+                recommendation=(
+                    "No action required for the prevention-documentation precondition."
+                ),
+            )
+        )
+
+    root_cause_traceable: bool | None
+    if d4 is None:
+        findings.append(
+            D7Finding(
+                code="D4_NOT_SUPPLIED",
+                severity="warning",
+                artifact_type=None,
+                message=(
+                    "No D4 record was supplied, so the D7 prevention update could not be checked "
+                    "for traceability to a proven root cause."
+                ),
+                recommendation=(
+                    "Supply the report's D4 record so the D7 update can be checked against it."
+                ),
+            )
+        )
+        root_cause_traceable = None
+    elif not discipline.has_qualifying_update:
+        # Already reported as PREVENTION_ARTIFACT_UPDATE_MISSING above; do not double-report.
+        root_cause_traceable = False
+    elif d4.root_cause.five_why_verdict == "REJECT":
+        findings.append(
+            D7Finding(
+                code="PREVENTION_NOT_TRACEABLE_ROOT_CAUSE",
+                severity="error",
+                artifact_type=None,
+                message=(
+                    "D4's recorded five_why_verdict for the root cause is REJECT, so the causal "
+                    "chain the D7 update is supposed to prevent recurrence of was not accepted."
+                ),
+                recommendation=(
+                    "Resolve the rejected root-cause 5-Why chain in D4 before relying on it to "
+                    "justify a D7 update."
+                ),
+            )
+        )
+        root_cause_traceable = False
+    elif d4.root_cause.five_why_verdict is None:
+        findings.append(
+            D7Finding(
+                code="PREVENTION_ROOT_CAUSE_VALIDATION_NOT_RUN",
+                severity="warning",
+                artifact_type=None,
+                message=(
+                    "D4 records no five_why_verdict for the root cause, so its causal chain has "
+                    "not been validated yet."
+                ),
+                recommendation=(
+                    "Run the root-cause 5-Why validation in D4 and record its verdict."
+                ),
+            )
+        )
+        root_cause_traceable = False
+    else:
+        root_cause_traceable = True
+
+    control_plan_payload: dict[str, Any] | None = None
+    if control_plan_evidence is not None:
+        try:
+            cp_dataset = validate_control_plan(control_plan_evidence)
+        except (pydantic.ValidationError, TypeError, ValueError) as exc:
+            findings.append(
+                D7Finding(
+                    code="CONTROL_PLAN_EVIDENCE_INVALID",
+                    severity="error",
+                    artifact_type="CONTROL_PLAN",
+                    message=(
+                        "Linked Control Plan evidence is invalid: "
+                        + "; ".join(_control_plan_findings(exc))
+                        + "."
+                    ),
+                    recommendation=(
+                        "Correct the linked Control Plan data so it satisfies "
+                        "quality_core.controlplan.schema.validate_control_plan."
+                    ),
+                )
+            )
+        else:
+            control_plan_payload = cp_dataset.model_dump(mode="json")
+            findings.append(
+                D7Finding(
+                    code="CONTROL_PLAN_EVIDENCE_VALID",
+                    severity="info",
+                    artifact_type="CONTROL_PLAN",
+                    message=(
+                        "Linked Control Plan evidence is structurally valid "
+                        f"({len(cp_dataset.rows)} characteristic row(s))."
+                    ),
+                    recommendation=(
+                        "No action required; the linked Control Plan evidence is valid."
+                    ),
+                )
+            )
+    elif any(update.artifact_type == "CONTROL_PLAN" for update in discipline.documentation_updates):
+        findings.append(
+            D7Finding(
+                code="CONTROL_PLAN_EVIDENCE_NOT_PROVIDED",
+                severity="warning",
+                artifact_type="CONTROL_PLAN",
+                message=(
+                    "D7 declares a CONTROL_PLAN update but no Control Plan evidence was supplied "
+                    "to independently verify it."
+                ),
+                recommendation=(
+                    "Supply the updated Control Plan data so it can be validated against "
+                    "quality_core.controlplan.schema.validate_control_plan."
+                ),
+            )
+        )
+
+    fmea_payload: dict[str, Any] | None = None
+    if fmea_action is not None and fmea_before is not None:
+        action = fmea_action if isinstance(fmea_action, Action) else Action(**fmea_action)
+        effectiveness: Effectiveness = action.effectiveness(*fmea_before)
+        fmea_payload = asdict(effectiveness)
+        findings.append(
+            D7Finding(
+                code="FMEA_RESIDUAL_RISK",
+                severity="info",
+                artifact_type="FMEA",
+                message=(
+                    f"FMEA residual risk after the D7 update: RPN "
+                    f"{effectiveness.initial_rpn} to {effectiveness.revised_rpn} "
+                    f"(delta {effectiveness.rpn_delta}), Action Priority "
+                    f"{effectiveness.initial_ap} to {effectiveness.revised_ap} "
+                    f"({'reduced' if effectiveness.ap_reduced else 'not reduced'})."
+                ),
+                recommendation=(
+                    "No action required; this is informational residual-risk context, not a "
+                    "pass/fail check."
+                ),
+            )
+        )
+    elif fmea_action is not None or fmea_before is not None:
+        findings.append(
+            D7Finding(
+                code="FMEA_RESIDUAL_RISK_EVIDENCE_INCOMPLETE",
+                severity="warning",
+                artifact_type="FMEA",
+                message=(
+                    "Both fmea_action and fmea_before are required to compute FMEA residual "
+                    "risk; only one was supplied."
+                ),
+                recommendation=(
+                    "Supply both the pre-update (severity, occurrence, detection) rating and the "
+                    "re-rated Action to compute residual risk."
+                ),
+            )
+        )
+
+    verdict: Literal["ACCEPT", "WARNING", "REJECT"]
+    if any(f.severity == "error" for f in findings):
+        verdict, valid = "REJECT", False
+    elif any(f.severity == "warning" for f in findings):
+        verdict, valid = "WARNING", True
+    else:
+        findings.append(
+            D7Finding(
+                code="D7_READY",
+                severity="info",
+                artifact_type=None,
+                message=(
+                    "D7 prevention documentation is recorded, qualifying, and traceable to a "
+                    "proven D4 root cause."
+                ),
+                recommendation="Prevention documentation is complete; proceed to D8.",
+            )
+        )
+        verdict, valid = "ACCEPT", True
+
+    return D7ValidationResult(
+        basis=_STANDARDS_BASIS,
+        valid=valid,
+        verdict=verdict,
+        prevention_documented=discipline.is_documented,
+        has_qualifying_update=discipline.has_qualifying_update,
+        root_cause_traceable=root_cause_traceable,
+        control_plan_evidence=control_plan_payload,
+        fmea_effectiveness=fmea_payload,
         findings=findings,
         recommendations=_dedupe(f.recommendation for f in findings),
     )

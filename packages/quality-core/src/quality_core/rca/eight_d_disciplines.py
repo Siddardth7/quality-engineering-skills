@@ -3,7 +3,8 @@ eight_d_disciplines.py
 Deterministic 8D discipline engines for D0 (Emergency Response Action readiness), D1
 (team completeness), D2 (problem description), D3 (interim containment), D4 (root cause
 and escape point), D5 (permanent corrective action selection), D6 (implementation and
-validation), and D7 (prevent recurrence).
+validation), D7 (prevent recurrence) and D8 (recognize the team and close), plus
+``validate_8d``, the read-only whole-report orchestrator over all of them.
 
 Pure, post-validation checks over already-typed :mod:`quality_core.rca.eight_d_schema` models:
 ``validate_d0_readiness`` reads a ``D0Discipline`` and reports whether the Emergency Response
@@ -21,13 +22,19 @@ the optional same-report ``D5Discipline`` and optional COPQ cost data and report
 implemented PCA is verified effective; ``validate_d7_prevention`` reads a ``D7Discipline`` plus
 the optional same-report ``D4Discipline``, optional Control Plan evidence and optional FMEA
 residual-risk evidence, and reports whether the prevention change is documented in an artifact the
-manual names. All eight return a verdict on the same three-value ``ACCEPT`` / ``WARNING`` /
-``REJECT`` scale the other RCA engines use.
+manual names; ``validate_d8_closure`` reads a whole ``EightDReport`` and reports whether the D8
+closure record is complete *and* whether the shared closure-evidence boundary would let the report
+close. All nine return a verdict on the same three-value ``ACCEPT`` / ``WARNING`` / ``REJECT``
+scale the other RCA engines use, and ``validate_8d`` combines those nine verdicts with every
+transition gate into one whole-report closure-readiness verdict on the same scale.
 
-**Scope.** D0 through D7 only. There is no state machine and no discipline-advancement API here —
-those live in ``rca/eight_d.py``. These functions take typed discipline instances only; the
-untrusted-data trust boundary is ``validate_eight_d`` in ``rca/eight_d_schema.py``, which
-validates D0-D7 as part of a whole ``EightDReport``. The exceptions are the optional
+**Scope.** D0 through D8, advisory only. There is no state machine and no discipline-advancement
+API here — those live in ``rca/eight_d.py``, and nothing in this module calls
+``transition_eight_d`` or mutates a report. These functions take typed discipline instances only
+(``validate_d8_closure`` and ``validate_8d`` take an already-typed ``EightDReport``; see the
+whole-report paragraph below); the untrusted-data trust boundary is ``validate_eight_d`` in
+``rca/eight_d_schema.py``, which validates D0-D8 as part of a whole ``EightDReport``. The
+exceptions are the optional
 untrusted-evidence arguments: ``validate_d2_problem_description``'s ``is_is_not``, handed straight
 to ``quality_core.rca.is_is_not.scope_is_is_not``; ``validate_d3_containment``'s ``linked_ncr``,
 handed straight to ``quality_core.ncr.schema.validate_ncr``;
@@ -49,6 +56,31 @@ a state transition*, and that still happens only in ``rca/eight_d.py``. The one 
 touch enforcement is the D8 to CLOSED closure boundary, where verified-effective D6 actions became
 a shared ``_closure_evidence_deficiencies`` requirement (``PCA_NOT_VERIFIED``, ``PDD-8D-010``) —
 one rule read by both the CLOSED-report model validator and the closure gate, never a second copy.
+
+**D8 and ``validate_8d`` take a whole ``EightDReport``, a fourth and different exception to "one
+typed discipline argument per engine" (Process Design Decision #14).** D8's substantive question —
+"is this report's closure evidence complete" — is answered by the shared
+``eight_d_schema._closure_evidence_deficiencies`` evaluator, which needs ``report.d8``,
+``report.root_cause_validation``, ``report.d3``, ``report.d6`` and ``report.d7`` together. Taking a
+bare ``D8Discipline`` plus four narrow optional arguments and rebuilding a throwaway
+``EightDReport`` internally, purely to satisfy that evaluator's signature, would mean maintaining a
+synthetic report that has to stay behaviourally identical to a real one — reimplementation risk for
+no benefit. The report is therefore accepted directly, and the shared evaluator is *reused*, never
+re-derived. ``validate_8d`` takes the report for the same reason: it is a dispatcher over every
+per-discipline engine plus the gate evaluators, and every one of its inputs is a field of the
+report.
+
+**``validate_8d`` lives here, not in ``rca/eight_d.py``, and that is deliberate.** It is an
+advisory, read-only orchestrator over the D0-D8 advisory engines this module already owns: it never
+calls ``transition_eight_d``, never mutates a report, and returns findings rather than a new state.
+``rca/eight_d.py`` frames itself as the *pure* state machine, and pulling this module's downstream
+dependencies (``pandas``, ``ncr.schema``, ``controlplan.schema``, ``copq.estimator``, ``fishbone``,
+``five_why``, ``is_is_not``) into it to host one advisory function would destroy that purity for no
+gain. The direction of the dependency is therefore this module → ``eight_d.py``, from which
+``validate_8d`` imports three private helpers (``_state``, ``_linked_ncr_reason``,
+``_closure_reasons``) — the same kind of cross-module private reuse ``eight_d.py`` itself already
+practises against ``eight_d_schema``'s ``_closure_evidence_deficiencies`` /
+``_linked_ncr_deficiency``, and for the same reason: one definition of each rule, never two.
 
 **D3 is an advisory pre-flight check that shares its rules with the gate.**
 ``validate_d3_containment`` *reads* ``D3Discipline.is_verified``, the same predicate
@@ -85,10 +117,12 @@ Standards References:
 
 Rules applied: RULE-8D-D0, RULE-8D-D0-001..003, RULE-8D-D1, RULE-8D-D1-001..003, RULE-8D-D2,
 RULE-8D-D2-001..003, RULE-8D-D3, RULE-8D-D4, RULE-8D-D5, RULE-8D-D5-001, RULE-8D-D6,
-RULE-8D-D6-001 and RULE-8D-D7 in ``rca/CITATIONS.tsv`` / ``rca/ASSUMPTIONS_LOG.md``.
-``RULE-8D-GATE-CONTAINMENT`` is *mirrored* by ``validate_d3_containment``, and
-``RULE-8D-GATE-PREVENTION`` by ``validate_d7_prevention``, neither re-cited as a new claim: the
-gates those rules back stay in ``rca/eight_d.py``. The heuristics that no manual backs
+RULE-8D-D6-001, RULE-8D-D7 and RULE-8D-D8 in ``rca/CITATIONS.tsv`` / ``rca/ASSUMPTIONS_LOG.md``.
+``RULE-8D-GATE-CONTAINMENT`` is *mirrored* by ``validate_d3_containment``,
+``RULE-8D-GATE-PREVENTION`` by ``validate_d7_prevention``, and ``RULE-8D-GATE-CLOSURE`` by
+``validate_d8_closure`` / ``validate_8d`` (which *compose* the already-shared
+``_closure_evidence_deficiencies`` and ``_closure_reasons`` rather than re-deriving them), none
+re-cited as a new claim: the gates those rules back stay in ``rca/eight_d.py``. The heuristics that no manual backs
 (``ERA_VERIFICATION_DATE_INCONSISTENT``, ``CHAMPION_TEAM_LEADER_SAME_PERSON``,
 ``DUPLICATE_TEAM_MEMBER``, the field-presence reading of "roles ... clear",
 ``DEGENERATE_PROBLEM_STATEMENT``, ``QUANTIFICATION_NOT_NUMERIC``, and the three NCR-linkage
@@ -107,7 +141,13 @@ Control-Plan-evidence optionality findings (``CONTROL_PLAN_EVIDENCE_NOT_PROVIDED
 ``FMEA_RESIDUAL_RISK`` / ``FMEA_RESIDUAL_RISK_EVIDENCE_INCOMPLETE`` framing — are declared as
 Process Design Decision #12 and carry no citation row either. **No manual states an
 Action-Priority-must-improve threshold for D7**, so ``ap_reduced=False`` never raises severity
-above ``info``; inventing such a threshold would assert a rule no source states.
+above ``info``; inventing such a threshold would assert a rule no source states. The D8 /
+``validate_8d`` decisions with no manual behind them — the whole-report signatures, the deliberate
+exclusion of D4 from ``validate_8d``'s per-discipline sweep, the REJECT > WARNING > ACCEPT verdict
+combination, and the explicit ``_linked_ncr_reason`` call that keeps the D3→D4-only
+``LINKED_NCR_INVALID`` gate visible in a whole-report read — are declared as Process Design
+Decision #14 and carry no citation row either; ``D8_WARNING_OVERRIDE_MISSING`` restates Process
+Design Decision #4, which ``D8Discipline`` already enforces at construction time.
 
 **D7 is an advisory pre-flight check that shares its rule with the gate.**
 ``validate_d7_prevention`` *reads* ``D7Discipline.has_qualifying_update``, extracted in E8/#211 as
@@ -148,6 +188,7 @@ full under Process Design Decision #12 in ``rca/ASSUMPTIONS_LOG.md`` — not dup
 
 from __future__ import annotations
 
+import copy
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
 from typing import Any, Literal, cast
@@ -160,6 +201,13 @@ from quality_core.copq.estimator import estimate_copq
 from quality_core.copq.schema import COPQDataset, CostItem
 from quality_core.io.validate import clean_pydantic_message
 from quality_core.ncr.schema import NCRDataset, validate_ncr
+from quality_core.rca.eight_d import (
+    EightDState,
+    TransitionReason,
+    _closure_reasons,
+    _linked_ncr_reason,
+    _state,
+)
 from quality_core.rca.eight_d_schema import (
     _QUALIFYING_ARTIFACT_TYPES,
     D0Discipline,
@@ -170,8 +218,12 @@ from quality_core.rca.eight_d_schema import (
     D5Discipline,
     D6Discipline,
     D7Discipline,
+    D8Discipline,
     EffectivenessVerification,
+    EightDReport,
+    FiveWhyVerdict,
     LinkedNCRValidation,
+    _closure_evidence_deficiencies,
     _linked_ncr_deficiency,
 )
 from quality_core.rca.fishbone import FishboneCategorizationResult, categorize_fishbone
@@ -197,6 +249,10 @@ __all__ = [
     "D6ValidationResult",
     "D7Finding",
     "D7ValidationResult",
+    "D8Finding",
+    "D8ValidationResult",
+    "EightDValidationResult",
+    "validate_8d",
     "validate_d0_readiness",
     "validate_d1_team",
     "validate_d2_problem_description",
@@ -205,6 +261,7 @@ __all__ = [
     "validate_d5_pca_selection",
     "validate_d6_implementation_validation",
     "validate_d7_prevention",
+    "validate_d8_closure",
 ]
 
 _STANDARDS_BASIS = "Ford Global 8D / AIAG CQI-20"
@@ -2422,4 +2479,428 @@ def validate_d7_prevention(
         fmea_effectiveness=fmea_payload,
         findings=findings,
         recommendations=_dedupe(f.recommendation for f in findings),
+    )
+
+
+# ==============================================================================
+# 9. D8 — Recognize the team and close
+# ==============================================================================
+
+
+@dataclass
+class D8Finding:
+    """Finding raised against the D8 closure record or the closure evidence it is judged against.
+
+    ``code`` is either one of the nine ``eight_d_schema._ClosureDeficiencyCode`` values, reused
+    **verbatim** from the shared ``_closure_evidence_deficiencies`` evaluator so this advisory
+    engine and the D8→CLOSED gate can never name the same deficiency differently, or one of the
+    codes this engine owns outright: ``D8_NOT_STARTED``, ``D8_DOCUMENTATION_NOT_REVIEWED``,
+    ``D8_REVIEW_PROVENANCE_INCOMPLETE``, ``D8_ROOT_CAUSE_REJECTED``,
+    ``D8_WARNING_OVERRIDE_MISSING`` and the clean-pass ``D8_READY``.
+    """
+
+    code: str
+    severity: Literal["error", "warning", "info"]
+    message: str
+    recommendation: str
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return serializable dictionary representation of the D8 finding."""
+        return asdict(self)
+
+
+@dataclass
+class D8ValidationResult:
+    """Complete D8 (recognize the team and close out) validation result.
+
+    ``closeable`` is ``_closure_evidence_deficiencies(report) == ()`` — the one shared
+    closure-evidence evaluator that the ``CLOSED``-report model validator and
+    ``transition_eight_d``'s D8→CLOSED gate both consume — read directly and never recomputed by
+    counting findings, so it cannot drift from what those two checkpoints will decide about the
+    same report.
+
+    ``closeable`` and ``verdict`` are deliberately kept as two distinct facts. ``verdict`` is the
+    advisory three-value read every engine in this module returns, and it also reflects
+    D8-record-level findings that the closure boundary does not itself evaluate — notably
+    ``D8_DOCUMENTATION_NOT_REVIEWED``, since ``_closure_evidence_deficiencies`` never reads
+    ``documentation_reviewed``. A report can therefore be ``closeable=True`` while this engine
+    still returns ``REJECT``, and the two are not in conflict: they answer different questions.
+
+    ``d8_recorded``, ``documentation_reviewed`` and ``linked_five_why_verdict`` describe the D8
+    record itself and degrade to ``False`` / ``False`` / ``None`` when ``report.d8`` is ``None``,
+    which is a legitimate in-progress state rather than a malformed report.
+    """
+
+    basis: str
+    valid: bool
+    verdict: Literal["ACCEPT", "WARNING", "REJECT"]
+    d8_recorded: bool
+    documentation_reviewed: bool
+    linked_five_why_verdict: FiveWhyVerdict | None
+    closeable: bool
+    findings: list[D8Finding]
+    recommendations: list[str]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return serializable dictionary representation of the D8 result."""
+        return {
+            "basis": self.basis,
+            "valid": self.valid,
+            "verdict": self.verdict,
+            "d8_recorded": self.d8_recorded,
+            "documentation_reviewed": self.documentation_reviewed,
+            "linked_five_why_verdict": self.linked_five_why_verdict,
+            "closeable": self.closeable,
+            "findings": [f.to_dict() for f in self.findings],
+            "recommendations": list(self.recommendations),
+        }
+
+
+def validate_d8_closure(report: EightDReport) -> D8ValidationResult:
+    """Validate D8: the closing documentation review and the whole-report closure evidence.
+
+    Ford Global 8D's D8 completes the team's experience by recognizing individual and team
+    contributions, and its closing checklist asks to "ensure that all related documentation is
+    reviewed and updated" (``RULE-8D-D8``). **What that passage establishes** is that a
+    documentation review is part of closing out an 8D. **What this engine does** with it is
+    narrower and is this platform's translation: it reports whether ``documentation_reviewed`` was
+    set. The manual states no review checklist, no reviewer competence rule and no completeness
+    algorithm, and none is invented here. Team recognition itself carries no checkable predicate —
+    ``team_recognition_notes`` is required non-blank text at the schema level, and judging its
+    adequacy would be a claim no source supports — so this engine asserts nothing about it.
+
+    **Advisory pre-flight check that shares its rules with the gate.** The closure-evidence half of
+    this engine is ``eight_d_schema._closure_evidence_deficiencies(report)``, called once and
+    reported verbatim: each returned deficiency becomes one ``error`` finding carrying the
+    evaluator's own ``code`` and ``message``. That is the same evaluator the ``CLOSED``-report
+    model validator and ``transition_eight_d``'s D8→CLOSED gate consume (the latter through
+    ``_closure_reasons``, ``RULE-8D-GATE-CLOSURE`` / ``PDD-8D-010`` / ``PDD-8D-013``), so this
+    engine's ``REJECT`` and the gate's block cannot disagree about the same report. No closure rule
+    is re-derived here, and this engine never calls ``transition_eight_d``.
+
+    **The whole-report signature is a documented deviation** from this module's "one typed
+    discipline argument per engine" norm, recorded as Process Design Decision #14: the shared
+    closure evaluator needs ``report.d8``, ``report.root_cause_validation``, ``report.d3``,
+    ``report.d6`` and ``report.d7`` together, and reconstructing a throwaway report internally to
+    satisfy its signature would be reimplementation risk for no benefit. See the module docstring.
+
+    **``closure_approved`` is deliberately not read.** Whether closure has been *approved* is
+    orthogonal to whether the evidence supporting it is complete; ``D8Discipline`` already refuses
+    at construction time to record ``closure_approved=True`` on a ``REJECT`` verdict or on an
+    unoverridden ``WARNING``, and ``EightDReport``'s ``CLOSED``-state validator is the actual gate.
+    Re-checking either here would be a second copy of a rule the schema already owns.
+
+    The two D8-record findings that mirror those model rules —
+    ``D8_ROOT_CAUSE_REJECTED`` (``RULE-8D-GATE-CLOSURE``: the systemic root cause of the root cause
+    must be established and resolved) and ``D8_WARNING_OVERRIDE_MISSING`` (Process Design Decision
+    #4: closing on a marginal causal chain requires an explicit, attributable override) — are
+    reported as *advisory* ``error`` findings against the record's own
+    ``linked_five_why_verdict``, and are never reported together: a ``REJECT`` verdict cannot also
+    be a ``WARNING`` missing its override.
+
+    Args:
+        report: An already-validated ``EightDReport``. The untrusted-data trust boundary is
+            ``validate_eight_d``; this engine performs no schema validation of its own.
+
+    Returns:
+        ``D8ValidationResult`` — ``REJECT`` when any closure deficiency or D8-record error is
+        present, ``WARNING`` when D8 has simply not been recorded yet, ``ACCEPT`` otherwise.
+    """
+    discipline: D8Discipline | None = report.d8
+    deficiencies = _closure_evidence_deficiencies(report)
+    findings: list[D8Finding] = [
+        D8Finding(
+            code=deficiency.code,
+            severity="error",
+            message=deficiency.message,
+            recommendation=(
+                "Complete the closure evidence this deficiency names before closing the report; "
+                "the D8 to CLOSED gate blocks on the same shared evaluator."
+            ),
+        )
+        for deficiency in deficiencies
+    ]
+
+    if discipline is None:
+        findings.append(
+            D8Finding(
+                code="D8_NOT_STARTED",
+                severity="warning",
+                message=(
+                    "D8 has not been recorded on this report yet; team recognition and the "
+                    "closure documentation review have not started."
+                ),
+                recommendation=(
+                    "Record a D8Discipline once the team recognition and documentation review "
+                    "are ready to be captured."
+                ),
+            )
+        )
+    else:
+        if not discipline.documentation_reviewed:
+            findings.append(
+                D8Finding(
+                    code="D8_DOCUMENTATION_NOT_REVIEWED",
+                    severity="error",
+                    message=(
+                        "D8's documentation has not been marked reviewed; Ford Global 8D's D8 "
+                        "checklist asks to ensure that all related documentation is reviewed and "
+                        "updated (RULE-8D-D8)."
+                    ),
+                    recommendation=(
+                        "Set documentation_reviewed=True once the closing documentation review is "
+                        "complete, and record documentation_review_date/documentation_reviewed_by."
+                    ),
+                )
+            )
+        elif (
+            discipline.documentation_reviewed_by is None
+            or discipline.documentation_review_date is None
+        ):
+            findings.append(
+                D8Finding(
+                    code="D8_REVIEW_PROVENANCE_INCOMPLETE",
+                    severity="warning",
+                    message=(
+                        "D8 records the closing documentation review as complete but does not say "
+                        "who performed it or when; the review is therefore unattributable. "
+                        "RULE-8D-D8 requires the review itself; requiring it to be attributable "
+                        "is this platform's heuristic (Process Design Decision #15)."
+                    ),
+                    recommendation=(
+                        "Record documentation_reviewed_by and documentation_review_date alongside "
+                        "documentation_reviewed=True."
+                    ),
+                )
+            )
+        if discipline.linked_five_why_verdict == "REJECT":
+            findings.append(
+                D8Finding(
+                    code="D8_ROOT_CAUSE_REJECTED",
+                    severity="error",
+                    message=(
+                        "D8's linked 5-Why verdict is REJECT; Ford Global 8D requires the systemic "
+                        "root cause of the root cause to be established and resolved before "
+                        "closure (RULE-8D-GATE-CLOSURE)."
+                    ),
+                    recommendation=(
+                        "Resolve the causal chain (or replace it with one that is not REJECT) "
+                        "before closure."
+                    ),
+                )
+            )
+        elif (
+            discipline.linked_five_why_verdict == "WARNING" and discipline.warning_override is None
+        ):
+            findings.append(
+                D8Finding(
+                    code="D8_WARNING_OVERRIDE_MISSING",
+                    severity="error",
+                    message=(
+                        "D8's linked 5-Why verdict is WARNING with no recorded warning_override; "
+                        "this platform requires an explicit, attributable override to close on a "
+                        "marginal causal chain (Process Design Decision #4)."
+                    ),
+                    recommendation=(
+                        "Record a WarningOverride (approved_by, justification, override_date) "
+                        "before closure."
+                    ),
+                )
+            )
+
+    verdict: Literal["ACCEPT", "WARNING", "REJECT"]
+    if any(f.severity == "error" for f in findings):
+        verdict, valid = "REJECT", False
+    elif any(f.severity == "warning" for f in findings):
+        verdict, valid = "WARNING", True
+    else:
+        findings.append(
+            D8Finding(
+                code="D8_READY",
+                severity="info",
+                message=(
+                    "D8 is recorded, its documentation is reviewed, and the whole-report closure "
+                    "evidence is complete."
+                ),
+                recommendation="D8 is complete; the report may be closed.",
+            )
+        )
+        verdict, valid = "ACCEPT", True
+
+    return D8ValidationResult(
+        basis=_STANDARDS_BASIS,
+        valid=valid,
+        verdict=verdict,
+        d8_recorded=discipline is not None,
+        documentation_reviewed=False if discipline is None else discipline.documentation_reviewed,
+        linked_five_why_verdict=(
+            None if discipline is None else discipline.linked_five_why_verdict
+        ),
+        closeable=not deficiencies,
+        findings=findings,
+        recommendations=_dedupe(f.recommendation for f in findings),
+    )
+
+
+# ==============================================================================
+# 10. validate_8d — full-report orchestrator
+# ==============================================================================
+
+
+@dataclass(frozen=True)
+class EightDValidationResult:
+    """One whole-report 8D verdict: state, every gate, and every per-discipline advisory result.
+
+    ``verdict`` answers **"is this report closure-ready right now"**, not "is this report
+    internally valid". ``EightDReport`` already refuses to construct an internally inconsistent
+    report, so any report reaching ``validate_8d`` is schema-valid by definition. A report still at
+    D2 with D3-D8 legitimately absent is correctly reported ``REJECT`` / ``closeable=False``: it is
+    not yet closeable. That is the intended reading, not a false positive.
+
+    ``gate_reasons`` is every blocking gate reason the state machine would raise on the closure
+    path, in ``eight_d.py``'s stable ``GateCode`` vocabulary, and ``closeable`` is exactly
+    ``gate_reasons == ()``. There is no ``d4`` field, deliberately — see ``validate_8d``.
+    """
+
+    verdict: Literal["ACCEPT", "WARNING", "REJECT"]
+    valid: bool
+    state: EightDState
+    closeable: bool
+    gate_reasons: tuple[TransitionReason, ...]
+    d0: D0ValidationResult | None
+    d1: D1ValidationResult | None
+    d2: D2ValidationResult | None
+    d3: D3ValidationResult | None
+    d5: D5ValidationResult | None
+    d6: D6ValidationResult | None
+    d7: D7ValidationResult | None
+    d8: D8ValidationResult
+    report: EightDReport
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return serializable dictionary representation of the whole-report result."""
+        return {
+            "verdict": self.verdict,
+            "valid": self.valid,
+            "state": self.state,
+            "closeable": self.closeable,
+            "gate_reasons": [reason.to_dict() for reason in self.gate_reasons],
+            "d0": None if self.d0 is None else self.d0.to_dict(),
+            "d1": None if self.d1 is None else self.d1.to_dict(),
+            "d2": None if self.d2 is None else self.d2.to_dict(),
+            "d3": None if self.d3 is None else self.d3.to_dict(),
+            "d5": None if self.d5 is None else self.d5.to_dict(),
+            "d6": None if self.d6 is None else self.d6.to_dict(),
+            "d7": None if self.d7 is None else self.d7.to_dict(),
+            "d8": self.d8.to_dict(),
+            "report": copy.deepcopy(self.report.model_dump(mode="json")),
+        }
+
+
+def validate_8d(report: EightDReport) -> EightDValidationResult:
+    """Run every 8D discipline engine and every closure gate over one report, read-only.
+
+    This function implements no rule of its own: it dispatches to the already-tested engines and
+    evaluators and combines their answers. Each discipline engine is called only when its record
+    exists (``None`` in, ``None`` out — no placeholder discipline is ever constructed), with only
+    the cross-discipline arguments the report actually carries (``d5``'s ``d4``, ``d6``'s ``d5``,
+    ``d7``'s ``d4``); every optional *untrusted evidence* argument is left at its ``None`` default,
+    because none of that evidence (Is/Is-Not data, a linked NCR dataset, COPQ costs, Control Plan
+    or FMEA payloads) is persisted on an ``EightDReport``. ``validate_d8_closure`` is always
+    called, since it handles ``report.d8 is None`` internally, so ``d8`` is never ``None``.
+
+    **D4 is deliberately excluded from the sweep, and that is not an oversight.**
+    ``validate_d4_root_cause`` requires the raw occurrence and escape 5-Why chains as arguments,
+    and those chains are not persisted anywhere on ``EightDReport`` — only the terminal
+    ``RootCauseFinding.five_why_verdict`` metadata is. There is no report-resident data to supply,
+    so calling it here would be impossible, not merely unhelpful, and ``EightDValidationResult``
+    carries no ``d4`` field at all rather than a half-wired one. The question the acceptance
+    criteria actually ask of D4 — "is the RCA rejected" — is answered end-to-end through
+    ``report.root_cause_validation``, which ``_closure_evidence_deficiencies`` already reads and
+    which surfaces here as a ``ROOT_CAUSE_REJECTED`` gate reason.
+
+    **Gates.** ``gate_reasons`` is ``_closure_reasons(report)`` — every closure-boundary deficiency
+    mapped onto the public ``GateCode`` vocabulary — **plus** ``_linked_ncr_reason(report)`` when
+    it fires. The extra call is required for completeness, not duplication: linked-NCR validity
+    gates the D3→D4 step only (``PDD-8D-008``) and is not part of the closure-evidence contract, so
+    ``_closure_reasons`` alone would let a genuinely blocking ``LINKED_NCR_INVALID`` vanish from a
+    whole-report read. ``_prevention_reason`` is *not* called for the mirror-image reason: both of
+    its codes are already produced by ``_closure_reasons``, so calling it too would report the same
+    fact twice. Note that ``_closure_reasons`` collapses ``D8_MISSING``,
+    ``ROOT_CAUSE_VALIDATION_MISSING``, ``ROOT_CAUSE_VERDICT_MISMATCH`` and
+    ``WARNING_OVERRIDE_MISSING`` onto the single ``ROOT_CAUSE_EVIDENCE_MISSING`` gate code; that is
+    the state machine's existing public vocabulary and is passed through unchanged. The
+    uncollapsed, per-deficiency codes remain available on ``result.d8.findings``.
+
+    **Verdict combination** is REJECT > WARNING > ACCEPT over ``gate_reasons`` together with every
+    computed discipline verdict — this platform's own aggregation policy (Process Design Decision
+    #14); no manual defines a multi-discipline orchestrator algorithm. Any gate reason, or any
+    discipline's ``REJECT``, makes the whole report ``REJECT``.
+
+    ``validate_8d`` never calls ``transition_eight_d`` and never mutates ``report``; advancing or
+    closing a report remains the state machine's job alone.
+
+    Args:
+        report: An already-validated ``EightDReport``. The untrusted-data trust boundary is
+            ``validate_eight_d``; this orchestrator performs no schema validation of its own.
+
+    Returns:
+        ``EightDValidationResult`` carrying the report's state, its closure readiness, every gate
+        reason, and each computed discipline result.
+    """
+    state = _state(report)
+
+    d0 = validate_d0_readiness(report.d0) if report.d0 is not None else None
+    d1 = validate_d1_team(report.d1) if report.d1 is not None else None
+    d2 = validate_d2_problem_description(report.d2) if report.d2 is not None else None
+    d3 = validate_d3_containment(report.d3) if report.d3 is not None else None
+    d5 = validate_d5_pca_selection(report.d5, d4=report.d4) if report.d5 is not None else None
+    d6 = (
+        validate_d6_implementation_validation(report.d6, d5=report.d5)
+        if report.d6 is not None
+        else None
+    )
+    d7 = validate_d7_prevention(report.d7, d4=report.d4) if report.d7 is not None else None
+    d8 = validate_d8_closure(report)
+
+    reasons: list[TransitionReason] = list(_closure_reasons(report))
+    ncr_reason = _linked_ncr_reason(report)
+    if ncr_reason is not None:
+        reasons.append(ncr_reason)
+    gate_reasons = tuple(reasons)
+
+    results: list[
+        D0ValidationResult
+        | D1ValidationResult
+        | D2ValidationResult
+        | D3ValidationResult
+        | D5ValidationResult
+        | D6ValidationResult
+        | D7ValidationResult
+        | D8ValidationResult
+    ] = [r for r in (d0, d1, d2, d3, d5, d6, d7, d8) if r is not None]
+
+    verdict: Literal["ACCEPT", "WARNING", "REJECT"]
+    if gate_reasons or any(r.verdict == "REJECT" for r in results):
+        verdict, valid = "REJECT", False
+    elif any(r.verdict == "WARNING" for r in results):
+        verdict, valid = "WARNING", True
+    else:
+        verdict, valid = "ACCEPT", True
+
+    return EightDValidationResult(
+        verdict=verdict,
+        valid=valid,
+        state=state,
+        closeable=not gate_reasons,
+        gate_reasons=gate_reasons,
+        d0=d0,
+        d1=d1,
+        d2=d2,
+        d3=d3,
+        d5=d5,
+        d6=d6,
+        d7=d7,
+        d8=d8,
+        report=report,
     )

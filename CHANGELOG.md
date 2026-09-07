@@ -9,6 +9,49 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- 8D discipline engine for D7 (prevent recurrence) in
+  `quality_core.rca.eight_d_disciplines` (E8, Milestone 11). `validate_d7_prevention` reads a
+  typed `D7Discipline` and reports a missing qualifying documentation update
+  (`PREVENTION_ARTIFACT_UPDATE_MISSING`, `error`), reusing `quality_core.scoring.action_priority`
+  for FMEA residual-risk context and `quality_core.controlplan` for Control Plan evidence —
+  imports run downward only, and neither engine is reimplemented.
+  **A residual Action Priority that did not fall is never gating** (`FMEA_RESIDUAL_RISK` stays
+  `info`): no on-box manual states a "D7 must reduce Action Priority" threshold, and inventing one
+  would be the same class of un-cited standard this repo refuses elsewhere.
+- **`DocumentationUpdate.target` — the D7 prevention update now says which D4 finding it
+  addresses, and both prevention checkpoints enforce it** (E8, Milestone 11; added after the
+  PR #230 review). As first shipped, D7 reported `root_cause_traceable=True` whenever D4 carried a
+  non-`REJECT` 5-Why verdict *and* D7 held any qualifying artifact update, with nothing relating
+  the two: a proven root cause for "missing approval control" plus an unrelated `FMEA` update
+  `DOC-UNRELATED` was reported `ACCEPT` and traceable. Issue #211 conditions closure on a
+  PFMEA/Control-Plan update **reflecting the D4 root cause**, so that reading did not meet the
+  epic's own contract. `DocumentationUpdate.target` now takes the shared `D4FindingTarget`
+  vocabulary (`ROOT_CAUSE` | `ESCAPE_POINT`) that `CorrectiveActionCandidate.target` has used at
+  D5 — the alias is defined once and read by both models — and
+  `D7Discipline.has_root_cause_linked_update` requires one update to be *both* qualifying *and*
+  `ROOT_CAUSE`-targeted, so linkage cannot be borrowed across two records. The D7→D8 gate
+  (`PREVENTION_UPDATE_NOT_LINKED_TO_ROOT_CAUSE`, `PDD-8D-013`), the D8→CLOSED closure boundary and
+  the advisory engine (`severity="error"`) all read that one predicate. **This is a declared
+  structural reference, not string matching**: `D4Discipline` carries exactly one `root_cause` and
+  one `escape_point`, so naming one of the two is a complete reference — `artifact_reference` is
+  still never compared with `RootCauseFinding.statement`, and whether the named artifact genuinely
+  implements the fix remains the human judgment call it is at D5. The field is optional at the
+  schema level (an update recorded before its target is declared is a legitimate in-progress
+  state) and mandatory at every gate, the same split `has_qualifying_update` already used.
+  Declared as Process Design Decision #13 in `rca/ASSUMPTIONS_LOG.md`; no new `CITATIONS.tsv` row,
+  because it quotes nothing.
+
+### Changed
+- **The D7 qualifying-update predicate now has exactly one definition.**
+  `artifact_type in {"FMEA", "CONTROL_PLAN"}` had been hand-written twice in shipped code — in
+  `eight_d_schema._closure_evidence_deficiencies` and in `eight_d._prevention_reason` — two
+  agreeing copies of one rule that review and every prior mutation battery missed precisely
+  because they agreed. Both now read `D7Discipline.has_qualifying_update`, backed by a single
+  `_QUALIFYING_ARTIFACT_TYPES` set, as does the new D7 engine. Behaviour-preserving: reason codes,
+  messages and `RULE-8D-GATE-PREVENTION` are unchanged. Proven by mutation — neutralising the one
+  property fails the transition gate, the closure boundary and the advisory engine together,
+  including a direct-construction case that no test previously reached because every fixture
+  passed `d7=None` and short-circuited before the predicate ran.
 - 8D discipline engines for D5 (permanent corrective action selection) and D6 (implement and
   validate) in `quality_core.rca.eight_d_disciplines` (E7, Milestone 11).
   `validate_d5_pca_selection` reads a typed `D5Discipline` plus the optional same-report

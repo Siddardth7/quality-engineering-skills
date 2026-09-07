@@ -66,9 +66,10 @@ def _d6(*effective: bool | None) -> D6Discipline:
     ])
 
 
-def _d7(artifact: str | None = "FMEA") -> D7Discipline:
+def _d7(artifact: str | None = "FMEA", target: str | None = "ROOT_CAUSE") -> D7Discipline:
     updates = [] if artifact is None else [DocumentationUpdate(
-        artifact_type=artifact, artifact_reference="DOC-1", updated_date=DAY, updated_by="Owner"
+        artifact_type=artifact, artifact_reference="DOC-1", updated_date=DAY, updated_by="Owner",
+        target=target,
     )]
     return D7Discipline(systemic_changes_description="System changed", documentation_updates=updates)
 
@@ -186,6 +187,11 @@ def test_valid_direct_closed_reconstruction_is_terminal() -> None:
         ({"d8": None}, "requires D8"),
         ({"root_cause_validation": None}, "requires provenance-bearing"),
         ({"d7": None}, "requires a D7 FMEA or Control Plan update"),
+        # Present-but-non-qualifying d7: reaches D7Discipline.has_qualifying_update rather than
+        # short-circuiting on `report.d7 is None`. Under a `has_qualifying_update -> True`
+        # mutation this direct-construction (model-validator) path silently ACCEPTS the bad
+        # report; every other d7 case here uses None and never consults the predicate. (#211.)
+        ({"d7": _d7("OTHER").model_dump()}, "requires a D7 FMEA or Control Plan update"),
     ],
 )
 def test_direct_closed_reconstruction_rejects_contradictions(
@@ -329,6 +335,57 @@ def test_d7_missing_discipline_blocks() -> None:
     assert transition_eight_d(_report("D7"), "D8").reasons[0].code == "PREVENTION_UPDATE_MISSING"
 
 
+@pytest.mark.parametrize("target", [None, "ESCAPE_POINT"])
+def test_d7_blocks_a_qualifying_update_not_linked_to_the_root_cause(target: str | None) -> None:
+    """Negative control for the PR #230 review finding (E8/#211, PDD-8D-013): a qualifying FMEA
+    update that never says which proven D4 finding it prevents recurrence of does not advance."""
+    result = transition_eight_d(_report("D7", d7=_d7("FMEA", target)), "D8")
+    assert result.verdict == "BLOCKED"
+    assert [r.code for r in result.reasons] == ["PREVENTION_UPDATE_NOT_LINKED_TO_ROOT_CAUSE"]
+    assert result.reasons[0].rule_id == "PDD-8D-013"
+
+
+def test_d7_root_cause_linked_update_advances_positive_control() -> None:
+    assert transition_eight_d(_report("D7", d7=_d7("FMEA", "ROOT_CAUSE")), "D8").verdict == "ADVANCED"
+
+
+@pytest.mark.parametrize("artifact", [None, "OTHER"])
+def test_d7_missing_update_never_also_reports_the_linkage_block(artifact: str | None) -> None:
+    """The two prevention blocks are reported one at a time: a record with no qualifying update is
+    never additionally told its nonexistent update is unlinked."""
+    result = transition_eight_d(_report("D7", d7=_d7(artifact, None)), "D8")
+    assert [r.code for r in result.reasons] == ["PREVENTION_UPDATE_MISSING"]
+
+
+@pytest.mark.parametrize(
+    "target,expected_linked,expected_verdict",
+    [("ROOT_CAUSE", True, "ADVANCED"), ("ESCAPE_POINT", False, "BLOCKED"), (None, False, "BLOCKED")],
+)
+def test_d7_gate_verdict_agrees_with_has_root_cause_linked_update(
+    target: str | None, expected_linked: bool, expected_verdict: str
+) -> None:
+    """Tripwire: the gate verdict and D7Discipline.has_root_cause_linked_update read the same
+    predicate, so a change to one that does not move the other fails here."""
+    discipline = _d7("FMEA", target)
+    assert discipline.has_root_cause_linked_update is expected_linked
+    assert transition_eight_d(_report("D7", d7=discipline), "D8").verdict == expected_verdict
+
+
+@pytest.mark.parametrize(
+    "artifact,expected_qualifying,expected_verdict",
+    [("FMEA", True, "ADVANCED"), ("OTHER", False, "BLOCKED")],
+)
+def test_d7_gate_verdict_agrees_with_has_qualifying_update(
+    artifact: str, expected_qualifying: bool, expected_verdict: str
+) -> None:
+    """Tripwire (#211 §8): the D7->D8 gate verdict and D7Discipline.has_qualifying_update read the
+    one shared predicate, so they must never disagree — an ADVANCED gate on a non-qualifying
+    record, or a BLOCKED gate on a qualifying one, would mean the two silently diverged again."""
+    discipline = _d7(artifact)
+    assert discipline.has_qualifying_update is expected_qualifying
+    assert transition_eight_d(_report("D7", d7=discipline), "D8").verdict == expected_verdict
+
+
 @pytest.mark.parametrize("verdict,override", [("ACCEPT", False), ("WARNING", True)])
 def test_d8_accepts_eligible_root_cause_evidence(verdict: str, override: bool) -> None:
     validation = _validation(verdict)
@@ -427,6 +484,8 @@ def test_direct_closed_rejects_invalid_nonreject_and_warning_without_override() 
         ("d6_missing", "PCA_NOT_VERIFIED"),
         ("d6_unverified", "PCA_NOT_VERIFIED"),
         ("d7_missing", "PREVENTION_UPDATE_MISSING"),
+        ("d7_unlinked", "PREVENTION_UPDATE_NOT_LINKED_TO_ROOT_CAUSE"),
+        ("d7_escape_point_only", "PREVENTION_UPDATE_NOT_LINKED_TO_ROOT_CAUSE"),
         ("d8_missing", "ROOT_CAUSE_EVIDENCE_MISSING"),
         ("validation_missing", "ROOT_CAUSE_EVIDENCE_MISSING"),
         ("validation_invalid", "ROOT_CAUSE_REJECTED"),
@@ -449,6 +508,10 @@ def test_direct_and_transition_closure_paths_reject_same_evidence_deficiencies(
         values["d6"] = _d6(False).model_dump()
     elif case == "d7_missing":
         values["d7"] = None
+    elif case == "d7_unlinked":
+        values["d7"] = _d7("FMEA", None).model_dump()
+    elif case == "d7_escape_point_only":
+        values["d7"] = _d7("FMEA", "ESCAPE_POINT").model_dump()
     elif case == "d8_missing":
         values["d8"] = None
     elif case == "validation_missing":

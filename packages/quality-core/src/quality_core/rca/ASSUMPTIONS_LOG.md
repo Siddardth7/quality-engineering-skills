@@ -688,8 +688,15 @@ the D7 evaluation question names the FMEA and control plan as the artifacts that
 change. That is what makes an FMEA/Control-Plan linkage check a D7 concern rather than an
 invented one.
 
-**Applied In:** Not yet applied — reserved for E8 (`rca/eight_d.py` D7 engine and FMEA /
-Control-Plan linkage, #211). This entry seeds the citation only (#218).
+**Applied In:** `packages/quality-core/src/quality_core/rca/eight_d_disciplines.py`
+(`validate_d7_prevention`, E8/#211) and in `D7Discipline.systemic_changes_description` /
+`documentation_updates` (E1/#204, unchanged by this epic). **What the passage establishes vs. what
+the engine does:** the manual establishes that the FMEA and the control plan are the artifacts a
+D7 change is recorded in. The engine reports whether the record names at least one of them
+(`PREVENTION_ARTIFACT_UPDATE_MISSING` / `PREVENTION_ARTIFACT_UPDATE_RECORDED`) and, when the
+caller supplies them, validates Control Plan evidence and reports FMEA residual risk. The manual
+states no threshold, no evidence format, and no completeness algorithm; the rest is this
+platform's translation, declared as Process Design Decision #12.
 
 ---
 
@@ -764,8 +771,14 @@ update is absent — is this platform's engineering choice, not a clause in any 
 as a Process Design Decision below.
 
 **Applied In:** `packages/quality-core/src/quality_core/rca/eight_d.py`
-(`transition_eight_d`, D7→D8 and D8 closure prevention gates, E2/#205); also reserved for E8
-(#211).
+(`transition_eight_d`, D7→D8 and D8 closure prevention gates, E2/#205); also applied in
+`packages/quality-core/src/quality_core/rca/eight_d_disciplines.py` (`validate_d7_prevention`,
+E8/#211), which *mirrors* this gate as an advisory pre-flight check rather than re-citing it as a
+new claim. Since E8 the underlying fact is `D7Discipline.has_qualifying_update`
+(`rca/eight_d_schema.py`) — one property read by all three consumers (the D7→D8 gate's
+`_prevention_reason`, the D8→CLOSED `_closure_evidence_deficiencies` `PREVENTION_UPDATE_MISSING`
+deficiency, and `validate_d7_prevention`) instead of the two hand-written, identical copies of the
+`artifact_type in {"FMEA", "CONTROL_PLAN"}` predicate that preceded it. Behaviour-preserving.
 
 ---
 
@@ -1073,3 +1086,149 @@ from the cited `RULE-8D-*` entries above for exactly that reason.
       linked NCR must resolve to a verdict the D3→D4 *gate* can consume without an unhandled
       exception reaching it; COPQ impact gates nothing, so there is no gate-safety reason to
       swallow the error.
+
+12. **D7 engine, `has_qualifying_update` extraction, and the FMEA/Control-Plan procurement note
+    (E8, #211).**
+    - **`D7Discipline.has_qualifying_update` is a new shared property**, read by
+      `eight_d_schema._closure_evidence_deficiencies`, `eight_d.py`'s `_prevention_reason`, and
+      the new `validate_d7_prevention` engine — replacing two independent inlined copies of the
+      same `artifact_type in {"FMEA", "CONTROL_PLAN"}` expression with one definition. The
+      boolean truth table is identical before and after (same expression, same short-circuit on
+      `report.d7 is None`), so the refactor is behaviour-preserving and carries no new
+      `CITATIONS.tsv` row: it restates `RULE-8D-D7` / `RULE-8D-GATE-PREVENTION`, both already
+      cited. `is_documented` is deliberately left alone — it means "any update at all", including
+      an `OTHER`-typed one, and redefining it would be a real behaviour change.
+    - **`PREVENTION_ARTIFACT_UPDATE_MISSING` is `error`, not `warning`**, matching
+      `ERA_NOT_IMPLEMENTED` (D0) / `CONTAINMENT_ACTION_NOT_VERIFIED` (D3) /
+      `IMPLEMENTED_ACTION_NOT_VERIFIED` (D6): the advisory engine reports as `error` the exact
+      fact the corresponding gate blocks on, even where the schema itself permits the underlying
+      state to be constructed. `D7Discipline`'s own docstring note that an empty
+      `documentation_updates` list "is a legitimate in-progress state, not an error" is a
+      statement about *schema constructibility*, which is a different question from the advisory
+      engine's severity choice.
+    - **D4→D7 root-cause traceability is structural, not semantic, exactly as Process Design
+      Decision #11 already established for D4→D5.** Comparing `artifact_reference` with
+      `RootCauseFinding.statement` would be the fuzzy string matching `D4Discipline`'s own
+      docstring disclaims for having no standards basis, and this epic does not reintroduce it
+      under another name. **Consequence, stated plainly:** whether the artifact behind
+      `artifact_reference` genuinely implements the fix for the finding it names remains a human
+      judgment call this tool does not automate. `PREVENTION_NOT_TRACEABLE_ROOT_CAUSE` is an
+      `error` (D4 recorded a rejected chain); `PREVENTION_ROOT_CAUSE_VALIDATION_NOT_RUN` is a
+      `warning` (validation not yet run is in-progress, not wrong); `D4_NOT_SUPPLIED` is a
+      `warning` for the same reason it is at D5/D6, and the check is *skipped*
+      (`root_cause_traceable=None`), never guessed at. When an earlier leg of the check already
+      failed, no further traceability finding is added — each deficiency is reported once, not
+      twice — and `root_cause_traceable` is `False`.
+      **Amended by Process Design Decision #13 (this epic, after review):** as first shipped this
+      bullet also recorded that `DocumentationUpdate` "carries no `target` field", so the check
+      could only ask whether D4 was proven *at all*. That made an unrelated FMEA update report as
+      traceable, which #211 does not permit. `DocumentationUpdate.target` now exists and the
+      traceability reading has a second leg; PDD #13 below records the field, the enforcement, and
+      what it does and does not prove.
+    - **Bidirectional PFMEA linkage is out of scope, and that is a stated limitation, not an
+      oversight.** `quality_core.controlplan.validate_pfmea_linkage` does live in `quality-core`
+      and is importable downward, but it needs a `ControlPlanDataset` *and* a `RelationalFMEA`,
+      and `D7Discipline` carries no FMEA payload to build one from
+      (`DocumentationUpdate.artifact_reference` is a bare string, not a linkable dataset). There
+      is nothing on a D7 record for it to check; linkage checking stays at the MCP tool layer,
+      where the caller holds both documents.
+    - **Control Plan evidence is optional; absence warns only when a `CONTROL_PLAN` update is
+      declared** (`CONTROL_PLAN_EVIDENCE_NOT_PROVIDED`), mirroring `LINKED_NCR_NOT_PROVIDED` (D3)
+      rather than COPQ's fully-silent-when-absent precedent (D6) — Control Plan evidence
+      substantiates this record's own claim, unlike COPQ's unrelated financial context. Gating
+      the warning on a declared `CONTROL_PLAN` update, rather than firing it unconditionally the
+      way D3's does, avoids a spurious warning on a D7 record that only ever claimed an FMEA
+      update. Invalid supplied evidence is an `error` (`CONTROL_PLAN_EVIDENCE_INVALID`), delegated
+      entirely to `quality_core.controlplan.schema.validate_control_plan` — no Control Plan schema
+      rule is re-derived here — and is *caught*, not propagated, so an invalid Control Plan
+      resolves to a verdict rather than an unhandled exception, following
+      `validate_d3_containment`'s `linked_ncr` precedent. `validate_control_plan` has no `dict`
+      branch (unlike `validate_ncr`), so a bare dict raises `TypeError` and surfaces through the
+      same finding.
+    - **FMEA residual-risk evidence (`fmea_action` / `fmea_before`, via
+      `quality_core.schema.action.Action.effectiveness`) is informational only and never gates**,
+      regardless of `ap_reduced`. No manual states an Action-Priority-must-improve threshold for
+      D7 — Ford 8D's D7 checkpoint asks only whether the changes were documented — so inventing
+      one would overreach the source, exactly the reasoning Process Design Decision #6 already
+      uses for declining a CQI-20-implied-but-unstated team-size bound. `ap_reduced=False` stays
+      `severity="info"`. Supplying only one of the pair is a `warning`
+      (`FMEA_RESIDUAL_RISK_EVIDENCE_INCOMPLETE`), not an error: incomplete optional context is
+      not a defect in the D7 record. Both sub-engine exceptions (`pydantic.ValidationError` from
+      `Action` construction, `ValueError` from an out-of-1..10-range rating) propagate **uncaught**,
+      mirroring `validate_d6_implementation_validation`'s `copq_data` path for the same reason:
+      residual risk gates nothing, so there is no gate-safety need to swallow the error.
+    - **`PROCUREMENT-GAP` (AIAG-VDA FMEA Handbook / AIAG APQP and Control Plan Reference Manual)
+      — narrower than Process Design Decisions #8 and #11.** `validate_d7_prevention` calls
+      `quality_core.controlplan.schema.validate_control_plan`,
+      `quality_core.schema.action.Action.effectiveness` and (transitively)
+      `quality_core.scoring.action_priority` / `rpn`, and authors **no** AIAG-VDA FMEA or AIAG
+      APQP/Control-Plan standards claim of its own: no quotation or paraphrase of either manual
+      appears anywhere in `rca/`, and no row attributable to either is added to
+      `rca/CITATIONS.tsv`. Unlike Process Design Decision #8 (NCR) and #11 (COPQ), the manuals
+      behind those two callees' *own* citation bases are not claimed unverified in general —
+      `controlplan/CITATIONS.tsv` and `scoring_CITATIONS.tsv` are pre-existing, independently
+      gated manifests, untouched by this epic. What this epic specifically cannot do is
+      *re-verify* them, because the AIAG-VDA FMEA Handbook and the AIAG APQP and Control Plan
+      Reference Manual are **not on this machine** — verified this session:
+      `~/Documents/Upskill/SixSigma/FMEA/` exists but is empty,
+      `~/Documents/Upskill/SixSigma/ControlPlan/` does not exist, and `.env` defines no
+      manual-path variable for either (unlike `FORD_8D_MANUAL_PATH` / `CQI20_MANUAL_PATH`), so
+      `tests/_citation_audit.py` has no key to resolve for them. This declaration exists so the
+      D7→Control-Plan and D7→FMEA delegations are never mistaken for claims this epic verified.
+      No tracking issue is known for an AIAG-VDA FMEA / APQP procurement gap (unlike NCR's #221);
+      none is invented here.
+
+13. **`DocumentationUpdate.target` — the D7→D4 structural linkage, and the two checkpoints that
+    now enforce it (E8, #211, added after PR #230 review).**
+    - **What was wrong.** As first shipped, `validate_d7_prevention` set
+      `root_cause_traceable=True` whenever D4 carried a non-`REJECT`, non-null `five_why_verdict`
+      *and* D7 held any qualifying artifact update. Nothing related the two. A D4 root cause of
+      "missing approval control" plus an unrelated `FMEA` update `DOC-UNRELATED` was reported
+      `ACCEPT` and traceable, and both prevention checkpoints let it through. Issue #211 makes
+      closure conditional on a D7 PFMEA/Control-Plan update **reflecting the D4 root cause**, so
+      the report-level "was D4 proven at all" reading did not meet the epic's own contract.
+    - **The fix is a declared structural reference, not string matching.**
+      `DocumentationUpdate.target` takes the shared `D4FindingTarget` vocabulary
+      (`ROOT_CAUSE` | `ESCAPE_POINT`) that `CorrectiveActionCandidate.target` has used at D5 since
+      E7 — the alias is now defined once in `eight_d_schema.py` and read by both models, so a
+      third inlined copy cannot appear. `D4Discipline` carries exactly one `root_cause` and
+      exactly one `escape_point`, so naming one of the two **is** a complete, unambiguous
+      reference to a specific D4 finding; no approximation and no fuzzy matching is involved, and
+      Process Design Decision #12's refusal to compare `artifact_reference` with
+      `RootCauseFinding.statement` stands unchanged.
+    - **`ESCAPE_POINT` is not sufficient.** #211 conditions closure on the *root cause*. The
+      escape point is a separate finding carrying its own D5 corrective action; accepting either
+      would let a detection-side fix close a report whose cause-side systemic change was never
+      documented.
+    - **Both conditions must hold on the same record.**
+      `D7Discipline.has_root_cause_linked_update` requires one `DocumentationUpdate` to be *both*
+      qualifying (`FMEA` / `CONTROL_PLAN`) *and* `target="ROOT_CAUSE"`. Splitting the test across
+      records would let an unrelated artifact borrow a `WORK_INSTRUCTION` entry's linkage, which
+      is the gap being closed, not a variant of it.
+    - **The field is optional at the schema level and mandatory at every gate**, the same split
+      `has_qualifying_update` already used and for the same reason: an update recorded before its
+      target is declared is a legitimate in-progress state, not a malformed record, so the schema
+      does not refuse construction. What changed is that such a record no longer *counts*.
+      Blank-to-`None` normalization matches `updated_by`, so a CSV upload with an empty `target`
+      cell loads as unlinked rather than failing validation; `target` is an optional column on
+      `DOCUMENTATION_UPDATE_SCHEMA`.
+    - **One predicate, three consumers, reported once.** `has_root_cause_linked_update` is read by
+      `eight_d.py`'s D7→D8 `_prevention_reason`, `_closure_evidence_deficiencies`'
+      `PREVENTION_UPDATE_NOT_LINKED_TO_ROOT_CAUSE` deficiency, and the advisory engine's finding
+      of the same name (`severity="error"`, so the verdict is `REJECT`) — mirroring
+      `has_qualifying_update` and `D3Discipline.is_verified`. Each checkpoint reaches the linkage
+      block only after the broader missing-update block passes, so a D7 record with no qualifying
+      update is never also told its nonexistent update is unlinked.
+    - **`PDD-8D-013`, not a `RULE-8D-*` id.** `RULE-8D-D7` and `RULE-8D-GATE-PREVENTION` back the
+      *substance* — D7 modifies the systems that permitted the problem, and the changes must be
+      documented — and the missing-update block keeps `RULE-8D-GATE-PREVENTION` for that reason.
+      But neither manual states a machine-checkable artifact-to-cause linkage requirement, and
+      neither states a refusal mechanism built on one. The gate reason therefore carries the
+      `PDD-` prefix, exactly as `PDD-8D-008` (linked NCR) and `PDD-8D-010` (D6 closure evidence)
+      do. **No new `rca/CITATIONS.tsv` row is added by this decision**, because it quotes nothing.
+    - **What it still does not prove.** `target` records the *claim* that this update addresses
+      the root cause — deterministically, attributably, and checkably. Whether the artifact behind
+      `artifact_reference` genuinely implements that fix remains a human judgment call this tool
+      does not automate, precisely as it does for `CorrectiveActionCandidate.target` at D5. The
+      change is that an update which never made the claim can no longer be reported as traceable,
+      nor close a report.

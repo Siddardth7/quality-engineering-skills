@@ -4,8 +4,8 @@ quality_core.rca
 Root Cause Analysis (RCA) suite: schema definitions, validation boundaries,
 and domain models for 5-Why problem solving, 6M Fishbone cause-and-effect
 diagrams, Kepner-Tregoe Is/Is-Not scoping matrices, and the 8D report with its
-nine disciplines, its deterministic state machine and gate engine, and the
-D0-D6 discipline engines.
+nine disciplines, its deterministic state machine and gate engine, the
+D0-D8 discipline engines, and the whole-report ``validate_8d`` orchestrator.
 """
 
 from __future__ import annotations
@@ -35,6 +35,10 @@ from quality_core.rca.eight_d_disciplines import (
     D6ValidationResult,
     D7Finding,
     D7ValidationResult,
+    D8Finding,
+    D8ValidationResult,
+    EightDValidationResult,
+    validate_8d,
     validate_d0_readiness,
     validate_d1_team,
     validate_d2_problem_description,
@@ -43,6 +47,7 @@ from quality_core.rca.eight_d_disciplines import (
     validate_d5_pca_selection,
     validate_d6_implementation_validation,
     validate_d7_prevention,
+    validate_d8_closure,
 )
 from quality_core.rca.eight_d_schema import (
     CONTAINMENT_ACTION_SCHEMA,
@@ -183,6 +188,8 @@ __all__ = [
     "D7Finding",
     "D7ValidationResult",
     "D8Discipline",
+    "D8Finding",
+    "D8ValidationResult",
     "DOCUMENTATION_UPDATE_SCHEMA",
     "DocumentationUpdate",
     "DocumentationUpdateList",
@@ -192,6 +199,7 @@ __all__ = [
     "EightDState",
     "EightDTransitionResult",
     "EightDStatus",
+    "EightDValidationResult",
     "EscapePointFinding",
     "FiveWhyLegType",
     "FiveWhyVerdict",
@@ -211,6 +219,7 @@ __all__ = [
     "load_eight_d_json",
     "load_eight_d_json_from_path",
     "load_team_members_csv",
+    "validate_8d",
     "validate_containment_actions",
     "validate_corrective_action_candidates",
     "validate_d0_readiness",
@@ -221,6 +230,7 @@ __all__ = [
     "validate_d5_pca_selection",
     "validate_d6_implementation_validation",
     "validate_d7_prevention",
+    "validate_d8_closure",
     "validate_documentation_updates",
     "validate_eight_d",
     "validate_team_members",

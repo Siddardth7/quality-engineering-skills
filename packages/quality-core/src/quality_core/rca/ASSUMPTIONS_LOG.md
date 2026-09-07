@@ -714,8 +714,13 @@ and updated.
 **Rationale:** D8 is not purely ceremonial in the manual: alongside recognition it carries a
 documentation-review obligation, which is what a closure check can be built on.
 
-**Applied In:** Not yet applied — reserved for E9 (`rca/eight_d.py` D8 engine, #212). This entry
-seeds the citation only (#218).
+**Applied In:** `packages/quality-core/src/quality_core/rca/eight_d_disciplines.py`
+(`validate_d8_closure`, `D8Finding`, `D8ValidationResult`, E9/#212), which reports whether
+`D8Discipline.documentation_reviewed` was set (`D8_DOCUMENTATION_NOT_REVIEWED`) as the checkable
+half of this rule. The engine landed in `eight_d_disciplines.py`, not `rca/eight_d.py` as this
+entry originally reserved (#218): the D8 engine is advisory, like every other D0-D7 engine, and
+`rca/eight_d.py` stays the pure state machine — see Process Design Decision #14. Team recognition
+itself carries no checkable predicate and nothing is asserted about it.
 
 ---
 
@@ -801,7 +806,15 @@ rejection logic. **The refusal to advance is this platform's enforcement mechani
 standards clause**; see the Process Design Decisions below.
 
 **Applied In:** `packages/quality-core/src/quality_core/rca/eight_d.py`
-(`transition_eight_d`, provenance-bearing D8 closure gate, E2/#205); also reserved for E9 (#212).
+(`transition_eight_d`, provenance-bearing D8 closure gate, E2/#205); also applied in
+`packages/quality-core/src/quality_core/rca/eight_d_disciplines.py` (`validate_d8_closure` and
+`validate_8d`, E9/#212), which *mirror* this gate as an advisory pre-flight check rather than
+re-citing it as a new claim — exactly as `validate_d7_prevention` mirrors
+`RULE-8D-GATE-PREVENTION`. `validate_d8_closure` reports each deficiency returned by the
+already-shared `eight_d_schema._closure_evidence_deficiencies` verbatim (same code, same message,
+no re-derivation), and additionally reports a `REJECT` `linked_five_why_verdict` on the D8 record
+itself (`D8_ROOT_CAUSE_REJECTED`); `validate_8d` reads the gate's own reason vocabulary through
+`eight_d.py`'s `_closure_reasons`. No new closure rule is authored by either.
 
 ---
 
@@ -1232,3 +1245,118 @@ from the cited `RULE-8D-*` entries above for exactly that reason.
       does not automate, precisely as it does for `CorrectiveActionCandidate.target` at D5. The
       change is that an update which never made the claim can no longer be reported as traceable,
       nor close a report.
+
+14. **The D8 advisory engine and the `validate_8d` whole-report orchestrator (E9, #212).**
+    - **`validate_d8_closure` and `validate_8d` take a whole `EightDReport`** — a fourth, and
+      different, exception to `eight_d_disciplines.py`'s "one typed discipline argument per engine"
+      norm, alongside the three narrow optional cross-discipline arguments (D5's `d4`, D6's `d5`,
+      D7's `d4`) Process Design Decisions #11 and #12 already record. D8's substantive question,
+      "is this report's closure evidence complete", *is*
+      `eight_d_schema._closure_evidence_deficiencies(report)`, and that shared evaluator needs
+      `report.d8`, `report.root_cause_validation`, `report.d3`, `report.d6` and `report.d7`
+      together. Accepting a bare `D8Discipline` plus four narrow optional arguments and
+      reconstructing a throwaway `EightDReport` internally, purely to satisfy the evaluator's
+      signature, would require a synthetic report (dummy `report_id` / `initiated_date`) kept
+      behaviourally identical to a real one — reimplementation risk for no benefit, and precisely
+      the drift these decisions exist to prevent. The report is accepted directly and the shared
+      evaluator is reused, never re-derived. `validate_8d` takes the report for the same reason:
+      every one of its inputs is a field of the report.
+    - **`validate_8d` lives in `eight_d_disciplines.py`, not in `rca/eight_d.py`.** It is advisory
+      and read-only: it never calls `transition_eight_d`, never mutates a report, and returns
+      findings rather than a new state — the same contract every D0-D7 engine holds. `eight_d.py`
+      frames itself as the *pure* state machine, and hosting the orchestrator there would drag this
+      module's downstream dependencies (`pandas`, `ncr.schema`, `controlplan.schema`,
+      `copq.estimator`, `fishbone`, `five_why`, `is_is_not`) into it for no gain. The dependency
+      therefore runs `eight_d_disciplines.py` → `eight_d.py`, from which `validate_8d` imports three
+      private helpers (`_state`, `_linked_ncr_reason`, `_closure_reasons`) — the same kind of
+      cross-module private reuse `eight_d.py` itself already practises against `eight_d_schema`'s
+      `_closure_evidence_deficiencies` / `_linked_ncr_deficiency`, and for the same one-definition
+      reason. This supersedes `RULE-8D-D8`'s original "reserved for `rca/eight_d.py`" note (#218).
+    - **D4 is deliberately excluded from `validate_8d`'s per-discipline sweep, and
+      `EightDValidationResult` carries no `d4` field at all.** `validate_d4_root_cause` requires the
+      raw occurrence and escape 5-Why chains as arguments, and those chains are **not persisted
+      anywhere on `EightDReport`** — only the terminal `RootCauseFinding.five_why_verdict` metadata
+      is. There is no report-resident data to supply, so calling it from a report-only orchestrator
+      is impossible, not merely unhelpful. The question #212 actually asks of D4 — "is the RCA
+      rejected" — is answered end-to-end through `report.root_cause_validation`, which
+      `_closure_evidence_deficiencies` already reads and which surfaces as a `ROOT_CAUSE_REJECTED`
+      gate reason. A `d4` field is omitted rather than left half-wired, so a future change cannot
+      silently reintroduce a partial D4 read.
+    - **`_linked_ncr_reason` is called explicitly, on top of `_closure_reasons`.** Linked-NCR
+      validity gates the D3→D4 step only (`PDD-8D-008`) and is deliberately **not** part of the
+      closure-evidence contract, so a report can be fully closeable per
+      `_closure_evidence_deficiencies` while still carrying a recorded-invalid
+      `d3.linked_ncr_validation`. `_closure_reasons` alone would therefore drop a genuinely
+      blocking `LINKED_NCR_INVALID` out of a whole-report read. The mirror-image case is
+      `_prevention_reason`, which is deliberately **not** called: both of its codes
+      (`PREVENTION_UPDATE_MISSING`, `PREVENTION_UPDATE_NOT_LINKED_TO_ROOT_CAUSE`) are already
+      produced by `_closure_reasons`, so calling it too would report the same fact twice. Neither
+      choice changes any gate's own behaviour; `transition_eight_d` is untouched by this epic.
+    - **`_closure_reasons`' many-to-one code collapse is passed through unchanged.** `D8_MISSING`,
+      `ROOT_CAUSE_VALIDATION_MISSING`, `ROOT_CAUSE_VERDICT_MISMATCH` and
+      `WARNING_OVERRIDE_MISSING` all map onto the single public `GateCode`
+      `ROOT_CAUSE_EVIDENCE_MISSING` (`RULE-8D-GATE-CLOSURE`). That is the state machine's existing,
+      already-tested public vocabulary, and this epic neither "fixes" nor flattens it; the
+      uncollapsed, per-deficiency codes stay available on `EightDValidationResult.d8.findings`,
+      where `validate_d8_closure` reports each deficiency's own `code` and `message` verbatim.
+    - **The verdict-combination algorithm is this platform's own aggregation policy.** REJECT >
+      WARNING > ACCEPT, computed over `gate_reasons` together with every computed discipline
+      verdict: any gate reason, or any discipline's `REJECT`, makes the whole report `REJECT`; a
+      `WARNING` with no `REJECT` and no gate reason yields `WARNING`; otherwise `ACCEPT`. **No
+      manual defines a multi-discipline orchestrator algorithm**, so this carries no
+      `rca/CITATIONS.tsv` row, exactly as Process Design Decisions #10-#13 carry none. Where a gate
+      reason is reported, the rule id stays the gate's own (`RULE-8D-GATE-CLOSURE`,
+      `RULE-8D-GATE-CONTAINMENT`, `RULE-8D-GATE-PREVENTION`, `PDD-8D-008`, `PDD-8D-010`,
+      `PDD-8D-013`) — this decision introduces no new `RULE-8D-*` id and, consistently with the
+      existing linked-NCR treatment, the linked-NCR reason keeps citing `PDD-8D-008`.
+    - **What `validate_8d`'s verdict means, stated plainly.** It answers "is this report
+      closure-ready *right now*", not "is this report internally valid": `EightDReport` already
+      refuses to construct an internally inconsistent report, so anything reaching `validate_8d` is
+      schema-valid. A report still at D2, with D3-D8 legitimately absent, is correctly reported
+      `REJECT` / `closeable=False`. That is intended behaviour, not a false positive to suppress.
+    - **`closure_approved` is not read by `validate_d8_closure`.** Whether closure has been
+      *approved* is orthogonal to whether the supporting evidence is complete. `D8Discipline`'s own
+      model validator already refuses `closure_approved=True` on a `REJECT` verdict or an
+      unoverridden `WARNING` (Process Design Decision #4), and `EightDReport`'s `CLOSED`-state
+      validator is the actual gate; re-checking either in the advisory engine would be a second
+      copy of a rule the schema owns. For the same reason, `report.status` is read only through
+      `eight_d.py`'s `_state`: a `CANCELLED` report is treated identically to an `OPEN` one at the
+      same `current_discipline`, with no special case anywhere in the new code.
+    - **`D8_DOCUMENTATION_NOT_REVIEWED` is `error`, not `warning`**, matching
+      `PREVENTION_ARTIFACT_UPDATE_MISSING` (D7) / `CONTAINMENT_ACTION_NOT_VERIFIED` (D3): the
+      advisory engine reports as `error` the substantive obligation `RULE-8D-D8` states ("ensure
+      that all related documentation is reviewed and updated"), even though the schema permits
+      `documentation_reviewed=False` to be constructed. `D8_NOT_STARTED` is a `warning` for the
+      symmetric reason: an unrecorded D8 is a legitimate in-progress state, not a defect. Nothing
+      is asserted about `team_recognition_notes` beyond the schema's own non-blank requirement —
+      judging the adequacy of team recognition is a claim no manual supports.
+
+      **Correction (post-review, same epic):** `D8_NOT_STARTED` never actually reaches the
+      `WARNING` verdict arm. It is emitted only when `report.d8 is None`, and in exactly that case
+      the shared `_closure_evidence_deficiencies` evaluator also emits `D8_MISSING`, which this
+      engine maps at `error` severity — so `any(error)` always wins and the verdict is `REJECT`.
+      The "legitimate in-progress state" intent above is therefore not observable through
+      `verdict`; it survives only as the finding's own `severity` on `result.findings`. Process
+      Design Decision #15 restores a reachable `WARNING` verdict for D8.
+
+15. **An attributable D8 documentation review — `D8_REVIEW_PROVENANCE_INCOMPLETE` (E9, #212).**
+    `validate_d8_closure` reports a `warning`-severity finding when `documentation_reviewed=True` but
+    either `documentation_reviewed_by` or `documentation_review_date` is `None`: the closing review is
+    claimed but unattributable.
+
+    - **What the manual backs, and what it does not.** `RULE-8D-D8` ("Ensure that all related
+      documentation is reviewed and updated", `rca/CITATIONS.tsv`) backs the *substance* — the review
+      must happen. **No manual clause requires the review to name a reviewer or a date**, so this
+      decision introduces no new `rca/CITATIONS.tsv` row and no new `RULE-8D-*` id. It is a platform
+      heuristic of the same shape as Process Design Decision #4 (an attributable `WarningOverride`),
+      and is cited in the finding message as Process Design Decision #15, never as a `RULE-`.
+    - **Why `warning` and not `error`.** The schema deliberately permits `documentation_reviewed=True`
+      with both provenance fields unset — unlike `closure_approved`, whose model validator *does*
+      require an approver and a date. Promoting this to `error` would block closure on a condition the
+      schema itself declares constructible, and would duplicate a rule the schema chose not to own.
+      `warning` reports the gap without refusing the report, which is exactly the advisory register the
+      other seven disciplines use for completeness gaps.
+    - **It does not touch the closure gate.** This finding is engine-owned and advisory only: it is not
+      a `_ClosureDeficiencyCode`, `_closure_evidence_deficiencies` is unchanged, and `closeable` is
+      unaffected. A report whose only D8 finding is this one is `closeable=True` with
+      `verdict="WARNING"` — the `closeable`/`verdict` divergence documented under #14, now reachable.

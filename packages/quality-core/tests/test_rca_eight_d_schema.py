@@ -42,6 +42,7 @@ from quality_core.rca import (
     D2Discipline,
     D3Discipline,
     D4Discipline,
+    D4FindingTarget,
     D5Discipline,
     D6Discipline,
     D7Discipline,
@@ -192,6 +193,7 @@ def _full_report() -> EightDReport:
                     artifact_reference="CP-12345 rev C",
                     updated_date=DAY_3,
                     updated_by="D. Documenter",
+                    target="ROOT_CAUSE",
                 )
             ],
         ),
@@ -225,6 +227,7 @@ EIGHT_D_EXPORTS = (
     "D2Discipline",
     "D3Discipline",
     "D4Discipline",
+    "D4FindingTarget",
     "D5Discipline",
     "D6Discipline",
     "D7Discipline",
@@ -882,8 +885,12 @@ def test_d7_is_documented_reflects_presence_of_updates() -> None:
     assert documented.is_documented is True
 
 
-def _d7_with(*artifact_types: str) -> D7Discipline:
-    """A D7 record carrying one DocumentationUpdate per given artifact_type."""
+def _d7_with(*artifact_types: str, target: str | None = None) -> D7Discipline:
+    """A D7 record carrying one DocumentationUpdate per given artifact_type.
+
+    ``target`` defaults to ``None`` — the unlinked state — so the ``has_qualifying_update`` tests
+    below keep asserting that property alone; the E8/#211 linkage tests pass it explicitly.
+    """
     return D7Discipline(
         systemic_changes_description="PM schedule updated",
         documentation_updates=[
@@ -891,6 +898,7 @@ def _d7_with(*artifact_types: str) -> D7Discipline:
                 artifact_type=at,  # type: ignore[arg-type]
                 artifact_reference=f"DOC-{i}",
                 updated_date=DAY_2,
+                target=target,  # type: ignore[arg-type]
             )
             for i, at in enumerate(artifact_types)
         ],
@@ -923,6 +931,110 @@ def test_d7_has_qualifying_update_true_when_qualifying_mixed_with_non_qualifying
 def test_d7_rejects_blank_description() -> None:
     with pytest.raises(pydantic.ValidationError):
         D7Discipline(systemic_changes_description="   ")
+
+
+# ---- DocumentationUpdate.target and has_root_cause_linked_update (E8/#211, PDD-8D-013) ----
+
+
+def test_documentation_update_target_defaults_to_none_and_normalizes_blank() -> None:
+    """Optional at the schema level: an update recorded before its target is declared is a
+    legitimate in-progress state, and a blank CSV cell loads as unlinked rather than failing."""
+    assert DocumentationUpdate(
+        artifact_type="FMEA", artifact_reference="PFMEA-77", updated_date=DAY_2
+    ).target is None
+    assert DocumentationUpdate(
+        artifact_type="FMEA", artifact_reference="PFMEA-77", updated_date=DAY_2, target="   "
+    ).target is None
+
+
+@pytest.mark.parametrize("target", ["ROOT_CAUSE", "ESCAPE_POINT"])
+def test_documentation_update_accepts_both_d4_finding_targets(target: str) -> None:
+    update = DocumentationUpdate(
+        artifact_type="FMEA",
+        artifact_reference="PFMEA-77",
+        updated_date=DAY_2,
+        target=target,  # type: ignore[arg-type]
+    )
+    assert update.target == target
+
+
+def test_documentation_update_rejects_a_target_outside_the_shared_vocabulary() -> None:
+    with pytest.raises(pydantic.ValidationError):
+        DocumentationUpdate(
+            artifact_type="FMEA",
+            artifact_reference="PFMEA-77",
+            updated_date=DAY_2,
+            target="CONTRIBUTING_FACTOR",  # type: ignore[arg-type]
+        )
+
+
+def test_documentation_update_and_pca_candidate_share_one_target_vocabulary() -> None:
+    """D4FindingTarget is defined once; both models read it, so the two cannot drift apart."""
+    assert set(get_args(D4FindingTarget)) == {"ROOT_CAUSE", "ESCAPE_POINT"}
+    for model, optional in ((DocumentationUpdate, True), (CorrectiveActionCandidate, False)):
+        annotation = model.model_fields["target"].annotation
+        expected = D4FindingTarget | None if optional else D4FindingTarget
+        assert annotation == expected
+
+
+@pytest.mark.parametrize(
+    "artifact_type,target,expected",
+    [
+        ("FMEA", "ROOT_CAUSE", True),
+        ("CONTROL_PLAN", "ROOT_CAUSE", True),
+        ("FMEA", "ESCAPE_POINT", False),
+        ("FMEA", None, False),
+        ("WORK_INSTRUCTION", "ROOT_CAUSE", False),
+        ("OTHER", None, False),
+    ],
+)
+def test_d7_has_root_cause_linked_update_truth_table(
+    artifact_type: str, target: str | None, expected: bool
+) -> None:
+    """Both conditions must hold on the same record: qualifying artifact AND target=ROOT_CAUSE."""
+    assert _d7_with(artifact_type, target=target).has_root_cause_linked_update is expected
+
+
+def test_d7_has_root_cause_linked_update_is_false_when_no_updates() -> None:
+    assert _d7_with().has_root_cause_linked_update is False
+
+
+def test_d7_linkage_cannot_be_borrowed_across_two_records() -> None:
+    """A qualifying update targeting the escape point beside a non-qualifying update targeting the
+    root cause satisfies neither leg jointly — the borrow this property exists to refuse."""
+    discipline = D7Discipline(
+        systemic_changes_description="Two partial records",
+        documentation_updates=[
+            DocumentationUpdate(
+                artifact_type="FMEA",
+                artifact_reference="PFMEA-1",
+                updated_date=DAY_2,
+                target="ESCAPE_POINT",
+            ),
+            DocumentationUpdate(
+                artifact_type="WORK_INSTRUCTION",
+                artifact_reference="WI-9",
+                updated_date=DAY_2,
+                target="ROOT_CAUSE",
+            ),
+        ],
+    )
+    assert discipline.has_qualifying_update is True
+    assert discipline.has_root_cause_linked_update is False
+
+
+@pytest.mark.parametrize(
+    "artifact_type,target",
+    [("FMEA", "ROOT_CAUSE"), ("FMEA", None), ("OTHER", "ROOT_CAUSE"), ("OTHER", None)],
+)
+def test_d7_linked_update_strictly_implies_qualifying_update(
+    artifact_type: str, target: str | None
+) -> None:
+    """The three D7 predicates nest: linked => qualifying => documented, never the reverse."""
+    discipline = _d7_with(artifact_type, target=target)
+    if discipline.has_root_cause_linked_update:
+        assert discipline.has_qualifying_update is True
+        assert discipline.is_documented is True
 
 
 # ==============================================================================
@@ -1528,7 +1640,7 @@ def test_documentation_update_schema_shape() -> None:
         "artifact_reference",
         "updated_date",
     )
-    assert DOCUMENTATION_UPDATE_SCHEMA.optional_columns == ("updated_by",)
+    assert DOCUMENTATION_UPDATE_SCHEMA.optional_columns == ("updated_by", "target")
 
 
 def test_load_documentation_updates_csv_from_buffer() -> None:
@@ -1557,6 +1669,16 @@ def test_load_documentation_updates_csv_missing_required_column_raises() -> None
     rows = [{k: v for k, v in row.items() if k != "updated_date"} for row in _DOC_ROWS]
     with pytest.raises(IngestError, match="Missing required column"):
         load_documentation_updates_csv(_csv_buf(rows))
+
+
+def test_load_documentation_updates_csv_carries_the_target_column(tmp_path: Path) -> None:
+    """`target` is an optional CSV column, and an empty cell loads as unlinked, not as an error."""
+    rows = [
+        {**_DOC_ROWS[0], "target": "ROOT_CAUSE"},
+        {**_DOC_ROWS[0], "artifact_reference": "CP-999", "target": ""},
+    ]
+    updates = validate_documentation_updates(load_documentation_updates_csv(_csv_buf(rows))).rows
+    assert [u.target for u in updates] == ["ROOT_CAUSE", None]
 
 
 def test_documentation_update_list_rejects_empty_rows() -> None:

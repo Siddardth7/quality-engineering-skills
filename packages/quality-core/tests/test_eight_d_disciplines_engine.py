@@ -2377,8 +2377,13 @@ def test_d6_engine_symbols_are_re_exported_from_quality_core_rca() -> None:
 #   3. FMEA residual-AP delta is never gating; ap_reduced=False stays `info`.
 
 
-def _d7_disc(*artifact_types: str) -> D7Discipline:
-    """A D7 record carrying one DocumentationUpdate per given artifact_type (none => empty)."""
+def _d7_disc(*artifact_types: str, target: str | None = "ROOT_CAUSE") -> D7Discipline:
+    """A D7 record carrying one DocumentationUpdate per given artifact_type (none => empty).
+
+    ``target`` is applied to every update; the default keeps the E8/#211 root-cause linkage
+    satisfied so each test below isolates the one condition it names. The unlinked cases pass
+    ``target=None`` / ``"ESCAPE_POINT"`` explicitly.
+    """
     return D7Discipline(
         systemic_changes_description="PM schedule updated; approval control added.",
         documentation_updates=[
@@ -2386,6 +2391,7 @@ def _d7_disc(*artifact_types: str) -> D7Discipline:
                 artifact_type=at,  # type: ignore[arg-type]
                 artifact_reference=f"DOC-{i}",
                 updated_date=IMPLEMENTED,
+                target=target,  # type: ignore[arg-type]
             )
             for i, at in enumerate(artifact_types)
         ],
@@ -2457,6 +2463,7 @@ def test_d7_validation_result_to_dict_nests_findings_and_payloads() -> None:
         "verdict",
         "prevention_documented",
         "has_qualifying_update",
+        "root_cause_linked_update",
         "root_cause_traceable",
         "control_plan_evidence",
         "fmea_effectiveness",
@@ -2548,6 +2555,107 @@ def test_d7_d4_root_cause_non_reject_is_traceable(verdict: str) -> None:
     assert result.root_cause_traceable is True
     assert "PREVENTION_NOT_TRACEABLE_ROOT_CAUSE" not in _d7_codes(result)
     assert "PREVENTION_ROOT_CAUSE_VALIDATION_NOT_RUN" not in _d7_codes(result)
+
+
+# ---- 10.2b D4 root-cause LINKAGE (E8/#211, PDD-8D-013) --------------------------------
+#
+# The review finding on PR #230: before DocumentationUpdate.target existed, an accepted D4 cause
+# plus an *unrelated* qualifying update reported ACCEPT and "traceable". These are the negative
+# controls for that gap. Mutating `has_root_cause_linked_update` back to `has_qualifying_update`
+# must fail here.
+
+
+def test_d7_qualifying_update_without_target_is_not_traceable_negative_control() -> None:
+    """Darryl's PR #230 counterexample, verbatim: a proven D4 root cause plus an unrelated FMEA
+    update that names no target. This must REJECT, not ACCEPT."""
+    unrelated = D7Discipline(
+        systemic_changes_description="Approval control added.",
+        documentation_updates=[
+            DocumentationUpdate(
+                artifact_type="FMEA",
+                artifact_reference="DOC-UNRELATED",
+                updated_date=IMPLEMENTED,
+            )
+        ],
+    )
+    result = validate_d7_prevention(unrelated, d4=_clean_d4())
+    assert result.verdict == "REJECT"
+    assert result.valid is False
+    assert result.has_qualifying_update is True
+    assert result.root_cause_linked_update is False
+    assert result.root_cause_traceable is False
+    assert ("PREVENTION_UPDATE_NOT_LINKED_TO_ROOT_CAUSE", "error") in _d7_pairs(result)
+    assert "D7_READY" not in _d7_codes(result)
+
+
+def test_d7_escape_point_target_alone_is_not_root_cause_traceable() -> None:
+    """#211 conditions prevention on the *root cause*; a detection-side fix is not a substitute."""
+    result = validate_d7_prevention(_d7_disc("FMEA", target="ESCAPE_POINT"), d4=_clean_d4())
+    assert result.verdict == "REJECT"
+    assert result.root_cause_linked_update is False
+    assert result.root_cause_traceable is False
+    assert ("PREVENTION_UPDATE_NOT_LINKED_TO_ROOT_CAUSE", "error") in _d7_pairs(result)
+
+
+def test_d7_linkage_is_reported_once_and_suppresses_the_d4_verdict_findings() -> None:
+    """An unlinked update short-circuits the traceability chain: the deficiency is reported once,
+    not alongside PREVENTION_NOT_TRACEABLE_ROOT_CAUSE, exactly as the missing-update leg does."""
+    result = validate_d7_prevention(_d7_disc("FMEA", target=None), d4=_d4(root_verdict="REJECT"))
+    assert _d7_codes(result).count("PREVENTION_UPDATE_NOT_LINKED_TO_ROOT_CAUSE") == 1
+    assert "PREVENTION_NOT_TRACEABLE_ROOT_CAUSE" not in _d7_codes(result)
+    assert result.root_cause_traceable is False
+
+
+def test_d7_no_qualifying_update_does_not_also_report_the_linkage_deficiency() -> None:
+    """The broader block wins: a record with no qualifying update is never additionally told its
+    nonexistent update is unlinked."""
+    result = validate_d7_prevention(_d7_disc("OTHER", target=None), d4=_clean_d4())
+    assert _d7_pairs(result) == [("PREVENTION_ARTIFACT_UPDATE_MISSING", "error")]
+    assert "PREVENTION_UPDATE_NOT_LINKED_TO_ROOT_CAUSE" not in _d7_codes(result)
+    assert result.root_cause_linked_update is False
+
+
+def test_d7_linkage_deficiency_fires_without_d4_and_leaves_traceability_unasked() -> None:
+    """The linkage check reads the D7 record alone, so it fires with no D4 supplied — but
+    root_cause_traceable stays None, because that check was skipped, not failed."""
+    result = validate_d7_prevention(_d7_disc("FMEA", target=None), d4=None)
+    assert result.verdict == "REJECT"
+    assert result.root_cause_traceable is None
+    assert ("PREVENTION_UPDATE_NOT_LINKED_TO_ROOT_CAUSE", "error") in _d7_pairs(result)
+    assert ("D4_NOT_SUPPLIED", "warning") in _d7_pairs(result)
+
+
+def test_d7_linkage_must_hold_on_the_same_update_not_across_records() -> None:
+    """A qualifying update targeting the escape point cannot borrow a WORK_INSTRUCTION record's
+    ROOT_CAUSE linkage — that borrow is the gap, not a variant of it."""
+    split = D7Discipline(
+        systemic_changes_description="Two partial records.",
+        documentation_updates=[
+            DocumentationUpdate(
+                artifact_type="FMEA",
+                artifact_reference="PFMEA-1",
+                updated_date=IMPLEMENTED,
+                target="ESCAPE_POINT",
+            ),
+            DocumentationUpdate(
+                artifact_type="WORK_INSTRUCTION",
+                artifact_reference="WI-9",
+                updated_date=IMPLEMENTED,
+                target="ROOT_CAUSE",
+            ),
+        ],
+    )
+    result = validate_d7_prevention(split, d4=_clean_d4())
+    assert result.has_qualifying_update is True
+    assert result.root_cause_linked_update is False
+    assert result.verdict == "REJECT"
+
+
+def test_d7_root_cause_linked_update_reads_the_shared_schema_property() -> None:
+    """The result field is read from D7Discipline, never recomputed from the findings list."""
+    for discipline in (_d7_disc("FMEA"), _d7_disc("FMEA", target=None), _d7_disc("OTHER")):
+        result = validate_d7_prevention(discipline, d4=_clean_d4())
+        assert result.root_cause_linked_update is discipline.has_root_cause_linked_update
 
 
 # ---- 10.3 Control Plan evidence -------------------------------------------------------

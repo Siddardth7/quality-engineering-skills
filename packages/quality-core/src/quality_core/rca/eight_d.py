@@ -20,6 +20,17 @@ construction over it, so that refusal is declared as ``PDD-8D-010`` (Process Des
 in ``rca/ASSUMPTIONS_LOG.md``), the same ``PDD-, not RULE-`` reasoning as ``PDD-8D-008``. The
 deficiency itself is evaluated once, in ``eight_d_schema._closure_evidence_deficiencies``, which
 the CLOSED-report model validator and this gate both consume.
+
+Both prevention checkpoints — the D7 to D8 gate and the D8 to CLOSED closure boundary — read a
+*second* D7 fact, added by E8 (#211): the qualifying FMEA / Control Plan update must declare
+``target="ROOT_CAUSE"``, the structural back-reference saying which proven D4 finding it prevents
+the recurrence of (``PREVENTION_UPDATE_NOT_LINKED_TO_ROOT_CAUSE``). ``RULE-8D-D7`` backs the
+substance — the changes must be documented, and D7 exists to modify what permitted the problem —
+but no manual clause states a machine-checkable artifact-to-cause linkage requirement, let alone
+one that refuses a transition, so that refusal is declared as ``PDD-8D-013`` (Process Design
+Decision #13 in ``rca/ASSUMPTIONS_LOG.md``), the same ``PDD-, not RULE-`` reasoning as
+``PDD-8D-008`` and ``PDD-8D-010``. The predicate itself lives once, on
+``D7Discipline.has_root_cause_linked_update``.
 """
 
 from __future__ import annotations
@@ -51,6 +62,7 @@ GateCode = Literal[
     "LINKED_NCR_INVALID",
     "PCA_NOT_VERIFIED",
     "PREVENTION_UPDATE_MISSING",
+    "PREVENTION_UPDATE_NOT_LINKED_TO_ROOT_CAUSE",
     "ROOT_CAUSE_REJECTED",
     "ROOT_CAUSE_EVIDENCE_MISSING",
 ]
@@ -67,6 +79,14 @@ _LINKED_NCR_RULE_ID = "PDD-8D-008"
 #: specifically over it — that refusal mechanism is this platform's own, Process Design Decision
 #: #10 in rca/ASSUMPTIONS_LOG.md.
 _PCA_VALIDATION_RULE_ID = "PDD-8D-010"
+
+#: Rule identifier for the D7 root-cause-linkage block. Same "PDD-, not RULE-" reasoning as the
+#: two above: ``RULE-8D-D7`` backs the substance (the changes must be documented, and D7 modifies
+#: what permitted the problem), but no manual clause states a machine-checkable artifact-to-cause
+#: linkage requirement or a refusal mechanism built on one — that is Process Design Decision #13
+#: in rca/ASSUMPTIONS_LOG.md. The missing-update block above it stays on ``RULE-8D-GATE-PREVENTION``,
+#: which the manual does back.
+_PREVENTION_LINKAGE_RULE_ID = "PDD-8D-013"
 
 _NEXT: dict[EightDState, EightDState] = {
     "D0": "D1",
@@ -134,20 +154,30 @@ def _linked_ncr_reason(report: EightDReport) -> TransitionReason | None:
 
 
 def _prevention_reason(report: EightDReport) -> TransitionReason | None:
-    """Block D7 to D8 until D7 records an FMEA or Control Plan documentation update.
+    """Block D7 to D8 until D7 records an FMEA or Control Plan update linked to the root cause.
 
-    Delegates the predicate to ``D7Discipline.has_qualifying_update``, the single shared fact the
-    D8 to CLOSED closure boundary (``_closure_evidence_deficiencies``) and the advisory
-    ``validate_d7_prevention`` engine also read, and never re-derives it here.
+    Delegates both predicates to ``D7Discipline`` — ``has_qualifying_update`` and, added by E8
+    (#211), ``has_root_cause_linked_update`` — the single shared facts the D8 to CLOSED closure
+    boundary (``_closure_evidence_deficiencies``) and the advisory ``validate_d7_prevention``
+    engine also read; neither is re-derived here.
+
+    The two blocks are reported separately and never together: a record with no qualifying update
+    at all cannot also be told its (nonexistent) update is unlinked, so the narrower reason is
+    reached only once the broader one passes.
     """
-    qualified = report.d7 is not None and report.d7.has_qualifying_update
-    if qualified:
-        return None
-    return TransitionReason(
-        "PREVENTION_UPDATE_MISSING",
-        "D7 has no recorded FMEA or Control Plan update; record the applicable prevention documentation update before advancing.",
-        "RULE-8D-GATE-PREVENTION",
-    )
+    if report.d7 is None or not report.d7.has_qualifying_update:
+        return TransitionReason(
+            "PREVENTION_UPDATE_MISSING",
+            "D7 has no recorded FMEA or Control Plan update; record the applicable prevention documentation update before advancing.",
+            "RULE-8D-GATE-PREVENTION",
+        )
+    if not report.d7.has_root_cause_linked_update:
+        return TransitionReason(
+            "PREVENTION_UPDATE_NOT_LINKED_TO_ROOT_CAUSE",
+            "D7's FMEA or Control Plan update does not declare target=ROOT_CAUSE; record which proven D4 finding the prevention update prevents the recurrence of before advancing.",
+            _PREVENTION_LINKAGE_RULE_ID,
+        )
+    return None
 
 
 def _closure_reasons(report: EightDReport) -> tuple[TransitionReason, ...]:
@@ -165,6 +195,10 @@ def _closure_reasons(report: EightDReport) -> tuple[TransitionReason, ...]:
         elif deficiency.code == "PREVENTION_UPDATE_MISSING":
             reasons.append(
                 TransitionReason(deficiency.code, deficiency.message, "RULE-8D-GATE-PREVENTION")
+            )
+        elif deficiency.code == "PREVENTION_UPDATE_NOT_LINKED_TO_ROOT_CAUSE":
+            reasons.append(
+                TransitionReason(deficiency.code, deficiency.message, _PREVENTION_LINKAGE_RULE_ID)
             )
         else:
             code: GateCode = (

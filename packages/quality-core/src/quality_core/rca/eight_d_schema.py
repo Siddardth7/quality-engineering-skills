@@ -57,6 +57,7 @@ __all__ = [
     "D2Discipline",
     "D3Discipline",
     "D4Discipline",
+    "D4FindingTarget",
     "D5Discipline",
     "D6Discipline",
     "D7Discipline",
@@ -111,6 +112,13 @@ EightDStatus = Literal["OPEN", "CLOSED", "CANCELLED"]
 #: Active problem-solving discipline, kept separate from the report lifecycle status.
 EightDDiscipline = Literal["D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8"]
 
+#: Which D4 finding a downstream record points back at. ``D4Discipline`` carries exactly one
+#: ``root_cause`` and exactly one ``escape_point``, so this two-value vocabulary is a *complete*
+#: and unambiguous structural reference to a specific D4 finding, not an approximation of one.
+#: Read by :attr:`CorrectiveActionCandidate.target` (D5, where it originated) and by
+#: :attr:`DocumentationUpdate.target` (D7, E8/#211); defined once so the two cannot drift.
+D4FindingTarget = Literal["ROOT_CAUSE", "ESCAPE_POINT"]
+
 _ClosureDeficiencyCode = Literal[
     "D8_MISSING",
     "ROOT_CAUSE_VALIDATION_MISSING",
@@ -120,6 +128,7 @@ _ClosureDeficiencyCode = Literal[
     "CONTAINMENT_NOT_VERIFIED",
     "PCA_NOT_VERIFIED",
     "PREVENTION_UPDATE_MISSING",
+    "PREVENTION_UPDATE_NOT_LINKED_TO_ROOT_CAUSE",
 ]
 
 
@@ -530,7 +539,7 @@ class CorrectiveActionCandidate(pydantic.BaseModel):
     """
 
     action_id: Annotated[str, pydantic.Field(min_length=1, max_length=200)]
-    target: Literal["ROOT_CAUSE", "ESCAPE_POINT"]
+    target: D4FindingTarget
     description: Annotated[str, pydantic.Field(min_length=1, max_length=2000)]
     selection_criteria: Annotated[str, pydantic.Field(min_length=1, max_length=2000)]
     verified_no_undesirable_effects: bool = False
@@ -658,21 +667,39 @@ class D6Discipline(pydantic.BaseModel):
 
 class DocumentationUpdate(pydantic.BaseModel):
     """One artifact updated as part of D7 prevention. CSV-loadable via
-    :data:`DOCUMENTATION_UPDATE_SCHEMA`."""
+    :data:`DOCUMENTATION_UPDATE_SCHEMA`.
+
+    ``target`` is the structural back-reference to the D4 finding this update prevents the
+    recurrence of, and it is the same :data:`D4FindingTarget` vocabulary
+    ``CorrectiveActionCandidate.target`` uses at D5 — deliberately, because the question is the
+    same one: *which proven finding does this record act on?* It is ``None`` by default because
+    an update recorded before its target has been declared is a legitimate in-progress state that
+    the schema does not refuse; what it does not do is *count* — every D7 consumer
+    (:attr:`D7Discipline.has_root_cause_linked_update`, the D7 to D8 gate, the D8 to CLOSED
+    closure boundary, and the advisory ``validate_d7_prevention`` engine) requires
+    ``ROOT_CAUSE`` before it will report the prevention update as traceable. Declared as Process
+    Design Decision #13 in ``ASSUMPTIONS_LOG.md``.
+
+    The residual limit is worth stating plainly: ``target`` records the *claim* that this update
+    addresses the root cause, deterministically and attributably. Whether the artifact behind
+    ``artifact_reference`` genuinely implements that fix remains a human judgment call, exactly as
+    it does for ``CorrectiveActionCandidate.target`` at D5.
+    """
 
     artifact_type: Literal["FMEA", "CONTROL_PLAN", "PROCESS_FLOW", "WORK_INSTRUCTION", "OTHER"]
     artifact_reference: Annotated[str, pydantic.Field(min_length=1, max_length=200)]
     updated_date: datetime.date
     updated_by: Annotated[str | None, pydantic.Field(default=None, max_length=200)] = None
+    target: D4FindingTarget | None = None
 
     @pydantic.field_validator("artifact_reference", mode="before")
     @classmethod
     def _reject_blank_reference(cls, v: object) -> object:
         return _reject_blank(v)
 
-    @pydantic.field_validator("updated_by", mode="before")
+    @pydantic.field_validator("updated_by", "target", mode="before")
     @classmethod
-    def _normalize_updated_by(cls, v: object) -> object:
+    def _normalize_optional_fields(cls, v: object) -> object:
         return _blank_to_none(v)
 
 
@@ -722,9 +749,42 @@ class D7Discipline(pydantic.BaseModel):
         Broader than ``is_documented``: ``is_documented`` is ``True`` for an ``OTHER``- or
         ``WORK_INSTRUCTION``-type update alone, whereas this property additionally requires the
         artifact type to be one the manual names.
+
+        Broader, in turn, than ``has_root_cause_linked_update``, which additionally requires the
+        qualifying update to declare which D4 finding it prevents recurrence of.
         """
         return any(
             update.artifact_type in _QUALIFYING_ARTIFACT_TYPES
+            for update in self.documentation_updates
+        )
+
+    @property
+    def has_root_cause_linked_update(self) -> bool:
+        """True iff a *single* update is both qualifying and targeted at the D4 root cause.
+
+        The two conditions must hold on the **same** ``DocumentationUpdate`` — an FMEA update
+        targeting the escape point sitting beside a ``WORK_INSTRUCTION`` update targeting the root
+        cause satisfies neither leg jointly and is correctly ``False``. Splitting the check across
+        records would let an unrelated artifact borrow another record's linkage, which is the
+        precise gap this property closes.
+
+        This is the single definition of "the D7 record's prevention update is traceable to the
+        proven D4 root cause", read by ``eight_d.py``'s ``_prevention_reason`` (D7 to D8),
+        ``_closure_evidence_deficiencies`` (D8 to CLOSED,
+        ``PREVENTION_UPDATE_NOT_LINKED_TO_ROOT_CAUSE``) and the advisory
+        ``validate_d7_prevention`` engine — the same one-definition contract
+        ``has_qualifying_update`` and ``D3Discipline.is_verified`` already hold to. Strictly
+        narrower than ``has_qualifying_update``: every record this returns ``True`` for is one
+        that returns ``True`` for as well.
+
+        ``ESCAPE_POINT`` is deliberately not accepted here. Issue #211 makes closure conditional
+        on a prevention update reflecting *the D4 root cause*, and the escape point is a separate
+        finding with its own D5 corrective action; treating either as sufficient would let a
+        detection-side fix close a report whose cause-side systemic change was never documented.
+        Declared as Process Design Decision #13 in ``ASSUMPTIONS_LOG.md``.
+        """
+        return any(
+            update.artifact_type in _QUALIFYING_ARTIFACT_TYPES and update.target == "ROOT_CAUSE"
             for update in self.documentation_updates
         )
 
@@ -928,6 +988,15 @@ def _closure_evidence_deficiencies(report: EightDReport) -> tuple[_ClosureDefici
             _ClosureDeficiency(
                 "PREVENTION_UPDATE_MISSING",
                 "a CLOSED report requires a D7 FMEA or Control Plan update",
+            )
+        )
+    elif not report.d7.has_root_cause_linked_update:
+        deficiencies.append(
+            _ClosureDeficiency(
+                "PREVENTION_UPDATE_NOT_LINKED_TO_ROOT_CAUSE",
+                "a CLOSED report requires the D7 FMEA or Control Plan update to declare "
+                "target=ROOT_CAUSE, recording which proven D4 finding it prevents the "
+                "recurrence of",
             )
         )
     return tuple(deficiencies)
@@ -1289,7 +1358,7 @@ DOCUMENTATION_UPDATE_SCHEMA = TableSchema(
     name="8D Documentation Updates",
     row_model=DocumentationUpdate,
     required_columns=("artifact_type", "artifact_reference", "updated_date"),
-    optional_columns=("updated_by",),
+    optional_columns=("updated_by", "target"),
     dataset_model=DocumentationUpdateList,
     template_hint="data/eight_d_documentation_template.csv",
 )

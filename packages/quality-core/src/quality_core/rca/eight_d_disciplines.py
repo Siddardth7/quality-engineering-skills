@@ -99,7 +99,9 @@ The D5/D6 heuristics with no manual behind them — ``PCA_VERIFICATION_EVIDENCE_
 ``IMPLEMENTED_ACTION_TARGET_COVERAGE_INCOMPLETE`` and ``ICA_NOT_REMOVED`` — are declared the same
 way, as Process Design Decision #11, and carry no citation row either. The D7 heuristics with no
 manual behind them — the structural D4→D7 traceability reading
-(``PREVENTION_NOT_TRACEABLE_ROOT_CAUSE`` / ``PREVENTION_ROOT_CAUSE_VALIDATION_NOT_RUN``), the
+(``PREVENTION_NOT_TRACEABLE_ROOT_CAUSE`` / ``PREVENTION_ROOT_CAUSE_VALIDATION_NOT_RUN`` /
+``PREVENTION_UPDATE_NOT_LINKED_TO_ROOT_CAUSE``, the last of these also identified as
+``PDD-8D-013`` where the gate reports it), the
 Control-Plan-evidence optionality findings (``CONTROL_PLAN_EVIDENCE_NOT_PROVIDED`` /
 ``CONTROL_PLAN_EVIDENCE_INVALID`` / ``CONTROL_PLAN_EVIDENCE_VALID``) and the informational
 ``FMEA_RESIDUAL_RISK`` / ``FMEA_RESIDUAL_RISK_EVIDENCE_INCOMPLETE`` framing — are declared as
@@ -114,7 +116,10 @@ all three consumers — ``eight_d.py``'s D7→D8 ``_prevention_reason`` gate,
 ``eight_d_schema._closure_evidence_deficiencies``' ``PREVENTION_UPDATE_MISSING`` closure
 deficiency, and this engine. Before E8 the predicate was hand-written twice, identically, in the
 two gates; it is now written once, so this engine's ``REJECT`` and the gates' block cannot
-disagree about the same record.
+disagree about the same record. ``D7Discipline.has_root_cause_linked_update`` is the second such
+shared predicate, written once for the same three consumers: it answers "and does that update say
+which proven D4 finding it prevents the recurrence of", the question ``DocumentationUpdate.target``
+was added to make answerable structurally (``PDD-8D-013``, Process Design Decision #13).
 
 **PROCUREMENT-GAP (ISO 9001:2015 §8.7 / IATF 16949:2016 §8.7).** The licensed excerpts for the
 nonconforming-output clauses that stand behind ``quality_core.ncr`` are not on this machine, so no
@@ -2033,6 +2038,12 @@ class D7ValidationResult:
     same predicate the D7→D8 transition gate and the D8→CLOSED closure boundary both block on.
     ``prevention_documented`` is the separate, broader ``D7Discipline.is_documented``: any update
     at all, including a ``WORK_INSTRUCTION``- or ``OTHER``-typed one.
+
+    ``root_cause_linked_update`` is read the same way from
+    ``D7Discipline.has_root_cause_linked_update`` (E8/#211), the narrower predicate the same two
+    checkpoints block on. The three booleans nest strictly:
+    ``root_cause_linked_update`` implies ``has_qualifying_update`` implies
+    ``prevention_documented``.
     """
 
     basis: str
@@ -2040,6 +2051,7 @@ class D7ValidationResult:
     verdict: Literal["ACCEPT", "WARNING", "REJECT"]
     prevention_documented: bool
     has_qualifying_update: bool
+    root_cause_linked_update: bool
     root_cause_traceable: bool | None
     control_plan_evidence: dict[str, Any] | None
     fmea_effectiveness: dict[str, Any] | None
@@ -2054,6 +2066,7 @@ class D7ValidationResult:
             "verdict": self.verdict,
             "prevention_documented": self.prevention_documented,
             "has_qualifying_update": self.has_qualifying_update,
+            "root_cause_linked_update": self.root_cause_linked_update,
             "root_cause_traceable": self.root_cause_traceable,
             "control_plan_evidence": self.control_plan_evidence,
             "fmea_effectiveness": self.fmea_effectiveness,
@@ -2092,18 +2105,27 @@ def validate_d7_prevention(
     the advisory engine reports as an error the exact fact the gate blocks on, even where the
     schema itself permits the underlying state to be constructed.
 
-    **D4→D7 traceability is structural, not semantic.** The check proves only that D4 as a whole
-    did the proving work — a non-``REJECT`` ``five_why_verdict`` on the root-cause finding — and
-    that D7 recorded a qualifying artifact update at all. It does **not**, and cannot without
-    fuzzy string matching, prove that a specific ``DocumentationUpdate.artifact_reference``
-    implements a fix for the specific ``RootCauseFinding.statement``: ``DocumentationUpdate``
-    carries no ``target`` field (unlike ``CorrectiveActionCandidate.target`` at D5) and no link
-    identifier to ``D4Discipline`` at all, so — unlike D6's exact-match ``corrective_action_id``
-    cross-reference — no structural per-artifact match is possible, only a report-level "was D4
-    proven at all" check. That is the same fuzzy matching ``D4Discipline``'s own docstring
-    disclaims for having no standards basis, and this epic does not reintroduce it under another
-    name. **Whether the specific FMEA or Control Plan change genuinely addresses the specific root
-    cause remains a human judgment call this tool does not automate.**
+    **D4→D7 traceability is structural, not semantic — and it has two legs.** The check proves
+    (a) that D4 as a whole did the proving work — a non-``REJECT`` ``five_why_verdict`` on the
+    root-cause finding — and (b) that a qualifying D7 artifact update declares
+    ``target="ROOT_CAUSE"``, the structural back-reference added in E8/#211 and read here through
+    ``D7Discipline.has_root_cause_linked_update``. Leg (b) is what makes ``root_cause_traceable``
+    a statement about *this* update rather than about the report at large: a qualifying FMEA or
+    Control Plan update that names no target, or names only ``ESCAPE_POINT``, is reported
+    ``PREVENTION_UPDATE_NOT_LINKED_TO_ROOT_CAUSE`` at ``severity="error"`` and is not traceable,
+    exactly as the D7→D8 gate and the D8→CLOSED boundary now block it. Both legs must hold on the
+    same record; the two conditions of leg (b) must hold on the same ``DocumentationUpdate``.
+
+    What is still **not** attempted is comparing ``DocumentationUpdate.artifact_reference`` with
+    ``RootCauseFinding.statement``: that would be the fuzzy string matching ``D4Discipline``'s own
+    docstring disclaims for having no standards basis, and this epic does not reintroduce it under
+    another name. ``target`` sidesteps it because ``D4Discipline`` carries exactly one
+    ``root_cause`` and one ``escape_point``, so the two-value vocabulary is a complete structural
+    reference, not an approximation — the same reason ``CorrectiveActionCandidate.target`` works
+    at D5. **Whether the artifact behind ``artifact_reference`` genuinely implements the fix for
+    the declared target remains a human judgment call this tool does not automate**, precisely as
+    it does at D5; what the tool now refuses to do is call an update traceable that never made the
+    claim.
 
     **Bidirectional PFMEA linkage is deliberately not checked here.**
     ``quality_core.controlplan.validate_pfmea_linkage`` exists and is importable downward, but it
@@ -2194,6 +2216,26 @@ def validate_d7_prevention(
                 ),
             )
         )
+        if not discipline.has_root_cause_linked_update:
+            findings.append(
+                D7Finding(
+                    code="PREVENTION_UPDATE_NOT_LINKED_TO_ROOT_CAUSE",
+                    severity="error",
+                    artifact_type=None,
+                    message=(
+                        "No qualifying D7 documentation update declares target=ROOT_CAUSE, so "
+                        "the record does not say which proven D4 finding the prevention update "
+                        "prevents the recurrence of. An FMEA or Control Plan update that names "
+                        "no target is not evidence of prevention for this problem's root cause "
+                        "(PDD-8D-013); this is the same fact the D7 to D8 gate and the D8 to "
+                        "CLOSED closure boundary both block on."
+                    ),
+                    recommendation=(
+                        "Set target=ROOT_CAUSE on the FMEA or Control Plan documentation update "
+                        "that implements the systemic change for the D4 root cause."
+                    ),
+                )
+            )
 
     root_cause_traceable: bool | None
     if d4 is None:
@@ -2214,6 +2256,9 @@ def validate_d7_prevention(
         root_cause_traceable = None
     elif not discipline.has_qualifying_update:
         # Already reported as PREVENTION_ARTIFACT_UPDATE_MISSING above; do not double-report.
+        root_cause_traceable = False
+    elif not discipline.has_root_cause_linked_update:
+        # Already reported as PREVENTION_UPDATE_NOT_LINKED_TO_ROOT_CAUSE above; report once.
         root_cause_traceable = False
     elif d4.root_cause.five_why_verdict == "REJECT":
         findings.append(
@@ -2371,6 +2416,7 @@ def validate_d7_prevention(
         verdict=verdict,
         prevention_documented=discipline.is_documented,
         has_qualifying_update=discipline.has_qualifying_update,
+        root_cause_linked_update=discipline.has_root_cause_linked_update,
         root_cause_traceable=root_cause_traceable,
         control_plan_evidence=control_plan_payload,
         fmea_effectiveness=fmea_payload,

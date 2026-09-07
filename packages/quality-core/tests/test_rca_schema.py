@@ -84,6 +84,7 @@ def test_rca_module_all_exports() -> None:
         "D3ValidationResult",
         "D4Discipline",
         "D4Finding",
+        "D4FindingTarget",
         "D4ValidationResult",
         "D5Discipline",
         "D5Finding",

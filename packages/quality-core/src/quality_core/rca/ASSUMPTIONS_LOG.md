@@ -1107,22 +1107,24 @@ from the cited `RULE-8D-*` entries above for exactly that reason.
       statement about *schema constructibility*, which is a different question from the advisory
       engine's severity choice.
     - **D4→D7 root-cause traceability is structural, not semantic, exactly as Process Design
-      Decision #11 already established for D4→D5.** `DocumentationUpdate` carries no `target`
-      field (unlike `CorrectiveActionCandidate.target` at D5) and no link identifier to
-      `D4Discipline`, so the check can only ask whether D4 was proven at all — a non-`REJECT`
-      `five_why_verdict` on `root_cause`, read exactly as the D4 engine recorded it — never
-      whether a specific artifact addresses a specific root-cause statement. Comparing
-      `artifact_reference` with `RootCauseFinding.statement` would be the fuzzy string matching
-      `D4Discipline`'s own docstring disclaims for having no standards basis, and this epic does
-      not reintroduce it under another name. **Consequence, stated plainly:** whether the specific
-      FMEA or Control Plan change genuinely addresses the specific root cause remains a human
+      Decision #11 already established for D4→D5.** Comparing `artifact_reference` with
+      `RootCauseFinding.statement` would be the fuzzy string matching `D4Discipline`'s own
+      docstring disclaims for having no standards basis, and this epic does not reintroduce it
+      under another name. **Consequence, stated plainly:** whether the artifact behind
+      `artifact_reference` genuinely implements the fix for the finding it names remains a human
       judgment call this tool does not automate. `PREVENTION_NOT_TRACEABLE_ROOT_CAUSE` is an
       `error` (D4 recorded a rejected chain); `PREVENTION_ROOT_CAUSE_VALIDATION_NOT_RUN` is a
       `warning` (validation not yet run is in-progress, not wrong); `D4_NOT_SUPPLIED` is a
       `warning` for the same reason it is at D5/D6, and the check is *skipped*
-      (`root_cause_traceable=None`), never guessed at. When the qualifying-update check already
-      failed, no traceability finding is added at all — the deficiency is reported once, not
+      (`root_cause_traceable=None`), never guessed at. When an earlier leg of the check already
+      failed, no further traceability finding is added — each deficiency is reported once, not
       twice — and `root_cause_traceable` is `False`.
+      **Amended by Process Design Decision #13 (this epic, after review):** as first shipped this
+      bullet also recorded that `DocumentationUpdate` "carries no `target` field", so the check
+      could only ask whether D4 was proven *at all*. That made an unrelated FMEA update report as
+      traceable, which #211 does not permit. `DocumentationUpdate.target` now exists and the
+      traceability reading has a second leg; PDD #13 below records the field, the enforcement, and
+      what it does and does not prove.
     - **Bidirectional PFMEA linkage is out of scope, and that is a stated limitation, not an
       oversight.** `quality_core.controlplan.validate_pfmea_linkage` does live in `quality-core`
       and is importable downward, but it needs a `ControlPlanDataset` *and* a `RelationalFMEA`,
@@ -1175,3 +1177,58 @@ from the cited `RULE-8D-*` entries above for exactly that reason.
       D7→Control-Plan and D7→FMEA delegations are never mistaken for claims this epic verified.
       No tracking issue is known for an AIAG-VDA FMEA / APQP procurement gap (unlike NCR's #221);
       none is invented here.
+
+13. **`DocumentationUpdate.target` — the D7→D4 structural linkage, and the two checkpoints that
+    now enforce it (E8, #211, added after PR #230 review).**
+    - **What was wrong.** As first shipped, `validate_d7_prevention` set
+      `root_cause_traceable=True` whenever D4 carried a non-`REJECT`, non-null `five_why_verdict`
+      *and* D7 held any qualifying artifact update. Nothing related the two. A D4 root cause of
+      "missing approval control" plus an unrelated `FMEA` update `DOC-UNRELATED` was reported
+      `ACCEPT` and traceable, and both prevention checkpoints let it through. Issue #211 makes
+      closure conditional on a D7 PFMEA/Control-Plan update **reflecting the D4 root cause**, so
+      the report-level "was D4 proven at all" reading did not meet the epic's own contract.
+    - **The fix is a declared structural reference, not string matching.**
+      `DocumentationUpdate.target` takes the shared `D4FindingTarget` vocabulary
+      (`ROOT_CAUSE` | `ESCAPE_POINT`) that `CorrectiveActionCandidate.target` has used at D5 since
+      E7 — the alias is now defined once in `eight_d_schema.py` and read by both models, so a
+      third inlined copy cannot appear. `D4Discipline` carries exactly one `root_cause` and
+      exactly one `escape_point`, so naming one of the two **is** a complete, unambiguous
+      reference to a specific D4 finding; no approximation and no fuzzy matching is involved, and
+      Process Design Decision #12's refusal to compare `artifact_reference` with
+      `RootCauseFinding.statement` stands unchanged.
+    - **`ESCAPE_POINT` is not sufficient.** #211 conditions closure on the *root cause*. The
+      escape point is a separate finding carrying its own D5 corrective action; accepting either
+      would let a detection-side fix close a report whose cause-side systemic change was never
+      documented.
+    - **Both conditions must hold on the same record.**
+      `D7Discipline.has_root_cause_linked_update` requires one `DocumentationUpdate` to be *both*
+      qualifying (`FMEA` / `CONTROL_PLAN`) *and* `target="ROOT_CAUSE"`. Splitting the test across
+      records would let an unrelated artifact borrow a `WORK_INSTRUCTION` entry's linkage, which
+      is the gap being closed, not a variant of it.
+    - **The field is optional at the schema level and mandatory at every gate**, the same split
+      `has_qualifying_update` already used and for the same reason: an update recorded before its
+      target is declared is a legitimate in-progress state, not a malformed record, so the schema
+      does not refuse construction. What changed is that such a record no longer *counts*.
+      Blank-to-`None` normalization matches `updated_by`, so a CSV upload with an empty `target`
+      cell loads as unlinked rather than failing validation; `target` is an optional column on
+      `DOCUMENTATION_UPDATE_SCHEMA`.
+    - **One predicate, three consumers, reported once.** `has_root_cause_linked_update` is read by
+      `eight_d.py`'s D7→D8 `_prevention_reason`, `_closure_evidence_deficiencies`'
+      `PREVENTION_UPDATE_NOT_LINKED_TO_ROOT_CAUSE` deficiency, and the advisory engine's finding
+      of the same name (`severity="error"`, so the verdict is `REJECT`) — mirroring
+      `has_qualifying_update` and `D3Discipline.is_verified`. Each checkpoint reaches the linkage
+      block only after the broader missing-update block passes, so a D7 record with no qualifying
+      update is never also told its nonexistent update is unlinked.
+    - **`PDD-8D-013`, not a `RULE-8D-*` id.** `RULE-8D-D7` and `RULE-8D-GATE-PREVENTION` back the
+      *substance* — D7 modifies the systems that permitted the problem, and the changes must be
+      documented — and the missing-update block keeps `RULE-8D-GATE-PREVENTION` for that reason.
+      But neither manual states a machine-checkable artifact-to-cause linkage requirement, and
+      neither states a refusal mechanism built on one. The gate reason therefore carries the
+      `PDD-` prefix, exactly as `PDD-8D-008` (linked NCR) and `PDD-8D-010` (D6 closure evidence)
+      do. **No new `rca/CITATIONS.tsv` row is added by this decision**, because it quotes nothing.
+    - **What it still does not prove.** `target` records the *claim* that this update addresses
+      the root cause — deterministically, attributably, and checkably. Whether the artifact behind
+      `artifact_reference` genuinely implements that fix remains a human judgment call this tool
+      does not automate, precisely as it does for `CorrectiveActionCandidate.target` at D5. The
+      change is that an update which never made the claim can no longer be reported as traceable,
+      nor close a report.

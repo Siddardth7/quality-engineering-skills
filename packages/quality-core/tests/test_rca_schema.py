@@ -469,6 +469,23 @@ def test_validate_five_why_from_dict() -> None:
     assert len(chain.steps) == 1
 
 
+def test_validate_five_why_from_dict_preserves_two_steps() -> None:
+    data = {
+        "problem_statement": "Two-step dict problem",
+        "steps": [
+            {"step_number": 1, "why": "Why stopped?", "because": "Fuse blew"},
+            {"step_number": 2, "why": "Why did it blow?", "because": "Overload"},
+        ],
+        "root_cause": "Overload",
+    }
+
+    chain = validate_five_why(data)
+
+    assert isinstance(chain, FiveWhyChain)
+    assert [step.step_number for step in chain.steps] == [1, 2]
+    assert [step.because for step in chain.steps] == ["Fuse blew", "Overload"]
+
+
 def test_validate_five_why_rejects_invalid_list_item() -> None:
     with pytest.raises(TypeError, match="Expected FiveWhyStep or dict in list"):
         validate_five_why(["not a dict"])
@@ -721,6 +738,22 @@ def test_validate_fishbone_from_dict() -> None:
     assert ds.effect == "Dict Effect"
     assert len(ds.causes) == 1
     assert ds.causes[0].category == "Environment"
+
+
+def test_validate_fishbone_from_dict_preserves_two_causes() -> None:
+    data = {
+        "effect": "Two-cause dict effect",
+        "causes": [
+            {"category": "Machine", "cause": "Bearing wear"},
+            {"category": "Method", "cause": "Missing inspection"},
+        ],
+    }
+
+    dataset = validate_fishbone(data)
+
+    assert isinstance(dataset, FishboneDataset)
+    assert [cause.category for cause in dataset.causes] == ["Machine", "Method"]
+    assert [cause.cause for cause in dataset.causes] == ["Bearing wear", "Missing inspection"]
 
 
 def test_validate_fishbone_rejects_invalid_list_item() -> None:
@@ -996,6 +1029,22 @@ def test_validate_is_is_not_from_dict() -> None:
     assert matrix.problem_statement == "Dict KT Problem"
     assert len(matrix.rows) == 1
     assert matrix.rows[0].dimension == "WHAT"
+
+
+def test_validate_is_is_not_from_dict_preserves_two_rows() -> None:
+    data = {
+        "problem_statement": "Two-row dict matrix",
+        "rows": [
+            {"dimension": "WHAT", "is_data": "Seal leak", "is_not_data": "Housing crack"},
+            {"dimension": "WHERE", "is_data": "Line 2", "is_not_data": "Line 1"},
+        ],
+    }
+
+    matrix = validate_is_is_not(data)
+
+    assert isinstance(matrix, IsIsNotMatrix)
+    assert [row.dimension for row in matrix.rows] == ["WHAT", "WHERE"]
+    assert [row.is_data for row in matrix.rows] == ["Seal leak", "Line 2"]
 
 
 def test_validate_is_is_not_rejects_invalid_list_item() -> None:

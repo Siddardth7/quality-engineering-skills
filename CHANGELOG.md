@@ -359,6 +359,8 @@ Milestone 10 implementation is complete and ready for the human release handoff.
   citation rows are deferred to an E0 follow-up once the manuals are provisioned (#140).
 
 ### Fixed
+- Prevented valid two-or-more-row RCA dict/JSON inputs from crashing during missing-value
+  normalization in the 5-Why, Fishbone, and Is/Is-Not validators (#223).
 - Repointed the stale module-docstring citation in `quality_core.spc.stability` from the
   nonexistent `docs/ASSUMPTIONS_LOG.md RULE 7` to the real `spc/ASSUMPTIONS_LOG.md
   RULE-SPC-004` (#140).

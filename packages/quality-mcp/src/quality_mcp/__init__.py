@@ -5,7 +5,7 @@ Exposes quality-core deterministic engines to AI agents via Model Context Protoc
 
 from __future__ import annotations
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 from quality_mcp.server import (
     advance_8d,

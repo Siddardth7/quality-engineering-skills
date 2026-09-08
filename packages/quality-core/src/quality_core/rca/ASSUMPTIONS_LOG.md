@@ -1360,3 +1360,43 @@ from the cited `RULE-8D-*` entries above for exactly that reason.
       a `_ClosureDeficiencyCode`, `_closure_evidence_deficiencies` is unchanged, and `closeable` is
       unaffected. A report whose only D8 finding is this one is `closeable=True` with
       `verdict="WARNING"` — the `closeable`/`verdict` divergence documented under #14, now reachable.
+
+16. **`Finding.citation_basis` and the 8D canvas's presentation choices (E10, #213).**
+    Every `DNFinding` in `rca/eight_d_disciplines.py` now carries
+    `citation_basis: Literal["RULE", "PDD", "PLATFORM_UNCITED"]`, and
+    `canvas/eight_d.py` renders each finding's caption from that field alone. **The three-value
+    vocabulary is a platform presentation decision backed by no manual clause**: it adds **no**
+    `rca/CITATIONS.tsv` row and **no** new `RULE-8D-*` id, and a rendered caption is never
+    stronger than the value the engine recorded.
+
+    - **What each value means.** `RULE` — a `RULE-8D-*` row in `rca/CITATIONS.tsv`, quoting an
+      on-box manual, backs the check. `PDD` — a numbered Process Design Decision in this file
+      backs it. `PLATFORM_UNCITED` — neither does.
+    - **The default is `PLATFORM_UNCITED`, deliberately.** A forgotten field must under-claim
+      (heuristic) and never over-claim (standard); presenting a platform heuristic as a standards
+      requirement is the failure mode this repo refuses. Every one of the engine's 64 finding
+      construction sites nevertheless sets the value explicitly — the default is a safety net, not
+      a shortcut.
+    - **Classification policy.** A finding takes the basis of the *check* that produced it, not the
+      sentiment of its message: `ERA_NOT_VERIFIED` and `ERA_NOT_REQUIRED` are both `RULE` because
+      `RULE-8D-D0`/`RULE-8D-D0-001` back the questions they answer. Whole-discipline `*_READY`
+      summaries (`ERA_READY`, `TEAM_READY`, `D3_READY`, `D5_READY`, `D6_READY`, `D7_READY`,
+      `D8_READY`) aggregate checks of mixed basis, so no single citation backs them and they are
+      `PLATFORM_UNCITED`. Where the manual backs a check's *substance* but this platform chose the
+      shape or severity of the test (D5/D6 traceability, the NCR-linkage findings, `ICA_NOT_REMOVED`,
+      `IMPLEMENTED_ACTION_TARGET_COVERAGE_INCOMPLETE`), the weaker `PDD` value is recorded.
+    - **Why a field on the engine and not a table in the canvas.** A `code -> basis` lookup living
+      in a presentation module would be a second, drifting copy of a standards-fidelity fact, and
+      the alternative — scraping a finding's message for a `RULE-8D` substring — fails silently by
+      omission on the 42 findings that name no identifier at all, silently promoting heuristics to
+      standards findings. The basis is therefore recorded once, beside the check that raises it.
+    - **`to_dict()` payload shape.** These dataclasses serialize through `asdict`, so
+      `citation_basis` is now part of every finding payload the MCP layer emits. Recorded in
+      `CHANGELOG.md` under `[Unreleased]`.
+    - **The canvas's headline "Closeable" badge is `EightDValidationResult.closeable`.**
+      `result.closeable` (`gate_reasons == ()`, including the D3→D4 linked-NCR gate `PDD-8D-008`)
+      and `result.d8.closeable` (closure-evidence only) legitimately disagree. The whole-report
+      gate the state machine actually enforces is the headline; `result.d8.closeable` renders
+      inside the D8 card under its own label, "D8 closure-evidence complete", so the two are never
+      both labelled simply "Closeable" on the same page. Which of the two leads is a presentation
+      judgment call no manual states.

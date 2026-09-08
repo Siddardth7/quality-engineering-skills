@@ -9,6 +9,23 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- **8D chained client round-trip integration —
+  `packages/quality-mcp/tests/test_eight_d_chained_roundtrip.py`** (E13, Milestone 11, #216).
+  Test-only: one in-process FastMCP session drives NCR containment → 8D D3 → RCA D4 →
+  FMEA/Control-Plan D7 → D8 → CLOSED across real `write_ncr`, `advance_8d`, `validate_5why`,
+  `validate_control_plan` and `lookup_fmea_ap` calls, threading each hop's returned
+  `result["report"]` forward because the server persists no report between calls. Two negative
+  controls prove the chain is blocked at the *right* gate, not just any gate: an rca-rejected D4
+  passes D4→D5 untouched (D4 carries no transition gate) and blocks only at D8→CLOSED with a
+  single `ROOT_CAUSE_REJECTED` / `RULE-8D-GATE-CLOSURE` reason, and a missing D7 — both `d7: null`
+  and a D7 record with no qualifying update — blocks at D7→D8 with `PREVENTION_UPDATE_MISSING` /
+  `RULE-8D-GATE-PREVENTION`. Every call asserts four-leg payload parity (`structuredContent` ==
+  `json.loads(content[0].text)` == the tool function called directly == the wrapped `quality_core`
+  engine's own return), plus a chain-scoped skill leg asserting each touched domain's `SKILL.md`
+  names the tool the chain just called, and one error-isolation check that a malformed call
+  mid-chain returns `isError` without changing a later valid call's payload. No `quality-core` /
+  `quality-mcp` source change, no new fixture infrastructure and no new standards claim — every
+  gate code and `rule_id` exercised is already cited.
 - **`/8d` AI agent skill — `skills/8d-problem-solving/SKILL.md`** (E12, Milestone 11, #215). The
   qualitative prompt layer over E11's three MCP tools: `validate_8d`, `advance_8d` and
   `render_8d_canvas`. Documents each tool's full parameter and return contract plus three worked

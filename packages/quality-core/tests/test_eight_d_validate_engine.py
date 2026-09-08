@@ -353,6 +353,7 @@ def test_d8_finding_to_dict_shape() -> None:
         "severity": "info",
         "message": "msg",
         "recommendation": "rec",
+        "citation_basis": "PLATFORM_UNCITED",
     }
 
 

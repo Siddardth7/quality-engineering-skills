@@ -48,6 +48,8 @@ Tests:
 from __future__ import annotations
 
 import datetime
+import re
+from collections import Counter
 from dataclasses import asdict
 from pathlib import Path
 from typing import Literal
@@ -58,6 +60,7 @@ import pytest
 from quality_core.controlplan.schema import ControlPlanDataset, ControlPlanRow
 from quality_core.copq.schema import COPQDataset, CostItem
 from quality_core.ncr.schema import NCRDataset, validate_ncr
+from quality_core.rca import eight_d_disciplines
 from quality_core.rca.eight_d_disciplines import (
     D0Finding,
     D0ValidationResult,
@@ -246,6 +249,7 @@ def test_d0_finding_to_dict_shape() -> None:
         "severity": "info",
         "message": "msg",
         "recommendation": "rec",
+        "citation_basis": "PLATFORM_UNCITED",
     }
 
 
@@ -294,6 +298,7 @@ def test_d1_finding_to_dict_shape() -> None:
         "member_name": "A. Smith",
         "message": "msg",
         "recommendation": "rec",
+        "citation_basis": "PLATFORM_UNCITED",
     }
 
 
@@ -657,6 +662,7 @@ def test_d2_finding_to_dict_shape() -> None:
         "severity": "warning",
         "message": "msg",
         "recommendation": "rec",
+        "citation_basis": "PLATFORM_UNCITED",
     }
 
 
@@ -1239,6 +1245,7 @@ def test_d3_finding_to_dict_shape_with_action_description() -> None:
         "action_description": "Quarantine suspect WIP",
         "message": "msg",
         "recommendation": "rec",
+        "citation_basis": "PLATFORM_UNCITED",
     }
 
 
@@ -1752,6 +1759,7 @@ def test_d4_finding_and_accepted_result_serialize_without_authoring_a_cause() ->
     assert finding.to_dict() == {
         "code": "CODE", "severity": "info", "leg_type": None,
         "message": "msg", "recommendation": "rec",
+        "citation_basis": "PLATFORM_UNCITED",
     }
 
     result = validate_d4_root_cause(_d4(candidates=[_candidate(), _candidate("ELIMINATED")]), _OCCURRENCE_CHAIN, _ESCAPE_CHAIN)
@@ -1931,6 +1939,7 @@ def test_d5_finding_and_result_to_dict_round_trip() -> None:
     assert finding.to_dict() == {
         "code": "CODE", "severity": "info", "action_id": "PCA-RC",
         "message": "msg", "recommendation": "rec",
+        "citation_basis": "PLATFORM_UNCITED",
     }
 
     result = validate_d5_pca_selection(_d5(), _clean_d4())
@@ -2160,6 +2169,7 @@ def test_d6_finding_and_result_to_dict_round_trip() -> None:
     assert finding.to_dict() == {
         "code": "CODE", "severity": "info", "action_id": "PCA-RC",
         "message": "msg", "recommendation": "rec",
+        "citation_basis": "PLATFORM_UNCITED",
     }
 
     result = validate_d6_implementation_validation(_clean_d6_both(), _d5_both_targets())
@@ -2440,6 +2450,7 @@ def test_d7_finding_to_dict_shape() -> None:
         "artifact_type": "CONTROL_PLAN",
         "message": "m",
         "recommendation": "r",
+        "citation_basis": "PLATFORM_UNCITED",
     }
 
 
@@ -2903,3 +2914,146 @@ def test_d7_engine_symbols_are_re_exported_from_quality_core_rca() -> None:
     assert rca.validate_d7_prevention is validate_d7_prevention
     for name in ("D7Finding", "D7ValidationResult", "validate_d7_prevention"):
         assert name in rca.__all__
+
+
+# ==============================================================================
+# Governance: citation_basis assignments are pinned, not incidental
+# ==============================================================================
+#
+# Added by the tester stage of E10/#213 after a negative control FAILED TO FAIL:
+# flipping ERA_VERIFIED_WITHOUT_IMPLEMENTATION from "PLATFORM_UNCITED" to "RULE"
+# — mislabelling a platform heuristic as a Ford standards requirement, the exact
+# outcome PDD #16 exists to prevent — left all 298 8D tests green. The nine
+# pre-existing payload-shape dicts pin the *key*, never the *value*, so no test
+# guarded any of the 53 basis assignments. These two tests close that hole.
+
+
+def _finding_basis_sites() -> list[tuple[str, str]]:
+    """Every finding construction site as ``(code expression, citation_basis)``.
+
+    The ``code`` expression is captured verbatim, so a *non-literal* site such as the D8
+    closure-deficiency comprehension (``code=deficiency.code``) is captured too. An earlier
+    version of this parser matched only ``code="LITERAL"`` sites, which left the 11 non-literal
+    sites unguarded — flipping the D8 comprehension from ``PDD`` to ``RULE`` passed every test.
+    Found by the E10/#213 read-only reviewer; do not narrow this pattern again.
+    """
+    source = Path(eight_d_disciplines.__file__).read_text(encoding="utf-8")
+    sites: list[tuple[str, str]] = []
+    for match in re.finditer(r"\bcode=([^,\n]+),", source):
+        call = source[match.end() : match.end() + 1200]
+        call = re.split(r"\bcode=", call)[0]
+        declared = re.search(r'citation_basis="(RULE|PDD|PLATFORM_UNCITED)"', call)
+        if declared is not None:
+            sites.append((match.group(1).strip().strip('"'), declared.group(1)))
+    return sites
+
+
+def _finding_basis_map() -> dict[str, str]:
+    """Map each finding ``code`` expression to its declared citation_basis."""
+    return dict(_finding_basis_sites())
+
+
+# Every finding whose basis is a cited RULE-8D-* row in rca/CITATIONS.tsv.
+# This set is an allowlist reviewed by a human. Promoting a finding INTO it is a
+# standards claim and must be justified against the on-box manual; demoting one
+# out of it is safe. A diff here is intended to stop the build.
+_RULE_BACKED_CODES = frozenset(
+    {
+        "CONTAINMENT_ACTION_NOT_VERIFIED",
+        "CONTAINMENT_ACTION_VERIFIED_INEFFECTIVE",
+        "D8_DOCUMENTATION_NOT_REVIEWED",
+        "D8_ROOT_CAUSE_REJECTED",
+        "ERA_NOT_IMPLEMENTED",
+        "ERA_NOT_REQUIRED",
+        "ERA_NOT_VERIFIED",
+        "ERA_VERIFIED_INEFFECTIVE",
+        "IMPLEMENTED_ACTION_NOT_VERIFIED",
+        "IMPLEMENTED_ACTION_VERIFIED_INEFFECTIVE",
+        "IS_IS_NOT_NOT_PROVIDED",
+        "IS_IS_NOT_SCOPING_INCOMPLETE",
+        "IS_IS_NOT_SCOPING_REJECTED",
+        "METHOD_5W2H_DESCRIPTION_INCOMPLETE",
+        "NO_TEAM_MEMBERS",
+        "PCA_UNDESIRABLE_EFFECTS_NOT_VERIFIED",
+        "PREVENTION_ARTIFACT_UPDATE_MISSING",
+        "PREVENTION_ARTIFACT_UPDATE_RECORDED",
+    }
+)
+
+# Findings the module docstring and rca/ASSUMPTIONS_LOG.md declare as heuristics
+# that NO manual backs. Labelling any of these "RULE" would present a platform
+# heuristic as a standards requirement.
+_DECLARED_HEURISTIC_CODES = frozenset(
+    {
+        "CHAMPION_TEAM_LEADER_SAME_PERSON",
+        "CONTROL_PLAN_EVIDENCE_NOT_PROVIDED",
+        "DEGENERATE_PROBLEM_STATEMENT",
+        "DUPLICATE_TEAM_MEMBER",
+        "ERA_VERIFICATION_DATE_INCONSISTENT",
+        "ERA_VERIFIED_WITHOUT_IMPLEMENTATION",
+        "FMEA_RESIDUAL_RISK",
+        "FMEA_RESIDUAL_RISK_EVIDENCE_INCOMPLETE",
+        "LINKED_NCR_NOT_PROVIDED",
+        "LINKED_NCR_VALID",
+        "QUANTIFICATION_NOT_NUMERIC",
+        "TEAM_MEMBER_ROLE_UNDEFINED",
+    }
+)
+
+
+def test_no_declared_heuristic_is_labelled_as_a_standards_requirement() -> None:
+    """A heuristic rendered as a Ford/CQI-20 requirement is a standards-fidelity violation."""
+    basis = _finding_basis_map()
+    mislabelled = sorted(
+        code
+        for code in _DECLARED_HEURISTIC_CODES
+        if basis.get(code) == "RULE"
+    )
+    assert not mislabelled, (
+        f"{mislabelled} are declared platform heuristics but carry citation_basis='RULE'. "
+        "The canvas would render them as standards requirements."
+    )
+
+
+def test_rule_backed_finding_set_is_exactly_the_reviewed_allowlist() -> None:
+    """Promoting a finding to a standards claim must be a deliberate, reviewed change."""
+    basis = _finding_basis_map()
+    assert basis, "no finding construction sites parsed — the parser drifted from the source"
+    actual = {code for code, value in basis.items() if value == "RULE" and code.isupper()}
+    assert actual == set(_RULE_BACKED_CODES), (
+        "citation_basis='RULE' set changed. Added: "
+        f"{sorted(actual - set(_RULE_BACKED_CODES))}; removed: "
+        f"{sorted(set(_RULE_BACKED_CODES) - actual)}. Each addition asserts a manual clause "
+        "backs the finding — verify against the on-box manual and update this allowlist."
+    )
+
+
+def test_every_finding_site_declares_a_basis_and_none_is_silently_promoted() -> None:
+    """Guard the non-literal construction sites the code-literal parser cannot see.
+
+    ``_finding_basis_map`` keys on the ``code`` *expression*, so the D8 closure-deficiency
+    comprehension appears as ``deficiency.code``. Pinning the per-basis site counts catches a
+    promotion at any site, literal or not. The reviewer proved this hole was real: flipping the
+    D8 comprehension PDD -> RULE left all 300 tests green before this test existed.
+    """
+    sites = _finding_basis_sites()
+    counts = Counter(basis for _, basis in sites)
+    assert dict(counts) == {"RULE": 21, "PDD": 34, "PLATFORM_UNCITED": 9}, (
+        f"citation_basis site counts changed: {dict(counts)}. Every finding construction site "
+        "must declare a basis, and a change here means one was promoted or demoted."
+    )
+    non_literal = {code: basis for code, basis in sites if not code.isupper()}
+    assert non_literal == {
+        "deficiency.code": "PDD",
+        'f"{leg_type.upper()}_CHAIN_ACCEPTED': "RULE",
+        'f"{leg_type.upper()}_CHAIN_REJECTED': "RULE",
+        'f"{leg_type.upper()}_CHAIN_WARNING': "RULE",
+        'f"{leg_type.upper()}_LEG_TYPE_MISMATCH': "PDD",
+        'f"{leg_type.upper()}_TERMINAL_CAUSE_MISMATCH': "PDD",
+        'f"{leg_type.upper()}_VERDICT_MISMATCH': "PDD",
+        'f"PCA_NOT_TRACEABLE_{target}': "PDD",
+        'f"PCA_{target}_VALIDATION_NOT_RUN': "PDD",
+    }, (
+        f"non-literal finding sites changed: {non_literal}. These are invisible to the "
+        "code-literal allowlist, so they are pinned explicitly."
+    )

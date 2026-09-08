@@ -110,6 +110,20 @@ once in CQI-20, in an aside inside a note on supplier SCARs (``RULE-8D-D2``); Fi
 normative enumeration and this engine follows Figure 12. No free-text token parsing is done —
 completeness is judged over the typed answer fields only.
 
+**Every ``DNFinding`` carries ``citation_basis``, the finding's own answer to "what backs this
+check" (E10, #213).** ``"RULE"`` means a ``RULE-8D-*`` row in ``rca/CITATIONS.tsv``, quoting an
+on-box manual, backs the check; ``"PDD"`` means a numbered Process Design Decision in
+``rca/ASSUMPTIONS_LOG.md`` backs it; ``"PLATFORM_UNCITED"`` means neither does. The field defaults
+to ``"PLATFORM_UNCITED"`` so a forgotten value under-claims (heuristic) rather than over-claims
+(standard) — every construction site in this module nevertheless sets it explicitly. The
+three-value vocabulary is itself a platform presentation decision backed by no manual clause and
+adds no ``CITATIONS.tsv`` row and no new ``RULE-8D-*`` id; see Process Design Decision #16 in
+``rca/ASSUMPTIONS_LOG.md``, which also records the classification policy (a finding takes the
+basis of the *check* that produced it; whole-discipline ``*_READY`` summaries, which aggregate
+checks of mixed basis, take ``"PLATFORM_UNCITED"``). Presentation layers must read this field —
+never scrape a finding's message prose for a rule id, which fails silently by omission on the
+findings that name none.
+
 Standards References:
 - Ford Motor Company, Global 8D (G8D) Problem Solving Manual, Sections D0 through D4.
 - AIAG CQI-20 Effective Problem Solving Guide (2nd Edition, 2018), team-definition step,
@@ -306,6 +320,7 @@ class D0Finding:
     severity: Literal["error", "warning", "info"]
     message: str
     recommendation: str
+    citation_basis: Literal["RULE", "PDD", "PLATFORM_UNCITED"] = "PLATFORM_UNCITED"
 
     def to_dict(self) -> dict[str, Any]:
         """Return serializable dictionary representation of the D0 finding."""
@@ -374,6 +389,7 @@ def validate_d0_readiness(discipline: D0Discipline) -> D0ValidationResult:
             D0Finding(
                 code="ERA_NOT_REQUIRED",
                 severity="info",
+                citation_basis="RULE",
                 message=(
                     "D0 records no Emergency Response Action requirement "
                     "(era_required is False); no ERA readiness evidence is expected."
@@ -391,6 +407,7 @@ def validate_d0_readiness(discipline: D0Discipline) -> D0ValidationResult:
             D0Finding(
                 code="ERA_NOT_IMPLEMENTED",
                 severity="error",
+                citation_basis="RULE",
                 message=(
                     "D0 requires an Emergency Response Action but no implementation date is "
                     "recorded (era_implemented_date is unset)."
@@ -406,6 +423,7 @@ def validate_d0_readiness(discipline: D0Discipline) -> D0ValidationResult:
                 D0Finding(
                     code="ERA_VERIFIED_WITHOUT_IMPLEMENTATION",
                     severity="error",
+                    citation_basis="PLATFORM_UNCITED",
                     message=(
                         f"An ERA effectiveness verification is recorded "
                         f"(by {verification.verified_by} on {verification.verified_date}) while "
@@ -424,6 +442,7 @@ def validate_d0_readiness(discipline: D0Discipline) -> D0ValidationResult:
             D0Finding(
                 code="ERA_NOT_VERIFIED",
                 severity="error",
+                citation_basis="RULE",
                 message=(
                     f"The ERA implemented on {implemented_date} carries no effectiveness "
                     "verification record."
@@ -441,6 +460,7 @@ def validate_d0_readiness(discipline: D0Discipline) -> D0ValidationResult:
             D0Finding(
                 code="ERA_VERIFIED_INEFFECTIVE",
                 severity="error",
+                citation_basis="RULE",
                 message=(
                     f"The ERA verification recorded by {verification.verified_by} on "
                     f"{verification.verified_date} concluded the action is not effective."
@@ -458,6 +478,7 @@ def validate_d0_readiness(discipline: D0Discipline) -> D0ValidationResult:
             D0Finding(
                 code="ERA_VERIFICATION_DATE_INCONSISTENT",
                 severity="warning",
+                citation_basis="PDD",
                 message=(
                     f"The ERA verification date {verification.verified_date} precedes the ERA "
                     f"implementation date {implemented_date}."
@@ -475,6 +496,7 @@ def validate_d0_readiness(discipline: D0Discipline) -> D0ValidationResult:
             D0Finding(
                 code="ERA_READY",
                 severity="info",
+                citation_basis="PLATFORM_UNCITED",
                 message=(
                     f"The ERA implemented on {implemented_date} was verified effective by "
                     f"{verification.verified_by} on {verification.verified_date}."
@@ -511,6 +533,7 @@ class D1Finding:
     member_name: str | None
     message: str
     recommendation: str
+    citation_basis: Literal["RULE", "PDD", "PLATFORM_UNCITED"] = "PLATFORM_UNCITED"
 
     def to_dict(self) -> dict[str, Any]:
         """Return serializable dictionary representation of the D1 finding."""
@@ -575,6 +598,7 @@ def validate_d1_team(discipline: D1Discipline) -> D1ValidationResult:
             D1Finding(
                 code="NO_TEAM_MEMBERS",
                 severity="error",
+                citation_basis="RULE",
                 member_name=None,
                 message=(
                     "D1 names a Champion and a Team Leader but no team members — the team is "
@@ -596,6 +620,7 @@ def validate_d1_team(discipline: D1Discipline) -> D1ValidationResult:
                     D1Finding(
                         code="TEAM_MEMBER_ROLE_UNDEFINED",
                         severity="warning",
+                        citation_basis="PDD",
                         member_name=member.name,
                         message=f"Team member '{member.name}' has no role recorded.",
                         recommendation=(
@@ -613,6 +638,7 @@ def validate_d1_team(discipline: D1Discipline) -> D1ValidationResult:
                     D1Finding(
                         code="DUPLICATE_TEAM_MEMBER",
                         severity="warning",
+                        citation_basis="PDD",
                         member_name=original_name,
                         message=(
                             f"Team member '{original_name}' appears {count} times in the roster."
@@ -628,6 +654,7 @@ def validate_d1_team(discipline: D1Discipline) -> D1ValidationResult:
             D1Finding(
                 code="CHAMPION_TEAM_LEADER_SAME_PERSON",
                 severity="warning",
+                citation_basis="PDD",
                 member_name=None,
                 message=(
                     f"'{discipline.champion}' is recorded as both Champion and Team Leader."
@@ -649,6 +676,7 @@ def validate_d1_team(discipline: D1Discipline) -> D1ValidationResult:
             D1Finding(
                 code="TEAM_READY",
                 severity="info",
+                citation_basis="PLATFORM_UNCITED",
                 member_name=None,
                 message=(
                     f"Team is complete: Champion, Team Leader, and "
@@ -705,6 +733,7 @@ class D2Finding:
     severity: Literal["error", "warning", "info"]
     message: str
     recommendation: str
+    citation_basis: Literal["RULE", "PDD", "PLATFORM_UNCITED"] = "PLATFORM_UNCITED"
 
     def to_dict(self) -> dict[str, Any]:
         """Return serializable dictionary representation of the D2 finding."""
@@ -820,6 +849,7 @@ def validate_d2_problem_description(
             D2Finding(
                 code="DEGENERATE_PROBLEM_STATEMENT",
                 severity="warning",
+                citation_basis="PDD",
                 message=(
                     f"The problem statement does not distinguish the defect from the object: "
                     f"what_is_wrong and with_what both read '{discipline.what_is_wrong}'."
@@ -836,6 +866,7 @@ def validate_d2_problem_description(
             D2Finding(
                 code="QUANTIFICATION_NOT_NUMERIC",
                 severity="warning",
+                citation_basis="PDD",
                 message=(
                     f"The D2 quantification '{discipline.quantification}' carries no numeric "
                     "magnitude, so the problem is not detailed in quantifiable terms."
@@ -861,6 +892,7 @@ def validate_d2_problem_description(
                 D2Finding(
                     code="METHOD_5W2H_DESCRIPTION_INCOMPLETE",
                     severity="error",
+                    citation_basis="RULE",
                     message=(
                         "method_used declares 5W2H, but the problem description leaves "
                         f"{len(missing)} of the seven AIAG CQI-20 Figure 12 problem "
@@ -881,6 +913,7 @@ def validate_d2_problem_description(
             D2Finding(
                 code="IS_IS_NOT_NOT_PROVIDED",
                 severity="warning",
+                citation_basis="RULE",
                 message=(
                     "No Is/Is-Not scoping data was supplied, so only the problem-statement stage "
                     "of D2 could be assessed; the problem-description stage is established by "
@@ -903,6 +936,7 @@ def validate_d2_problem_description(
                 D2Finding(
                     code="IS_IS_NOT_SCOPING_REJECTED",
                     severity="error",
+                    citation_basis="RULE",
                     message=(
                         "Is/Is-Not scoping was rejected: " + "; ".join(scoping.warnings)
                     ),
@@ -914,6 +948,7 @@ def validate_d2_problem_description(
                 D2Finding(
                     code="IS_IS_NOT_SCOPING_INCOMPLETE",
                     severity="warning",
+                    citation_basis="RULE",
                     message=(
                         "Is/Is-Not scoping is incomplete: " + "; ".join(scoping.warnings)
                     ),
@@ -976,6 +1011,7 @@ class D3Finding:
     action_description: str | None
     message: str
     recommendation: str
+    citation_basis: Literal["RULE", "PDD", "PLATFORM_UNCITED"] = "PLATFORM_UNCITED"
 
     def to_dict(self) -> dict[str, Any]:
         """Return serializable dictionary representation of the D3 finding."""
@@ -1097,6 +1133,7 @@ def validate_d3_containment(
                 D3Finding(
                     code="CONTAINMENT_ACTION_NOT_VERIFIED",
                     severity="error",
+                    citation_basis="RULE",
                     action_description=action.description,
                     message=(
                         f"The containment action implemented on {action.implemented_date} "
@@ -1114,6 +1151,7 @@ def validate_d3_containment(
                 D3Finding(
                     code="CONTAINMENT_ACTION_VERIFIED_INEFFECTIVE",
                     severity="error",
+                    citation_basis="RULE",
                     action_description=action.description,
                     message=(
                         f"The containment verification recorded by {verification.verified_by} on "
@@ -1150,6 +1188,7 @@ def validate_d3_containment(
             D3Finding(
                 code=deficiency.code,
                 severity="error",
+                citation_basis="PDD",
                 action_description=None,
                 message=deficiency.message,
                 recommendation=(
@@ -1164,6 +1203,7 @@ def validate_d3_containment(
             D3Finding(
                 code="LINKED_NCR_NOT_PROVIDED",
                 severity="warning",
+                citation_basis="PDD",
                 action_description=None,
                 message=(
                     "No linked Nonconformance Record evidence was supplied, so the nonconformity "
@@ -1180,6 +1220,7 @@ def validate_d3_containment(
             D3Finding(
                 code="LINKED_NCR_VALID",
                 severity="info",
+                citation_basis="PDD",
                 action_description=None,
                 message=(
                     f"Linked Nonconformance Record evidence is structurally valid "
@@ -1201,6 +1242,7 @@ def validate_d3_containment(
             D3Finding(
                 code="D3_READY",
                 severity="info",
+                citation_basis="PLATFORM_UNCITED",
                 action_description=None,
                 message=(
                     f"All {len(discipline.actions)} containment action(s) are verified effective "
@@ -1239,6 +1281,7 @@ class D4Finding:
     leg_type: Literal["occurrence", "escape"] | None
     message: str
     recommendation: str
+    citation_basis: Literal["RULE", "PDD", "PLATFORM_UNCITED"] = "PLATFORM_UNCITED"
 
     def to_dict(self) -> dict[str, Any]:
         """Return serializable dictionary representation of the D4 finding."""
@@ -1296,6 +1339,7 @@ def _d4_leg_finding(
         return D4Finding(
             code=f"{leg_type.upper()}_CHAIN_REJECTED",
             severity="error",
+            citation_basis="RULE",
             leg_type=leg_type,
             message=f"{label} 5-Why evidence was rejected by the RCA validator.",
             recommendation=f"Resolve the reported {leg_type} 5-Why findings and revalidate the supplied evidence.",
@@ -1304,6 +1348,7 @@ def _d4_leg_finding(
         return D4Finding(
             code=f"{leg_type.upper()}_CHAIN_WARNING",
             severity="warning",
+            citation_basis="RULE",
             leg_type=leg_type,
             message=f"{label} 5-Why evidence passed with warnings.",
             recommendation=f"Review the reported {leg_type} 5-Why warnings before closing D4.",
@@ -1311,6 +1356,7 @@ def _d4_leg_finding(
     return D4Finding(
         code=f"{leg_type.upper()}_CHAIN_ACCEPTED",
         severity="info",
+        citation_basis="RULE",
         leg_type=leg_type,
         message=f"{label} 5-Why evidence was accepted.",
         recommendation=f"Retain the validated {leg_type} evidence with the 8D record.",
@@ -1361,6 +1407,7 @@ def validate_d4_root_cause(
                 D4Finding(
                     code=f"{leg_type.upper()}_TERMINAL_CAUSE_MISMATCH",
                     severity="error",
+                    citation_basis="PDD",
                     leg_type=leg_type,
                     message=(
                         f"The submitted {leg_type} chain terminal evidence does not match the "
@@ -1378,6 +1425,7 @@ def validate_d4_root_cause(
             D4Finding(
                 code="NO_CANDIDATE_CAUSE_TESTS",
                 severity="error",
+                citation_basis="PDD",
                 leg_type=None,
                 message="D4 records no tested candidate causes to support the supplied root cause.",
                 recommendation="Record at least one tested candidate cause and its caller-supplied evidence and result.",
@@ -1402,6 +1450,7 @@ def validate_d4_root_cause(
                 D4Finding(
                     code=f"{leg_type.upper()}_LEG_TYPE_MISMATCH",
                     severity="warning",
+                    citation_basis="PDD",
                     leg_type=leg_type,
                     message=f"Caller-supplied leg type '{supplied_leg}' does not match the validated '{leg_type}' leg.",
                     recommendation="Correct the supplied leg metadata; it does not override fresh validation.",
@@ -1412,6 +1461,7 @@ def validate_d4_root_cause(
                 D4Finding(
                     code=f"{leg_type.upper()}_VERDICT_MISMATCH",
                     severity="warning",
+                    citation_basis="PDD",
                     leg_type=leg_type,
                     message=f"Caller-supplied verdict '{supplied_verdict}' differs from fresh validation verdict '{validated_verdict}'.",
                     recommendation="Update the supplied verdict metadata to reflect the fresh validation result.",
@@ -1459,6 +1509,7 @@ class D5Finding:
     action_id: str | None
     message: str
     recommendation: str
+    citation_basis: Literal["RULE", "PDD", "PLATFORM_UNCITED"] = "PLATFORM_UNCITED"
 
     def to_dict(self) -> dict[str, Any]:
         """Return serializable dictionary representation of the D5 finding."""
@@ -1518,6 +1569,7 @@ def _d5_traceability_finding(
         return D5Finding(
             code=f"PCA_NOT_TRACEABLE_{target}",
             severity="error",
+            citation_basis="PDD",
             action_id=candidate_id,
             message=(
                 f"Corrective action candidate '{candidate_id}' targets the {label}, but D4 "
@@ -1533,6 +1585,7 @@ def _d5_traceability_finding(
         return D5Finding(
             code=f"PCA_NOT_TRACEABLE_{target}",
             severity="error",
+            citation_basis="PDD",
             action_id=candidate_id,
             message=(
                 f"Corrective action candidate '{candidate_id}' targets the {label}, but D4's "
@@ -1548,6 +1601,7 @@ def _d5_traceability_finding(
         return D5Finding(
             code=f"PCA_{target}_VALIDATION_NOT_RUN",
             severity="warning",
+            citation_basis="PDD",
             action_id=candidate_id,
             message=(
                 f"Corrective action candidate '{candidate_id}' targets the {label}, but D4 "
@@ -1623,6 +1677,7 @@ def validate_d5_pca_selection(
             D5Finding(
                 code="D4_NOT_SUPPLIED",
                 severity="warning",
+                citation_basis="PDD",
                 action_id=None,
                 message=(
                     "No D4 record was supplied, so no corrective action candidate could be "
@@ -1648,6 +1703,7 @@ def validate_d5_pca_selection(
                 D5Finding(
                     code="PCA_UNDESIRABLE_EFFECTS_NOT_VERIFIED",
                     severity="error",
+                    citation_basis="RULE",
                     action_id=candidate.action_id,
                     message=(
                         f"Corrective action candidate '{candidate.action_id}' is not recorded as "
@@ -1667,6 +1723,7 @@ def validate_d5_pca_selection(
                 D5Finding(
                     code="PCA_VERIFICATION_EVIDENCE_MISSING",
                     severity="warning",
+                    citation_basis="PDD",
                     action_id=candidate.action_id,
                     message=(
                         f"Corrective action candidate '{candidate.action_id}' is marked verified "
@@ -1714,6 +1771,7 @@ def validate_d5_pca_selection(
             D5Finding(
                 code="D5_READY",
                 severity="info",
+                citation_basis="PLATFORM_UNCITED",
                 action_id=None,
                 message=(
                     f"All {len(discipline.candidates)} corrective action candidate(s) are "
@@ -1753,6 +1811,7 @@ class D6Finding:
     action_id: str | None
     message: str
     recommendation: str
+    citation_basis: Literal["RULE", "PDD", "PLATFORM_UNCITED"] = "PLATFORM_UNCITED"
 
     def to_dict(self) -> dict[str, Any]:
         """Return serializable dictionary representation of the D6 finding."""
@@ -1884,6 +1943,7 @@ def validate_d6_implementation_validation(
                 D6Finding(
                     code="IMPLEMENTED_ACTION_NOT_VERIFIED",
                     severity="error",
+                    citation_basis="RULE",
                     action_id=action.corrective_action_id,
                     message=(
                         f"The permanent corrective action '{action.corrective_action_id}' "
@@ -1902,6 +1962,7 @@ def validate_d6_implementation_validation(
                 D6Finding(
                     code="IMPLEMENTED_ACTION_VERIFIED_INEFFECTIVE",
                     severity="error",
+                    citation_basis="RULE",
                     action_id=action.corrective_action_id,
                     message=(
                         f"The validation of permanent corrective action "
@@ -1924,6 +1985,7 @@ def validate_d6_implementation_validation(
                 D6Finding(
                     code="IMPLEMENTED_ACTION_UNKNOWN_CORRECTIVE_ACTION_ID",
                     severity="error",
+                    citation_basis="PDD",
                     action_id=action.corrective_action_id,
                     message=(
                         f"Implemented action names corrective_action_id "
@@ -1945,6 +2007,7 @@ def validate_d6_implementation_validation(
             D6Finding(
                 code="D5_NOT_SUPPLIED",
                 severity="warning",
+                citation_basis="PDD",
                 action_id=None,
                 message=(
                     "No D5 record was supplied, so no implemented action could be cross-"
@@ -1963,6 +2026,7 @@ def validate_d6_implementation_validation(
             D6Finding(
                 code="IMPLEMENTED_ACTION_TARGET_COVERAGE_INCOMPLETE",
                 severity="warning",
+                citation_basis="PDD",
                 action_id=None,
                 message=(
                     "No verified, D5-matched implemented action covers: "
@@ -1982,6 +2046,7 @@ def validate_d6_implementation_validation(
             D6Finding(
                 code="ICA_NOT_REMOVED",
                 severity="warning",
+                citation_basis="PDD",
                 action_id=None,
                 message=(
                     "Every implemented action is verified effective but no "
@@ -2016,6 +2081,7 @@ def validate_d6_implementation_validation(
             D6Finding(
                 code="D6_READY",
                 severity="info",
+                citation_basis="PLATFORM_UNCITED",
                 action_id=None,
                 message=(
                     f"All {len(discipline.implemented_actions)} implemented action(s) are "
@@ -2080,6 +2146,7 @@ class D7Finding:
     )
     message: str
     recommendation: str
+    citation_basis: Literal["RULE", "PDD", "PLATFORM_UNCITED"] = "PLATFORM_UNCITED"
 
     def to_dict(self) -> dict[str, Any]:
         """Return serializable dictionary representation of the D7 finding."""
@@ -2238,6 +2305,7 @@ def validate_d7_prevention(
             D7Finding(
                 code="PREVENTION_ARTIFACT_UPDATE_MISSING",
                 severity="error",
+                citation_basis="RULE",
                 artifact_type=None,
                 message=(
                     "D7 records no FMEA or Control Plan documentation update; Ford Global 8D asks "
@@ -2263,6 +2331,7 @@ def validate_d7_prevention(
             D7Finding(
                 code="PREVENTION_ARTIFACT_UPDATE_RECORDED",
                 severity="info",
+                citation_basis="RULE",
                 artifact_type=None,
                 message=(
                     "D7 records a qualifying documentation update: "
@@ -2278,6 +2347,7 @@ def validate_d7_prevention(
                 D7Finding(
                     code="PREVENTION_UPDATE_NOT_LINKED_TO_ROOT_CAUSE",
                     severity="error",
+                    citation_basis="PDD",
                     artifact_type=None,
                     message=(
                         "No qualifying D7 documentation update declares target=ROOT_CAUSE, so "
@@ -2300,6 +2370,7 @@ def validate_d7_prevention(
             D7Finding(
                 code="D4_NOT_SUPPLIED",
                 severity="warning",
+                citation_basis="PDD",
                 artifact_type=None,
                 message=(
                     "No D4 record was supplied, so the D7 prevention update could not be checked "
@@ -2322,6 +2393,7 @@ def validate_d7_prevention(
             D7Finding(
                 code="PREVENTION_NOT_TRACEABLE_ROOT_CAUSE",
                 severity="error",
+                citation_basis="PDD",
                 artifact_type=None,
                 message=(
                     "D4's recorded five_why_verdict for the root cause is REJECT, so the causal "
@@ -2339,6 +2411,7 @@ def validate_d7_prevention(
             D7Finding(
                 code="PREVENTION_ROOT_CAUSE_VALIDATION_NOT_RUN",
                 severity="warning",
+                citation_basis="PDD",
                 artifact_type=None,
                 message=(
                     "D4 records no five_why_verdict for the root cause, so its causal chain has "
@@ -2362,6 +2435,7 @@ def validate_d7_prevention(
                 D7Finding(
                     code="CONTROL_PLAN_EVIDENCE_INVALID",
                     severity="error",
+                    citation_basis="PDD",
                     artifact_type="CONTROL_PLAN",
                     message=(
                         "Linked Control Plan evidence is invalid: "
@@ -2380,6 +2454,7 @@ def validate_d7_prevention(
                 D7Finding(
                     code="CONTROL_PLAN_EVIDENCE_VALID",
                     severity="info",
+                    citation_basis="PDD",
                     artifact_type="CONTROL_PLAN",
                     message=(
                         "Linked Control Plan evidence is structurally valid "
@@ -2395,6 +2470,7 @@ def validate_d7_prevention(
             D7Finding(
                 code="CONTROL_PLAN_EVIDENCE_NOT_PROVIDED",
                 severity="warning",
+                citation_basis="PDD",
                 artifact_type="CONTROL_PLAN",
                 message=(
                     "D7 declares a CONTROL_PLAN update but no Control Plan evidence was supplied "
@@ -2416,6 +2492,7 @@ def validate_d7_prevention(
             D7Finding(
                 code="FMEA_RESIDUAL_RISK",
                 severity="info",
+                citation_basis="PDD",
                 artifact_type="FMEA",
                 message=(
                     f"FMEA residual risk after the D7 update: RPN "
@@ -2435,6 +2512,7 @@ def validate_d7_prevention(
             D7Finding(
                 code="FMEA_RESIDUAL_RISK_EVIDENCE_INCOMPLETE",
                 severity="warning",
+                citation_basis="PDD",
                 artifact_type="FMEA",
                 message=(
                     "Both fmea_action and fmea_before are required to compute FMEA residual "
@@ -2457,6 +2535,7 @@ def validate_d7_prevention(
             D7Finding(
                 code="D7_READY",
                 severity="info",
+                citation_basis="PLATFORM_UNCITED",
                 artifact_type=None,
                 message=(
                     "D7 prevention documentation is recorded, qualifying, and traceable to a "
@@ -2503,6 +2582,7 @@ class D8Finding:
     severity: Literal["error", "warning", "info"]
     message: str
     recommendation: str
+    citation_basis: Literal["RULE", "PDD", "PLATFORM_UNCITED"] = "PLATFORM_UNCITED"
 
     def to_dict(self) -> dict[str, Any]:
         """Return serializable dictionary representation of the D8 finding."""
@@ -2612,6 +2692,7 @@ def validate_d8_closure(report: EightDReport) -> D8ValidationResult:
         D8Finding(
             code=deficiency.code,
             severity="error",
+            citation_basis="PDD",
             message=deficiency.message,
             recommendation=(
                 "Complete the closure evidence this deficiency names before closing the report; "
@@ -2626,6 +2707,7 @@ def validate_d8_closure(report: EightDReport) -> D8ValidationResult:
             D8Finding(
                 code="D8_NOT_STARTED",
                 severity="warning",
+                citation_basis="PLATFORM_UNCITED",
                 message=(
                     "D8 has not been recorded on this report yet; team recognition and the "
                     "closure documentation review have not started."
@@ -2642,6 +2724,7 @@ def validate_d8_closure(report: EightDReport) -> D8ValidationResult:
                 D8Finding(
                     code="D8_DOCUMENTATION_NOT_REVIEWED",
                     severity="error",
+                    citation_basis="RULE",
                     message=(
                         "D8's documentation has not been marked reviewed; Ford Global 8D's D8 "
                         "checklist asks to ensure that all related documentation is reviewed and "
@@ -2661,6 +2744,7 @@ def validate_d8_closure(report: EightDReport) -> D8ValidationResult:
                 D8Finding(
                     code="D8_REVIEW_PROVENANCE_INCOMPLETE",
                     severity="warning",
+                    citation_basis="PDD",
                     message=(
                         "D8 records the closing documentation review as complete but does not say "
                         "who performed it or when; the review is therefore unattributable. "
@@ -2678,6 +2762,7 @@ def validate_d8_closure(report: EightDReport) -> D8ValidationResult:
                 D8Finding(
                     code="D8_ROOT_CAUSE_REJECTED",
                     severity="error",
+                    citation_basis="RULE",
                     message=(
                         "D8's linked 5-Why verdict is REJECT; Ford Global 8D requires the systemic "
                         "root cause of the root cause to be established and resolved before "
@@ -2696,6 +2781,7 @@ def validate_d8_closure(report: EightDReport) -> D8ValidationResult:
                 D8Finding(
                     code="D8_WARNING_OVERRIDE_MISSING",
                     severity="error",
+                    citation_basis="PDD",
                     message=(
                         "D8's linked 5-Why verdict is WARNING with no recorded warning_override; "
                         "this platform requires an explicit, attributable override to close on a "
@@ -2718,6 +2804,7 @@ def validate_d8_closure(report: EightDReport) -> D8ValidationResult:
             D8Finding(
                 code="D8_READY",
                 severity="info",
+                citation_basis="PLATFORM_UNCITED",
                 message=(
                     "D8 is recorded, its documentation is reviewed, and the whole-report closure "
                     "evidence is complete."

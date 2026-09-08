@@ -9,6 +9,22 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- **Single-writer 8D canvas — `quality_core.canvas.eight_d`** (E10, Milestone 11, #213).
+  `EightDCanvas` renders one already-validated `EightDReport` as themed HTML: a closure-gate
+  header panel plus one card per discipline D0-D8, in both `dark` and `light` themes and in
+  standalone or embeddable form, alongside `render_eight_d()`, `load_sample_eight_d_canvas()` and
+  the `SAMPLE_EIGHT_D_REPORT` benchmark. It calls
+  `quality_core.rca.eight_d_disciplines.validate_8d` once per render and recomputes no verdict,
+  `closeable` flag or severity of its own; every free-text field routes through `html.escape`.
+  An absent discipline renders a "not started" empty state — an in-progress report is not an
+  error — and D4, which `EightDValidationResult` deliberately carries no result for, is rendered
+  from `report.d4` and `report.root_cause_validation` directly.
+  **The headline "Closeable" badge is `EightDValidationResult.closeable`** (the whole-report gate
+  the state machine enforces, `PDD-8D-008` included); the narrower closure-evidence-only
+  `result.d8.closeable` renders inside the D8 card labelled "D8 closure-evidence complete", so a
+  report carrying an invalid linked NCR visibly shows the two disagreeing instead of collapsing
+  them. Recorded as Process Design Decision #16 in `rca/ASSUMPTIONS_LOG.md`; no new
+  `CITATIONS.tsv` row and no new `RULE-8D-*` id — a renderer asserts no standard.
 - 8D discipline engine for D7 (prevent recurrence) in
   `quality_core.rca.eight_d_disciplines` (E8, Milestone 11). `validate_d7_prevention` reads a
   typed `D7Discipline` and reports a missing qualifying documentation update
@@ -42,6 +58,20 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
   because it quotes nothing.
 
 ### Changed
+- **Every 8D finding now declares its own citation basis — `Finding.citation_basis`** (E10,
+  Milestone 11, #213). `D0Finding` through `D8Finding` in
+  `quality_core.rca.eight_d_disciplines` gain
+  `citation_basis: Literal["RULE", "PDD", "PLATFORM_UNCITED"]`, set explicitly at all 64 finding
+  construction sites: `RULE` where a `RULE-8D-*` row in `rca/CITATIONS.tsv` backs the check, `PDD`
+  where a numbered Process Design Decision does, `PLATFORM_UNCITED` where neither does. The field
+  defaults to `PLATFORM_UNCITED` so an omission under-claims (heuristic) rather than over-claims
+  (standard). **This changes the `to_dict()` payload shape** — these dataclasses serialize through
+  `asdict`, so `citation_basis` now appears in every finding payload the MCP layer emits; E11
+  (#214) consumes it. Presentation layers must read the field: scraping a finding's message for a
+  `RULE-8D` substring fails silently on the 42 findings that name no identifier, promoting
+  heuristics to standards findings by omission. Classification policy and the fail-safe default
+  are recorded as Process Design Decision #16 in `rca/ASSUMPTIONS_LOG.md`; no new `CITATIONS.tsv`
+  row, because nothing new is quoted.
 - **The D7 qualifying-update predicate now has exactly one definition.**
   `artifact_type in {"FMEA", "CONTROL_PLAN"}` had been hand-written twice in shipped code — in
   `eight_d_schema._closure_evidence_deficiencies` and in `eight_d._prevention_reason` — two

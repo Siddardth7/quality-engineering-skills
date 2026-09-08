@@ -16,6 +16,9 @@ import pytest
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _SKILLS_DIR = _REPO_ROOT / "skills"
 _CLAUDE_SKILLS_DIR = _REPO_ROOT / ".claude" / "skills"
+_RCA_CITATIONS_TSV = (
+    _REPO_ROOT / "packages" / "quality-core" / "src" / "quality_core" / "rca" / "CITATIONS.tsv"
+)
 
 REQUIRED_SECTIONS: tuple[str, ...] = (
     "Overview",
@@ -60,6 +63,70 @@ _PPAP_PROSE_MATH_AND_ADJUDICATION_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"\b(?:ppk|cpk|grr|ndc)\b[ \t]*(?:>=|<=|>|<|=|≥|≤)[ \t]*\d[\d.,]*[ \t]*[:–-][ \t]*(?:capable|acceptable|potentially|unacceptable|meets|fails)", re.IGNORECASE),
     re.compile(r"\d[\d.,]*[ \t]*(?:<=|>=|<|>|=|≤|≥)[ \t]*(?:ppk|cpk)[ \t]*(?:<=|>=|<|>|=|≤|≥)[ \t]*\d[\d.,]*[ \t]*[:–-][ \t]*(?:capable|acceptable|potentially|unacceptable)", re.IGNORECASE),
 )
+
+
+# 8D-specific citation-fidelity detectors (#215). Scoped to `skills/8d-problem-solving/SKILL.md`
+# only, matching this suite's hardcoded per-skill convention. The 8D failure mode is not faked
+# arithmetic (the domain is a state machine, not a metric calculator) — it is asserting a standard
+# the engine cannot cite: inventing a `RULE-8D-*` id, or presenting a `PDD-8D-*` platform design
+# decision as a Ford Global 8D / AIAG CQI-20 requirement.
+#
+# The id pattern deliberately requires an alphanumeric segment after `RULE-8D-`, so the wildcard
+# `RULE-8D-*` used in prose is not extracted as a concrete id.
+_RULE_8D_ID_PATTERN: re.Pattern[str] = re.compile(r"RULE-8D-[A-Z0-9]+(?:-[A-Z0-9]+)*")
+
+# Affirmative attribution of a *numbered* PDD id to a manual, in both orders, bounded to one
+# sentence (`[^.\n]`). Negated framings — "PDD-8D-008 is this platform's own design decision, not a
+# Ford Global 8D Manual clause" — are the required phrasing and must not match.
+_EIGHT_D_PDD_MISATTRIBUTION_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(
+        r"\b(?:Ford|AIAG|CQI-20|manual)\b[^.\n]{0,120}?"
+        r"\b(?:requires|mandates|specifies|defines|states|backs)\b[^.\n]{0,120}?PDD-8D-\d+",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"PDD-8D-\d+[^.\n]{0,120}?\b(?:is|are)\s+(?:an?\s+|the\s+)?"
+        r"(?:Ford|AIAG|CQI-20|manual)\b",
+        re.IGNORECASE,
+    ),
+)
+
+
+def _cited_rule_8d_ids() -> set[str]:
+    """Collect every RULE-8D-* id declared in the rca CITATIONS.tsv site column."""
+    assert _RCA_CITATIONS_TSV.exists(), f"rca CITATIONS.tsv not found at {_RCA_CITATIONS_TSV}"
+    ids: set[str] = set()
+    for line in _RCA_CITATIONS_TSV.read_text(encoding="utf-8").splitlines()[1:]:
+        site = line.split("\t", 1)[0].strip()
+        if site.startswith("RULE-8D-"):
+            ids.add(site)
+    return ids
+
+
+def validate_8d_skill_citation_fidelity(content: str) -> None:
+    """Validate that the 8D skill asserts no standard the rca engine cannot cite.
+
+    Raises ValueError if the body names a `RULE-8D-*` id with no CITATIONS.tsv row, if it names
+    none at all, or if it attributes a numbered `PDD-8D-*` platform decision to a manual.
+    """
+    cited = _cited_rule_8d_ids()
+    if not cited:
+        raise ValueError("rca CITATIONS.tsv declares no RULE-8D-* row; the subset check is vacuous")
+
+    asserted = set(_RULE_8D_ID_PATTERN.findall(content))
+    if not asserted:
+        raise ValueError("8D skill names no concrete RULE-8D-* id; the subset check would be vacuous")
+
+    uncitable = sorted(asserted - cited)
+    if uncitable:
+        raise ValueError(f"8D skill asserts RULE-8D id(s) absent from CITATIONS.tsv: {uncitable}")
+
+    for pattern in _EIGHT_D_PDD_MISATTRIBUTION_PATTERNS:
+        match = pattern.search(content)
+        if match:
+            raise ValueError(
+                f"8D skill attributes a PDD platform decision to a manual: {match.group(0)!r}"
+            )
 
 
 def validate_ppap_authority_invariants(content: str) -> None:
@@ -242,6 +309,7 @@ def test_discoverable_skill_directories_exist() -> None:
     assert "copq-estimator" in dir_names, "skills/copq-estimator directory missing"
     assert "ppap-checker" in dir_names, "skills/ppap-checker directory missing"
     assert "supplier-scar" in dir_names, "skills/supplier-scar directory missing"
+    assert "8d-problem-solving" in dir_names, "skills/8d-problem-solving directory missing"
 
 
 @pytest.mark.parametrize(
@@ -517,6 +585,132 @@ def test_ppap_checker_skill_contains_no_worked_arithmetic() -> None:
     validate_ppap_no_worked_arithmetic_or_adjudication(content)
 
 
+def test_8d_problem_solving_skill_specifies_tools() -> None:
+    """skills/8d-problem-solving/SKILL.md must document all three 8D tools, cite Ford Global 8D / AIAG CQI-20, and state the two-`closeable`, statelessness, and no-`d4` payload facts."""
+    eight_d_file = _SKILLS_DIR / "8d-problem-solving" / "SKILL.md"
+    assert eight_d_file.exists(), "skills/8d-problem-solving/SKILL.md does not exist"
+    content = eight_d_file.read_text(encoding="utf-8")
+
+    for tool_name in ("validate_8d", "advance_8d", "render_8d_canvas"):
+        assert tool_name in content, f"8d-problem-solving skill must document {tool_name} tool"
+    assert "quality-mcp" in content, "8d-problem-solving skill must reference quality-mcp"
+    assert "Ford" in content or "8D" in content, "8d-problem-solving skill must cite Ford Global 8D"
+    assert "CQI-20" in content or "AIAG" in content, "8d-problem-solving skill must cite AIAG CQI-20"
+
+    # Citation-basis relay: the skill must name the machine-readable fields, not judge by wording.
+    assert "citation_basis" in content, "8d-problem-solving skill must instruct the agent to read citation_basis"
+    assert "PLATFORM_UNCITED" in content, "8d-problem-solving skill must document the PLATFORM_UNCITED basis"
+    assert "RULE-8D-" in content and "PDD-8D-" in content, (
+        "8d-problem-solving skill must distinguish RULE-8D-* citations from PDD-8D-* platform decisions"
+    )
+    assert "rule_id" in content, "8d-problem-solving skill must instruct the agent to relay rule_id"
+
+    # Both `closeable` flags must be discussed, and distinguished from each other in prose.
+    assert content.count("closeable") >= 2, (
+        "8d-problem-solving skill must discuss both the whole-report and D8 closure-evidence flags"
+    )
+    assert 'result["d8"]["closeable"]' in content, (
+        "8d-problem-solving skill must name the closure-evidence-only flag by its JSON path"
+    )
+    assert 'result["closeable"]' in content, (
+        "8d-problem-solving skill must name the whole-report closure flag by its JSON path"
+    )
+
+    # Gate-refusal and statelessness invariants.
+    assert "BLOCKED" in content, "8d-problem-solving skill must document the BLOCKED negative control"
+    assert "gate_reasons" in content, "8d-problem-solving skill must document gate_reasons"
+    assert "ILLEGAL_TRANSITION" in content, "8d-problem-solving skill must document the ILLEGAL_TRANSITION result"
+    assert 'result["report"]' in content, (
+        "8d-problem-solving skill must instruct the host to carry result['report'] forward"
+    )
+    assert "persists no" in content or "persists nothing" in content, (
+        "8d-problem-solving skill must state that the server persists no report between calls"
+    )
+    assert "ROOT_CAUSE_REJECTED" in content, (
+        "8d-problem-solving skill must document D4's gate-reason signal in place of a d4 key"
+    )
+    assert "never author" in content.lower() or "never authors" in content.lower(), (
+        "8d-problem-solving skill must state the agent never authors a root cause"
+    )
+    assert "ask the user" in content.lower(), (
+        "8d-problem-solving skill must instruct the agent to ask the user when a gate blocks"
+    )
+
+
+def test_8d_problem_solving_skill_guards_the_closed_transition() -> None:
+    """skills/8d-problem-solving/SKILL.md must forbid ATTEMPTING D8 -> CLOSED while the whole-report gate is false.
+
+    Raised as a blocking [P1] on PR #236. Step 3 originally instructed the agent to advance to the
+    adjacent state unconditionally, and only forbade *reporting* an advanced report as closeable.
+    That is not the same prohibition: ``advance_8d`` evaluates only the gates of the transition
+    attempted, so a whole-report reason belonging to an earlier step (``LINKED_NCR_INVALID`` /
+    ``PDD-8D-008`` gates D3 -> D4) does not block D8 -> CLOSED. Following the workflow therefore
+    turned a report ``validate_8d`` calls not-closeable into a ``CLOSED`` report. Reproduced
+    end-to-end before the fix; the behavioural half of this control lives in
+    ``packages/quality-mcp/tests/test_eight_d_closure_precondition.py``.
+    """
+    eight_d_file = _SKILLS_DIR / "8d-problem-solving" / "SKILL.md"
+    assert eight_d_file.exists(), "skills/8d-problem-solving/SKILL.md does not exist"
+    content = eight_d_file.read_text(encoding="utf-8")
+
+    assert "closure precondition" in content.lower(), (
+        "8d-problem-solving skill must carry a named closure precondition for the D8 -> CLOSED "
+        "transition; without it the workflow can close a report the whole-report gate rejects"
+    )
+
+    # The guard must bind the transition to the whole-report flag, not merely mention both.
+    precondition = next(
+        (line for line in content.splitlines() if "closure precondition" in line.lower()),
+        "",
+    )
+    assert precondition, "closure precondition must be stated on a single reviewable line"
+    for token in ('target="CLOSED"', "closeable: true", "closeable: false", "PDD-8D-008"):
+        assert token in precondition, (
+            f"the closure precondition must name {token!r}: it has to tie the CLOSED transition to "
+            "the whole-report closeable flag and name the gate that does not block it"
+        )
+    assert "only if" in precondition.lower(), (
+        "the closure precondition must be conditional ('only if'), not advisory"
+    )
+    assert "not enough" in precondition.lower() or "must not be attempted" in precondition.lower(), (
+        "the closure precondition must forbid ATTEMPTING the transition, not only reporting the "
+        "result as closeable; that distinction is the whole finding"
+    )
+
+
+def test_8d_problem_solving_skill_asserts_no_uncitable_standard() -> None:
+    """skills/8d-problem-solving/SKILL.md must name only RULE-8D ids the rca engine can cite, and must not attribute a PDD platform decision to a manual."""
+    eight_d_file = _SKILLS_DIR / "8d-problem-solving" / "SKILL.md"
+    assert eight_d_file.exists(), "skills/8d-problem-solving/SKILL.md does not exist"
+    content = eight_d_file.read_text(encoding="utf-8")
+
+    validate_8d_skill_citation_fidelity(content)
+
+    # Non-vacuity: the checker is only load-bearing if both sides of the subset actually populate.
+    assert len(_cited_rule_8d_ids()) == 24, (
+        "rca CITATIONS.tsv must declare 24 distinct RULE-8D-* ids; update this test with the log "
+        "entry if a new 8D rule is genuinely added"
+    )
+    assert _RULE_8D_ID_PATTERN.findall(content), (
+        "8d-problem-solving skill must name at least one concrete RULE-8D-* id"
+    )
+
+
+def test_8d_problem_solving_skill_contains_no_inline_calculation() -> None:
+    """skills/8d-problem-solving/SKILL.md must express every example as JSON tool calls, never executable code."""
+    eight_d_file = _SKILLS_DIR / "8d-problem-solving" / "SKILL.md"
+    assert eight_d_file.exists(), "skills/8d-problem-solving/SKILL.md does not exist"
+    content = eight_d_file.read_text(encoding="utf-8")
+
+    assert detect_prohibited_calculation_logic(content) == [], (
+        "8d-problem-solving skill must not contain inline calculation logic: "
+        f"{detect_prohibited_calculation_logic(content)}"
+    )
+    assert "```python" not in content, (
+        "8d-problem-solving skill must express every example as JSON tool calls, never a python block"
+    )
+
+
 def test_claude_skills_isolation() -> None:
     """.claude/skills/ must remain segregated from domain skills/."""
     if not _CLAUDE_SKILLS_DIR.exists():
@@ -536,6 +730,7 @@ def test_claude_skills_isolation() -> None:
     assert "copq-estimator" not in claude_dirs, "copq-estimator domain skill leaked into .claude/skills/"
     assert "ppap-checker" not in claude_dirs, "ppap-checker domain skill leaked into .claude/skills/"
     assert "supplier-scar" not in claude_dirs, "supplier-scar domain skill leaked into .claude/skills/"
+    assert "8d-problem-solving" not in claude_dirs, "8d-problem-solving domain skill leaked into .claude/skills/"
 
 
 
@@ -640,5 +835,39 @@ def test_negative_ppap_checker_customer_disposition_emission_fails() -> None:
     mutated_2 = live_content + "\nThe final disposition is Interim Approval."
     with pytest.raises(ValueError, match="Prohibited customer disposition assignment"):
         validate_ppap_authority_invariants(mutated_2)
+
+
+def test_negative_8d_skill_fabricated_citation_fails() -> None:
+    """A fabricated RULE-8D id, a manual-attributed PDD, or a citation-free body must fail the 8D checker."""
+    eight_d_file = _SKILLS_DIR / "8d-problem-solving" / "SKILL.md"
+    assert eight_d_file.exists(), "skills/8d-problem-solving/SKILL.md does not exist"
+    live_content = eight_d_file.read_text(encoding="utf-8")
+
+    # Control: the live skill passes, so every mutation below fails for its own reason.
+    validate_8d_skill_citation_fidelity(live_content)
+
+    # Mutation 1: an invented RULE-8D id with no CITATIONS.tsv row.
+    mutated_fabricated_id = live_content + "\nThe D4 gate is required by `RULE-8D-999`.\n"
+    with pytest.raises(ValueError, match="absent from CITATIONS.tsv"):
+        validate_8d_skill_citation_fidelity(mutated_fabricated_id)
+
+    # Mutation 2: a real-looking but uncited variant of a real id.
+    mutated_variant_id = live_content + "\nSee `RULE-8D-GATE-ESCAPE` for the escape-point gate.\n"
+    with pytest.raises(ValueError, match="absent from CITATIONS.tsv"):
+        validate_8d_skill_citation_fidelity(mutated_variant_id)
+
+    # Mutation 3: a platform design decision upgraded into a manual requirement (manual-first).
+    mutated_pdd_forward = live_content + "\nThe Ford Global 8D Manual requires the PDD-8D-008 linked-NCR gate.\n"
+    with pytest.raises(ValueError, match="attributes a PDD platform decision to a manual"):
+        validate_8d_skill_citation_fidelity(mutated_pdd_forward)
+
+    # Mutation 4: the same misattribution written id-first.
+    mutated_pdd_reverse = live_content + "\nPDD-8D-010 is an AIAG CQI-20 clause.\n"
+    with pytest.raises(ValueError, match="attributes a PDD platform decision to a manual"):
+        validate_8d_skill_citation_fidelity(mutated_pdd_reverse)
+
+    # Mutation 5: a body naming no concrete RULE-8D id at all — the vacuous-pass case (#220).
+    with pytest.raises(ValueError, match="names no concrete RULE-8D"):
+        validate_8d_skill_citation_fidelity("A skill body that cites nothing at all.")
 
 

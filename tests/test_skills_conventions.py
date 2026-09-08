@@ -637,6 +637,47 @@ def test_8d_problem_solving_skill_specifies_tools() -> None:
     )
 
 
+def test_8d_problem_solving_skill_guards_the_closed_transition() -> None:
+    """skills/8d-problem-solving/SKILL.md must forbid ATTEMPTING D8 -> CLOSED while the whole-report gate is false.
+
+    Raised as a blocking [P1] on PR #236. Step 3 originally instructed the agent to advance to the
+    adjacent state unconditionally, and only forbade *reporting* an advanced report as closeable.
+    That is not the same prohibition: ``advance_8d`` evaluates only the gates of the transition
+    attempted, so a whole-report reason belonging to an earlier step (``LINKED_NCR_INVALID`` /
+    ``PDD-8D-008`` gates D3 -> D4) does not block D8 -> CLOSED. Following the workflow therefore
+    turned a report ``validate_8d`` calls not-closeable into a ``CLOSED`` report. Reproduced
+    end-to-end before the fix; the behavioural half of this control lives in
+    ``packages/quality-mcp/tests/test_eight_d_closure_precondition.py``.
+    """
+    eight_d_file = _SKILLS_DIR / "8d-problem-solving" / "SKILL.md"
+    assert eight_d_file.exists(), "skills/8d-problem-solving/SKILL.md does not exist"
+    content = eight_d_file.read_text(encoding="utf-8")
+
+    assert "closure precondition" in content.lower(), (
+        "8d-problem-solving skill must carry a named closure precondition for the D8 -> CLOSED "
+        "transition; without it the workflow can close a report the whole-report gate rejects"
+    )
+
+    # The guard must bind the transition to the whole-report flag, not merely mention both.
+    precondition = next(
+        (line for line in content.splitlines() if "closure precondition" in line.lower()),
+        "",
+    )
+    assert precondition, "closure precondition must be stated on a single reviewable line"
+    for token in ('target="CLOSED"', "closeable: true", "closeable: false", "PDD-8D-008"):
+        assert token in precondition, (
+            f"the closure precondition must name {token!r}: it has to tie the CLOSED transition to "
+            "the whole-report closeable flag and name the gate that does not block it"
+        )
+    assert "only if" in precondition.lower(), (
+        "the closure precondition must be conditional ('only if'), not advisory"
+    )
+    assert "not enough" in precondition.lower() or "must not be attempted" in precondition.lower(), (
+        "the closure precondition must forbid ATTEMPTING the transition, not only reporting the "
+        "result as closeable; that distinction is the whole finding"
+    )
+
+
 def test_8d_problem_solving_skill_asserts_no_uncitable_standard() -> None:
     """skills/8d-problem-solving/SKILL.md must name only RULE-8D ids the rca engine can cite, and must not attribute a PDD platform decision to a manual."""
     eight_d_file = _SKILLS_DIR / "8d-problem-solving" / "SKILL.md"

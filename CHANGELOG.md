@@ -25,9 +25,19 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
   `result["d8"]["closeable"]` (closure evidence only). The statelessness of `advance_8d` — the
   host must carry `result["report"]` forward — is its own methodology step. Governed by three new
   functions in `tests/test_skills_conventions.py`, including a `CITATIONS.tsv` subset check with a
-  five-mutation negative control and a non-vacuity guard. No `quality-core` / `quality-mcp` source
-  change, no new `CITATIONS.tsv` row and no new Process Design Decision — a skill asserts no
-  standard.
+  five-mutation negative control and a non-vacuity guard. Step 3 carries an explicit **closure
+  precondition**: at `D8` the agent may attempt `advance_8d(target="CLOSED")` only while the latest
+  `validate_8d` reports `closeable: true`. Without it the documented workflow could close a report
+  the whole-report gate rejects — `advance_8d` evaluates only the gates of the transition attempted,
+  so `LINKED_NCR_INVALID` (`PDD-8D-008`, a D3→D4 gate) does not block D8→CLOSED, and forbidding the
+  agent to *report* such a report as closeable never prevented it from *creating* one. Raised as a
+  blocking review finding on PR #236 and reproduced end to end; guarded by a governance control that
+  fails if the precondition is deleted, softened from "only if" to advisory, or reverted to a
+  reporting-only prohibition, plus a behavioural canary
+  (`packages/quality-mcp/tests/test_eight_d_closure_precondition.py`) that fails if the engine ever
+  starts blocking the transition itself, so the prose cannot go stale unnoticed. No `quality-core` /
+  `quality-mcp` source change, no new `CITATIONS.tsv` row and no new Process Design Decision — a
+  skill asserts no standard.
 - **8D FastMCP tool layer — `quality_mcp.tools.eight_d`** (E11, Milestone 11, #214). Three tools
   registered on the server (34 total): `validate_8d` (whole-report discipline sweep and closure
   gates), `advance_8d` (one hypothetical adjacent state transition), and `render_8d_canvas`

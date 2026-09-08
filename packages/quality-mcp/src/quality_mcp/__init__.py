@@ -8,6 +8,7 @@ from __future__ import annotations
 __version__ = "1.0.0"
 
 from quality_mcp.server import (
+    advance_8d,
     assess_ppap_capability,
     audit_ppap_package,
     calculate_gage_rr,
@@ -25,6 +26,7 @@ from quality_mcp.server import (
     ping,
     recommend_disposition,
     render_5why_canvas,
+    render_8d_canvas,
     render_controlplan_canvas,
     render_copq_canvas,
     render_fishbone_canvas,
@@ -38,6 +40,7 @@ from quality_mcp.server import (
     render_sqe_canvas,
     scope_is_is_not,
     validate_5why,
+    validate_8d,
     validate_control_plan,
     validate_psw,
     write_ncr,
@@ -45,6 +48,7 @@ from quality_mcp.server import (
 
 __all__ = [
     "__version__",
+    "advance_8d",
     "assess_ppap_capability",
     "audit_ppap_package",
     "calculate_gage_rr",
@@ -62,6 +66,7 @@ __all__ = [
     "ping",
     "recommend_disposition",
     "render_5why_canvas",
+    "render_8d_canvas",
     "render_controlplan_canvas",
     "render_copq_canvas",
     "render_fishbone_canvas",
@@ -75,6 +80,7 @@ __all__ = [
     "render_sqe_canvas",
     "scope_is_is_not",
     "validate_5why",
+    "validate_8d",
     "validate_control_plan",
     "validate_psw",
     "write_ncr",

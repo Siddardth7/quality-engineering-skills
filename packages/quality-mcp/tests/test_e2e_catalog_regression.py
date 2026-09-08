@@ -1,11 +1,11 @@
 """
 test_e2e_catalog_regression.py
-End-to-end regression across the whole 8-domain skill catalog (#150 / E10, v1.0.0).
+End-to-end regression across the whole 9-domain skill catalog (#150 / E10, v1.0.0).
 
 This suite adds no new engine, tool, canvas, or skill — it exercises what E0–E9 already
 shipped, once, together:
 
-1. **AC1** — every registered MCP tool (all 31: 30 domain tools plus ``ping``) is called in
+1. **AC1** — every registered MCP tool (all 34: 33 domain tools plus ``ping``) is called in
    ONE in-process FastMCP client session, over each domain's own benchmark/default input,
    and asserted to return a well-formed non-error payload. One session, not the sum of
    per-domain sessions, is the point: it proves the catalog coexists on a single server.
@@ -21,8 +21,8 @@ shipped, once, together:
 3. **AC3** — a malformed dataset sent to a live tool surfaces ``isError`` rather than
    silently passing, and the same session keeps serving valid calls afterwards.
 
-The 8 domains are FMEA, SPC, MSA, Control Plan, RCA, NCR+COPQ (one combined domain, shipped
-as a single epic in #147), PPAP, and SQE.
+The 9 domains are FMEA, SPC, MSA, Control Plan, RCA, NCR+COPQ (one combined domain, shipped
+as a single epic in #147), PPAP, SQE, and 8D (added in E11/#214).
 
 The FastMCP client-session pattern, the ``_parsed_payload`` helper, and the direct
 ``quality_core`` engine imports all mirror ``test_ppap_client_roundtrip.py`` and
@@ -145,6 +145,11 @@ _CATALOG: tuple[tuple[str, str, dict[str, Any], str], ...] = (
     ("SQE", "evaluate_escalation", {}, "evaluated_triggers"),
     ("SQE", "generate_scar", {}, "sections"),
     ("SQE", "render_sqe_canvas", {}, "html"),
+    # --- 9. 8D (E11/#214 — transport over the E9/E10 core) ---------------------
+    ("8D", "validate_8d", {}, "verdict"),
+    # The benchmark report sits at D8 / OPEN, so "CLOSED" is the one adjacent target.
+    ("8D", "advance_8d", {"target": "CLOSED"}, "verdict"),
+    ("8D", "render_8d_canvas", {}, "html"),
     # --- server health ---------------------------------------------------------
     ("server", "ping", {}, "version"),
 )
@@ -277,7 +282,7 @@ def _parsed_payload(result: Any) -> dict[str, Any]:
 
 
 def test_full_catalog_walk_in_one_client_session() -> None:
-    """All 8 domains' compute and canvas tools succeed inside a single client session.
+    """All 9 domains' compute and canvas tools succeed inside a single client session.
 
     The registration list itself is the completeness check: the walk asserts that the set of
     tools it exercised equals the set the server advertises, so a tool added to

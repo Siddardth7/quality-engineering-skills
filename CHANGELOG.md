@@ -9,6 +9,26 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 ## [Unreleased]
 
 ### Added
+- **8D FastMCP tool layer — `quality_mcp.tools.eight_d`** (E11, Milestone 11, #214). Three tools
+  registered on the server (34 total): `validate_8d` (whole-report discipline sweep and closure
+  gates), `advance_8d` (one hypothetical adjacent state transition), and `render_8d_canvas`
+  (themed HTML canvas). Each wraps the already-merged E9/E10 core surface
+  (`rca.eight_d_disciplines.validate_8d`, `rca.eight_d.transition_eight_d`,
+  `canvas.eight_d.EightDCanvas`) behind `rca.eight_d_schema.validate_eight_d` as the untrusted-JSON
+  trust boundary, and returns the core result's own `to_dict()` **verbatim** — no MCP-layer field
+  is renamed, dropped or added, so the payload is schema-identical to a direct engine call.
+  `render_8d_canvas` adds only `title`, `html` and the hoisted `verdict` / `state` / `closeable`
+  convenience keys alongside the untouched `validation` payload.
+  **The two `closeable` flags stay at distinct JSON paths**: `result["closeable"]` is the
+  whole-report gate (`PDD-8D-008` included) and the closure-evidence-only flag remains reachable
+  only at `result["d8"]["closeable"]` (`result["validation"]["d8"]["closeable"]` for the canvas
+  tool), never collapsed onto one name. `advance_8d` is stateless like every other tool in this
+  package — the server persists no report, so the host must carry `result["report"]` forward
+  itself — and an illegal target is a normal `BLOCKED` result, not an error. Tool docstrings point
+  consumers at the machine-readable `citation_basis` (`RULE` / `PDD` / `PLATFORM_UNCITED`) and
+  `rule_id` (`RULE-8D-*` / `PDD-8D-*` / `None`) fields rather than making standards claims in
+  prose; no new `CITATIONS.tsv` row, no new `RULE-8D-*` id and no new Process Design Decision — a
+  transport wrapper asserts no standard.
 - **Single-writer 8D canvas — `quality_core.canvas.eight_d`** (E10, Milestone 11, #213).
   `EightDCanvas` renders one already-validated `EightDReport` as themed HTML: a closure-gate
   header panel plus one card per discipline D0-D8, in both `dark` and `light` themes and in

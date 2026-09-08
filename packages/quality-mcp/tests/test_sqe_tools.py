@@ -851,11 +851,11 @@ def test_exactly_six_new_names_no_aliases() -> None:
         assert name in added
 
 
-def test_total_registered_tool_count_is_31_no_duplicates() -> None:
-    """The live MCP server registers exactly 31 tools (25 baseline + 6), each name unique."""
+def test_total_registered_tool_count_no_duplicates() -> None:
+    """The live MCP server registers exactly 34 tools (25 baseline + 6 SQE + 3 8D), each unique."""
     tools = asyncio.run(mcp.list_tools())
     names = [t.name for t in tools]
-    assert len(names) == 31
-    assert len(set(names)) == 31
+    assert len(names) == 34
+    assert len(set(names)) == 34
     for name in _SQE_TOOL_NAMES:
         assert name in names

@@ -15,7 +15,9 @@ Validates:
 12. Summary Release Matrix table link updates in ROADMAP.md for v0.1.0 through v0.7.0.
 13. Markdown relative link resolution against repository filesystem.
 14. CHANGELOG.md entry formatting under [Unreleased] or release headings (#7, #21, #34, #41, #48, #80, #96).
-15. Negative controls: detection of invalid filenames, missing sections, invalid issue URLs, broken links, missing epics/issues/artifacts, and corrupted branch names.
+15. Milestone 11 (v1.1.0.md) Epic definitions (E0-E14), Issue traceability (#204 through #218),
+    branch mapping, closeout facts, and version/changelog reconciliation at 1.1.0 (#217).
+16. Negative controls: detection of invalid filenames, missing sections, invalid issue URLs, broken links, missing epics/issues/artifacts, and corrupted branch names.
 """
 
 from __future__ import annotations
@@ -39,6 +41,7 @@ _V070_MILESTONE = _MILESTONES_DIR / "v0.7.0.md"
 _V080_MILESTONE = _MILESTONES_DIR / "v0.8.0.md"
 _V090_MILESTONE = _MILESTONES_DIR / "v0.9.0.md"
 _V100_MILESTONE = _MILESTONES_DIR / "v1.0.0.md"
+_V110_MILESTONE = _MILESTONES_DIR / "v1.1.0.md"
 _ROADMAP = _REPO_ROOT / "ROADMAP.md"
 _CHANGELOG = _REPO_ROOT / "CHANGELOG.md"
 _README = _REPO_ROOT / "README.md"
@@ -1360,33 +1363,23 @@ def test_v100_closeout_completion_and_release_boundary() -> None:
 
 
 def _assert_v100_changelog_facts(changelog: str) -> None:
-    """Assert the dated release section and closeout traceability.
+    """Assert the dated 1.0.0 release section and its closeout traceability.
 
     ``[Unreleased]`` was empty at the v1.0.0 closeout, but it fills up again as soon as the
-    next milestone lands work, so this checks the *structure* the closeout established —
-    ``[Unreleased]`` present, immediately above ``[1.0.0]``, with no other release section
-    between them — rather than pinning the section's momentary emptiness (#218).
+    next milestone lands work, so this never pinned the section's momentary emptiness (#218).
+    It originally also pinned ``[Unreleased]`` as sitting *immediately* above ``[1.0.0]``.
+    The v1.1.0 roll legitimately supersedes that placement — ``[1.1.0]`` now sits between them
+    — so the ordering assertion moved to :func:`_assert_v110_changelog_facts`, which pins the
+    same structure against the *newest* release and additionally pins that ``[1.0.0]`` still
+    follows it directly (#217). What remains here is what stays true for good: the dated 1.0.0
+    heading, and its own section's traceability to #151 and the v1.0.0 milestone doc.
     """
     assert "## [Unreleased]" in changelog
     assert "## [1.0.0] - 2026-08-29" in changelog
-    before_v100 = changelog.split("## [1.0.0] - 2026-08-29", maxsplit=1)[0]
-    around_unreleased = before_v100.split("## [Unreleased]", maxsplit=1)
-    assert len(around_unreleased) == 2, "## [Unreleased] must sit above the 1.0.0 release section"
-    assert "## [" not in around_unreleased[1], (
-        "no release section may sit between ## [Unreleased] and ## [1.0.0] - 2026-08-29"
-    )
-    release = changelog.split("## [0.9.0]", maxsplit=1)[0]
+    release = changelog.split("## [1.0.0] - 2026-08-29", maxsplit=1)[1]
+    release = release.split("## [0.9.0]", maxsplit=1)[0]
     assert "#151" in release
     assert "docs/milestones/v1.0.0.md" in release
-
-
-def test_v100_versions_and_changelog_are_reconciled() -> None:
-    """Verify metadata, lockfile, and release history agree on 1.0.0."""
-    for path in (_ROOT_PYPROJECT, _CORE_PYPROJECT, _MCP_PYPROJECT):
-        assert 'version = "1.0.0"' in path.read_text(encoding="utf-8")
-    lock = (_REPO_ROOT / "uv.lock").read_text(encoding="utf-8")
-    assert lock.count('version = "1.0.0"') >= 3
-    _assert_v100_changelog_facts(_CHANGELOG.read_text(encoding="utf-8"))
 
 
 @pytest.mark.parametrize(
@@ -1408,37 +1401,337 @@ def test_negative_control_v100_release_and_changelog_mutations() -> None:
     """Negative control: release-state and changelog linkage are load-bearing."""
     roadmap = _ROADMAP.read_text(encoding="utf-8")
     with pytest.raises(AssertionError):
+        # Every occurrence: the v1.1.0 closeout added a second "human release pending" row,
+        # so mutating only the first would leave the asserted fact intact (#217).
         _assert_v100_public_release_facts(
-            roadmap.replace("human release pending", "Planned", 1)
+            roadmap.replace("human release pending", "Planned")
         )
     changelog = _CHANGELOG.read_text(encoding="utf-8")
     for old in ("## [1.0.0] - 2026-08-29", "#151"):
         with pytest.raises(AssertionError):
-            _assert_v100_changelog_facts(changelog.replace(old, "", 1))
+            _assert_v100_changelog_facts(changelog.replace(old, ""))
 
 
-def test_negative_control_v100_changelog_unreleased_ordering() -> None:
-    """Negative control: the ``[Unreleased]`` *placement* assertions are load-bearing.
+# ---------------------------------------------------------------------------
+# Milestone 11 (v1.1.0) — 8D Problem-Solving State Machine
+# ---------------------------------------------------------------------------
 
-    ``_assert_v100_changelog_facts`` stopped pinning an empty ``[Unreleased]`` in #218 (the
-    old exact-string form blocked every milestone that adds an entry) and now pins the
-    ordering the v1.0.0 closeout established instead. These two mutations exercise the
-    replacement assertions specifically — the pre-existing control above passes against both
-    forms, so without this the new checks would be unguarded.
+_V110_EXPECTED_ISSUES = {
+    218: "feat/8d-standards-audit-218",
+    204: "feat/8d-schema-204",
+    205: "feat/8d-state-machine-gates-205",
+    206: "feat/8d-disciplines-d0-d1-206",
+    207: "feat/8d-discipline-d2-207",
+    208: "feat/8d-discipline-d3-208",
+    209: "feat/8d-discipline-d4-209",
+    210: "feat/8d-disciplines-d5-d6-210",
+    211: "feat/8d-discipline-d7-211",
+    212: "feat/8d-d8-closure-validate-212",
+    213: "feat/8d-canvas-213",
+    214: "feat/8d-mcp-tools-214",
+    215: "feat/8d-agent-skill-215",
+    216: "feat/8d-chained-roundtrip-216",
+    217: "feat/m11-closeout-217",
+}
+
+# The v1.1.0 row each public-facing index must carry. ``_assert_v100_public_release_facts``
+# only proves the *words* "Complete" and "human release pending" appear somewhere in each
+# file, which the pre-existing v1.0.0 rows already satisfy — so a v1.1.0 clone of it would
+# pass without v1.1.0 being mentioned at all. These pin the actual new rows instead.
+_V110_PUBLIC_ROWS = {
+    "ROADMAP.md": "[**`v1.1.0`**](docs/milestones/v1.1.0.md)",
+    "docs/milestones/README.md": (
+        "| `v1.1.0` | [`docs/milestones/v1.1.0.md`](v1.1.0.md) | "
+        "8D Problem-Solving State Machine | Complete · human release pending |"
+    ),
+    "README.md": (
+        "| **v1.1.0** | 8D Problem-Solving State Machine | "
+        "✅ **Complete · human release pending** | "
+        "[docs/milestones/v1.1.0.md](docs/milestones/v1.1.0.md) |"
+    ),
+    "skills/README.md": "| **`v1.1.0`** | `8d-problem-solving` |",
+}
+
+
+def test_v110_milestone_epics_and_issues_traceability() -> None:
+    """Verify docs/milestones/v1.1.0.md defines Epics E0-E14 and links issues #204-#218 with branches."""
+    assert _V110_MILESTONE.is_file(), f"Missing milestone v1.1.0 file: {_V110_MILESTONE}"
+    content = _V110_MILESTONE.read_text(encoding="utf-8")
+
+    # Verify all 15 Epics are present (E0 through E14)
+    for epic_num in range(0, 15):
+        assert f"Epic {epic_num} (E{epic_num})" in content or f"E{epic_num}:" in content, (
+            f"Missing Epic {epic_num} in v1.1.0.md"
+        )
+
+    # Verify all 15 issues are present with canonical URLs and branch names
+    issue_tuples = _extract_issue_urls(content)
+    issue_numbers = {num for _, num in issue_tuples}
+
+    for expected_issue, branch_name in _V110_EXPECTED_ISSUES.items():
+        assert expected_issue in issue_numbers, f"Missing issue #{expected_issue} in v1.1.0.md"
+        expected_url = f"https://github.com/Siddardth7/quality-engineering-skills/issues/{expected_issue}"
+        assert expected_url in content, f"Missing canonical URL for issue #{expected_issue}: {expected_url}"
+        assert branch_name in content, f"Missing branch {branch_name} for issue #{expected_issue} in v1.1.0.md"
+
+
+def test_v110_milestone_release_gate_and_artifacts() -> None:
+    """Verify v1.1.0.md specifies the release gate criteria and catalogs verification artifacts."""
+    assert _V110_MILESTONE.is_file(), f"Missing milestone v1.1.0 file: {_V110_MILESTONE}"
+    content = _V110_MILESTONE.read_text(encoding="utf-8")
+
+    for token in (
+        "validate_8d",
+        "advance_8d",
+        "render_8d_canvas",
+        "8d-problem-solving",
+        "AIAG CQI-20",
+        "Ford Global 8D",
+        "RULE-8D-GATE-CONTAINMENT",
+        "RULE-8D-GATE-PREVENTION",
+        "RULE-8D-GATE-CLOSURE",
+        "100%",
+        "CITATIONS.tsv",
+        "ASSUMPTIONS_LOG.md",
+    ):
+        assert token in content, f"Missing release-gate token in v1.1.0.md: {token}"
+
+    expected_artifacts = [
+        "packages/quality-core/src/quality_core/rca/eight_d.py",
+        "packages/quality-core/src/quality_core/rca/eight_d_disciplines.py",
+        "packages/quality-core/src/quality_core/canvas/eight_d.py",
+        "packages/quality-mcp/src/quality_mcp/tools/eight_d.py",
+        "packages/quality-mcp/tests/test_eight_d_chained_roundtrip.py",
+        "skills/8d-problem-solving/SKILL.md",
+        "tests/test_milestones_convention.py",
+        "docs/milestones/v1.1.0.md",
+    ]
+    for artifact in expected_artifacts:
+        assert artifact in content, f"Missing expected verification artifact in v1.1.0.md: {artifact}"
+
+
+def test_roadmap_links_v110_milestone() -> None:
+    """Verify ROADMAP.md links v1.1.0 in Summary Release Matrix to docs/milestones/v1.1.0.md."""
+    assert _ROADMAP.is_file(), f"Missing ROADMAP: {_ROADMAP}"
+    content = _ROADMAP.read_text(encoding="utf-8")
+
+    assert "[**`v1.1.0`**](docs/milestones/v1.1.0.md)" in content or "[`v1.1.0`](docs/milestones/v1.1.0.md)" in content, (
+        "ROADMAP.md Summary Release Matrix must link v1.1.0 to docs/milestones/v1.1.0.md"
+    )
+
+
+def test_negative_control_v110_missing_epic_or_issue_rejected() -> None:
+    """Negative control: assert missing Epic or Issue in v1.1.0.md content is detected."""
+    content = _V110_MILESTONE.read_text(encoding="utf-8")
+
+    mutated_no_e0 = content.replace("Epic 0 (E0)", "Removed Epic 0")
+    assert "Epic 0 (E0)" not in mutated_no_e0
+
+    mutated_no_issue217 = content.replace("https://github.com/Siddardth7/quality-engineering-skills/issues/217", "")
+    extracted = _extract_issue_urls(mutated_no_issue217)
+    issue_nums = {num for _, num in extracted}
+    assert 217 not in issue_nums
+
+
+def test_negative_control_v110_corrupted_branch_name_rejected() -> None:
+    """Negative control: assert altered or corrupted feature branch name in v1.1.0.md is detected."""
+    content = _V110_MILESTONE.read_text(encoding="utf-8")
+    mutated = content.replace("feat/m11-closeout-217", "feat/corrupted-branch-99")
+    assert "feat/m11-closeout-217" not in mutated
+
+
+def test_negative_control_v110_missing_artifact_rejected() -> None:
+    """Negative control: assert missing critical verification artifact in v1.1.0.md is detected."""
+    content = _V110_MILESTONE.read_text(encoding="utf-8")
+    mutated = content.replace("packages/quality-mcp/tests/test_eight_d_chained_roundtrip.py", "")
+    assert "packages/quality-mcp/tests/test_eight_d_chained_roundtrip.py" not in mutated
+
+
+def test_negative_control_roadmap_missing_v110_rejected() -> None:
+    """Negative control: assert ROADMAP missing v1.1.0 link is detected."""
+    content = _ROADMAP.read_text(encoding="utf-8")
+    mutated = content.replace("[**`v1.1.0`**](docs/milestones/v1.1.0.md)", "**`v1.1.0`**")
+    assert "[**`v1.1.0`**](docs/milestones/v1.1.0.md)" not in mutated
+
+
+def _assert_v110_closeout_facts(milestone: str) -> None:
+    """Assert the factual v1.1.0 implementation-complete release handoff."""
+    assert "Status:** Complete · ready for human release" in milestone
+    assert "Completed:** 2026-09-08" in milestone
+    assert "12 domain skills across nine domains" in milestone
+    assert "34 registered MCP tools" in milestone
+    assert "Promotion `test → main`" in milestone
+    assert "`v1.1.0` tag remain human-owner actions" in milestone
+    # Issues #204-#218 stay OPEN until the human promotes test -> main, exactly as M10's did.
+    assert "are merged into `test` and remain open" in milestone
+    assert "Merged into `test`" in milestone
+    artifacts = milestone.split("## Verification Artifacts & Test Evidence", maxsplit=1)[1]
+    artifacts = artifacts.split("## Retrospective & Status", maxsplit=1)[0]
+    assert artifacts.count("| Verified |") == 19
+    assert "| Planned |" not in artifacts
+    assert "Verification pending" not in artifacts
+    merged = {
+        219: "da9d891feb9c35376eb52381a7ebe7ff9ccad215",
+        222: "c8fe3436977d4442adc0a5c7679f39b7139c23bc",
+        224: "715ceea79e3ee0452ebdbc17603de74be73f2967",
+        225: "da1c8a5edf65591fca54f4a987951d624961bb6d",
+        226: "f308d39bd2e86e24daa68ae8c65ea9077de13aa6",
+        227: "3453563ed9c58f4922bcf8a0864c311e0f61599b",
+        228: "6aada5499380526dcb50119a982bdfa6fc0f4472",
+        229: "528d473d090be69c0077a03e85502b7b31240f80",
+        230: "0fc8bb689eb14674c774629994a7ff58c13959d3",
+        233: "3abb1c580318c913005e162cda64489c5d576321",
+        234: "2ad5244398d7dabc3cea6211c84afa3b4f4191fd",
+        235: "423465a8f2ea59888d9f8cfbdc7a8201e87a206f",
+        236: "469911e40a290a2707c5f3c3f2e41543554699d1",
+        237: "97992190656577cf907a8a4442f242ff964e1521",
+    }
+    for pr, sha in merged.items():
+        assert f"PR #{pr}" in milestone
+        assert sha in milestone
+    # E14's own row cannot carry a PR or SHA before it merges (v1.0.0.md:36 precedent).
+    assert "Pending this closeout PR" in milestone
+
+
+def _read_v110_public_rows() -> dict[str, str]:
+    """Read every public-facing index that must carry a v1.1.0 row."""
+    return {
+        relative_path: (_REPO_ROOT / relative_path).read_text(encoding="utf-8")
+        for relative_path in _V110_PUBLIC_ROWS
+    }
+
+
+def _assert_v110_public_rows(contents: dict[str, str]) -> None:
+    """Assert each public-facing index carries its own v1.1.0 release row."""
+    for relative_path, row in _V110_PUBLIC_ROWS.items():
+        assert row in contents[relative_path], (
+            f"{relative_path} must carry its v1.1.0 row: {row}"
+        )
+
+
+def test_v110_closeout_completion_and_release_boundary() -> None:
+    """Verify completed implementation without fabricating promotion or a tag."""
+    _assert_v110_closeout_facts(_V110_MILESTONE.read_text(encoding="utf-8"))
+    _assert_v110_public_rows(_read_v110_public_rows())
+
+
+def _assert_v110_changelog_facts(changelog: str) -> None:
+    """Assert the dated 1.1.0 release section, its traceability, and the release ordering.
+
+    This carries forward the ordering structure ``_assert_v100_changelog_facts`` established
+    in #218 — ``[Unreleased]`` present and immediately above the newest release section, with
+    no other release heading wedged between — retargeted at ``[1.1.0]``. It adds the piece the
+    1.0.0 version could not have: ``## [1.0.0] - 2026-08-29`` must still be present and must
+    still follow ``[1.1.0]`` directly, so the historical record's ordering is guarded going
+    forward and not merely the newest release's (#217).
+    """
+    assert "## [Unreleased]" in changelog
+    assert "## [1.1.0] - 2026-09-08" in changelog
+    before_v110 = changelog.split("## [1.1.0] - 2026-09-08", maxsplit=1)[0]
+    around_unreleased = before_v110.split("## [Unreleased]", maxsplit=1)
+    assert len(around_unreleased) == 2, "## [Unreleased] must sit above the 1.1.0 release section"
+    assert "## [" not in around_unreleased[1], (
+        "no release section may sit between ## [Unreleased] and ## [1.1.0] - 2026-09-08"
+    )
+    release = changelog.split("## [1.1.0] - 2026-09-08", maxsplit=1)[1]
+    assert "## [1.0.0] - 2026-08-29" in release, (
+        "the historical ## [1.0.0] - 2026-08-29 section must remain present below ## [1.1.0]"
+    )
+    release = release.split("## [1.0.0] - 2026-08-29", maxsplit=1)[0]
+    assert "## [" not in release, (
+        "no release section may sit between ## [1.1.0] - 2026-09-08 and ## [1.0.0] - 2026-08-29"
+    )
+    assert "#217" in release
+    assert "docs/milestones/v1.1.0.md" in release
+
+
+def test_v110_versions_and_changelog_are_reconciled() -> None:
+    """Verify metadata, lockfile, and release history agree on 1.1.0.
+
+    Supersedes ``test_v100_versions_and_changelog_are_reconciled``: that function read the
+    *live, mutable* pyproject files and lockfile for ``version = "1.0.0"``, which was only
+    ever true between the v1.0.0 and v1.1.0 releases. The immutable half of its claim — the
+    dated 1.0.0 CHANGELOG section and its #151 traceability — is still asserted, by
+    ``_assert_v100_changelog_facts`` (#217).
+    """
+    for path in (_ROOT_PYPROJECT, _CORE_PYPROJECT, _MCP_PYPROJECT):
+        assert 'version = "1.1.0"' in path.read_text(encoding="utf-8")
+    lock = (_REPO_ROOT / "uv.lock").read_text(encoding="utf-8")
+    assert lock.count('version = "1.1.0"') >= 3
+    _assert_v110_changelog_facts(_CHANGELOG.read_text(encoding="utf-8"))
+    _assert_v100_changelog_facts(_CHANGELOG.read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        ("PR #219", "PR #999"),
+        ("da9d891feb9c35376eb52381a7ebe7ff9ccad215", "0" * 40),
+        ("97992190656577cf907a8a4442f242ff964e1521", "0" * 40),
+        ("| Verified |", "| Planned |"),
+        ("Pending this closeout PR", "Merged into `test`"),
+        ("are merged into `test` and remain open", "are merged into `test` and closed"),
+    ],
+)
+def test_negative_control_v110_closeout_fact_mutations(old: str, new: str) -> None:
+    """Negative control: corrupting traceability or proof is rejected."""
+    content = _V110_MILESTONE.read_text(encoding="utf-8")
+    with pytest.raises(AssertionError):
+        _assert_v110_closeout_facts(content.replace(old, new, 1))
+
+
+def test_negative_control_v110_release_and_changelog_mutations() -> None:
+    """Negative control: the v1.1.0 public rows and changelog linkage are load-bearing."""
+    for relative_path, row in _V110_PUBLIC_ROWS.items():
+        # Every occurrence: ROADMAP.md names the v1.1.0 link twice (release matrix and the
+        # v2-backlog promotion note), so a single-replace mutation would not bite.
+        mutated = dict(_read_v110_public_rows())
+        mutated[relative_path] = mutated[relative_path].replace(row, "")
+        with pytest.raises(AssertionError):
+            _assert_v110_public_rows(mutated)
+    changelog = _CHANGELOG.read_text(encoding="utf-8")
+    for old in ("## [1.1.0] - 2026-09-08", "#217", "docs/milestones/v1.1.0.md"):
+        with pytest.raises(AssertionError):
+            # Every occurrence — each of these facts is stated more than once in the
+            # 1.1.0 section, so a single-replace mutation would not remove the fact.
+            _assert_v110_changelog_facts(changelog.replace(old, ""))
+
+
+def test_negative_control_v110_changelog_ordering_and_history() -> None:
+    """Negative control: the ordering *and* history-preservation assertions are load-bearing.
+
+    The first two mutations exercise the ``[Unreleased]`` placement checks inherited from
+    #218's v1.0.0 form. The third is the piece that form could not have: deleting the
+    historical ``## [1.0.0]`` heading must fail, or the record's ordering integrity is
+    unguarded from v1.1.0 onward.
     """
     changelog = _CHANGELOG.read_text(encoding="utf-8")
 
-    # [Unreleased] still present, but demoted below the 1.0.0 release section.
+    # [Unreleased] still present, but demoted below the 1.1.0 release section.
     demoted = changelog.replace("## [Unreleased]\n", "", 1) + "\n## [Unreleased]\n"
     assert "## [Unreleased]" in demoted, "mutation must keep the heading, only move it"
     with pytest.raises(AssertionError):
-        _assert_v100_changelog_facts(demoted)
+        _assert_v110_changelog_facts(demoted)
 
-    # A later release section wedged between [Unreleased] and [1.0.0].
+    # A later release section wedged between [Unreleased] and [1.1.0].
     wedged = changelog.replace(
+        "## [1.1.0] - 2026-09-08",
+        "## [1.2.0] - 2026-09-20\n\n## [1.1.0] - 2026-09-08",
+        1,
+    )
+    with pytest.raises(AssertionError):
+        _assert_v110_changelog_facts(wedged)
+
+    # The historical 1.0.0 heading deleted.
+    erased = changelog.replace("## [1.0.0] - 2026-08-29", "## Release 1.0.0", 1)
+    with pytest.raises(AssertionError):
+        _assert_v110_changelog_facts(erased)
+
+    # A release section wedged between [1.1.0] and the historical [1.0.0].
+    wedged_history = changelog.replace(
         "## [1.0.0] - 2026-08-29",
         "## [1.0.1] - 2026-09-01\n\n## [1.0.0] - 2026-08-29",
         1,
     )
     with pytest.raises(AssertionError):
-        _assert_v100_changelog_facts(wedged)
+        _assert_v110_changelog_facts(wedged_history)

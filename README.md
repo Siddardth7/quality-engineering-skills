@@ -74,8 +74,9 @@ Setup     FMEA      SPC       MSA      Control    RCA       NCR &     PPAP      
 | **v0.8.0** | PPAP Core (18-Element AIAG Base Standard) | ✅ **Completed** | [docs/milestones/v0.8.0.md](docs/milestones/v0.8.0.md) |
 | **v0.9.0** | Supplier SCAR & Vendor Rating | ✅ **Completed** | [docs/milestones/v0.9.0.md](docs/milestones/v0.9.0.md) |
 | **v1.0.0** | Production Hardening & Live-Formula Exporters | ✅ **Complete · human release pending** | [docs/milestones/v1.0.0.md](docs/milestones/v1.0.0.md) |
+| **v1.1.0** | 8D Problem-Solving State Machine | ✅ **Complete · human release pending** | [docs/milestones/v1.1.0.md](docs/milestones/v1.1.0.md) |
 
-Everything else — 8D, APQP/DVP&R, full ISO/IATF + VDA 6.3 audit, OEM CSR overlays, desktop packaging — is the named **v2 backlog** in **[ROADMAP.md](ROADMAP.md)**. Versions are milestone-driven, not date-driven.
+8D was the first v2-backlog item promoted, shipping in `v1.1.0`. Everything else — APQP/DVP&R, full ISO/IATF + VDA 6.3 audit, OEM CSR overlays, desktop packaging — is the named **v2 backlog** in **[ROADMAP.md](ROADMAP.md)**. Versions are milestone-driven, not date-driven.
 
 ---
 

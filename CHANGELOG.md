@@ -8,7 +8,23 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-08
+
+Milestone 11 implementation is complete and ready for the human release handoff. The closeout
+reconciles the [v1.1.0 milestone](docs/milestones/v1.1.0.md), all five version SSOTs and the
+workspace lock, and the 12-skill / nine-domain catalog now carrying 8D. Promotion `test → main`
+and creation of the `v1.1.0` tag remain human-owner actions (#217).
+
 ### Added
+- Milestone 11 closeout record [`docs/milestones/v1.1.0.md`](docs/milestones/v1.1.0.md), with the
+  E0–E14 epic/PR/merge-SHA traceability table, the release gate criteria, the verification-artifact
+  index, and the retrospective. `docs/milestones/README.md`, `ROADMAP.md` (8D moves out of the v2
+  backlog into shipped `v1.1.0`) and the root `README.md` release table gain their `v1.1.0` rows,
+  and `tests/test_milestones_convention.py` gains the parallel v1.1.0 governance block —
+  traceability, release-gate/artifact, ROADMAP-link, closeout-fact and version/changelog
+  reconciliation tests, each with its own mutation negative control. The v1.0.0 version
+  reconciliation test is superseded by its v1.1.0 equivalent, which additionally pins that the
+  dated 1.0.0 release section is still present and still sits directly below this one (#217).
 - **8D chained client round-trip integration —
   `packages/quality-mcp/tests/test_eight_d_chained_roundtrip.py`** (E13, Milestone 11, #216).
   Test-only: one in-process FastMCP session drives NCR containment → 8D D3 → RCA D4 →

@@ -56,7 +56,7 @@ def test_ping_returns_correct_dict() -> None:
     expected = {
         "status": "ok",
         "server": "quality-mcp",
-        "version": "1.0.0",
+        "version": "1.1.0",
     }
     assert result == expected
     assert result["status"] == "ok"
@@ -363,7 +363,7 @@ def test_package_exports() -> None:
     assert quality_mcp.validate_8d is validate_8d
     assert quality_mcp.advance_8d is advance_8d
     assert quality_mcp.render_8d_canvas is render_8d_canvas
-    assert quality_mcp.__version__ == "1.0.0"
+    assert quality_mcp.__version__ == "1.1.0"
     assert set(quality_mcp.__all__) == {
         "__version__",
         "advance_8d",

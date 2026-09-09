@@ -17,6 +17,12 @@ from quality_core.canvas.copq import (
     load_sample_copq_canvas,
     render_copq,
 )
+from quality_core.canvas.eight_d import (
+    SAMPLE_EIGHT_D_REPORT,
+    EightDCanvas,
+    load_sample_eight_d_canvas,
+    render_eight_d,
+)
 from quality_core.canvas.fmea import (
     SAMPLE_FMEA_ROWS,
     FMEACanvas,
@@ -80,6 +86,7 @@ __all__ = [
     "COPQCanvas",
     "ControlPlanCanvas",
     "ControlPlanCanvasRow",
+    "EightDCanvas",
     "FMEACanvas",
     "FMEACanvasRow",
     "FishboneCanvas",
@@ -95,6 +102,7 @@ __all__ = [
     "PPAPCanvasElement",
     "SAMPLE_CONTROL_PLAN_ROWS",
     "SAMPLE_COPQ_ITEMS",
+    "SAMPLE_EIGHT_D_REPORT",
     "SAMPLE_FISHBONE_CAUSES",
     "SAMPLE_FISHBONE_DATASET",
     "SAMPLE_FIVE_WHY_STEPS",
@@ -115,6 +123,7 @@ __all__ = [
     "load_sample_canvas",
     "load_sample_controlplan_canvas",
     "load_sample_copq_canvas",
+    "load_sample_eight_d_canvas",
     "load_sample_fishbone_canvas",
     "load_sample_is_is_not_canvas",
     "load_sample_msa_canvas",
@@ -123,6 +132,7 @@ __all__ = [
     "load_sample_spc_canvas",
     "load_sample_sqe_canvas",
     "render_copq",
+    "render_eight_d",
     "render_fishbone",
     "render_five_why",
     "render_is_is_not",

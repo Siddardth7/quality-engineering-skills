@@ -62,6 +62,87 @@ def _csv_buf(rows: list[dict[str, Any]], name: str = "upload.csv") -> io.BytesIO
 
 def test_rca_module_all_exports() -> None:
     expected_exports = {
+        # 8D
+        "CONTAINMENT_ACTION_SCHEMA",
+        "CORRECTIVE_ACTION_CANDIDATE_SCHEMA",
+        "CandidateCauseTest",
+        "ContainmentAction",
+        "ContainmentActionList",
+        "CorrectiveActionCandidate",
+        "CorrectiveActionCandidateList",
+        "D0Discipline",
+        "D0Finding",
+        "D0ValidationResult",
+        "D1Discipline",
+        "D1Finding",
+        "D1ValidationResult",
+        "D2Discipline",
+        "D2Finding",
+        "D2ValidationResult",
+        "D3Discipline",
+        "D3Finding",
+        "D3ValidationResult",
+        "D4Discipline",
+        "D4Finding",
+        "D4FindingTarget",
+        "D4ValidationResult",
+        "D5Discipline",
+        "D5Finding",
+        "D5ValidationResult",
+        "D6Discipline",
+        "D6Finding",
+        "D6ValidationResult",
+        "D7Discipline",
+        "D7Finding",
+        "D7ValidationResult",
+        "D8Discipline",
+        "D8Finding",
+        "D8ValidationResult",
+        "DOCUMENTATION_UPDATE_SCHEMA",
+        "DocumentationUpdate",
+        "DocumentationUpdateList",
+        "EffectivenessVerification",
+        "EightDDiscipline",
+        "EightDReport",
+        "EightDState",
+        "EightDTransitionResult",
+        "EightDStatus",
+        "EightDValidationResult",
+        "EscapePointFinding",
+        "FiveWhyLegType",
+        "FiveWhyVerdict",
+        "GateCode",
+        "ImplementedAction",
+        "LinkedNCRValidation",
+        "RootCauseFinding",
+        "TEAM_MEMBER_SCHEMA",
+        "TeamMember",
+        "TeamMemberList",
+        "TransitionReason",
+        "TransitionVerdict",
+        "WarningOverride",
+        "load_containment_actions_csv",
+        "load_corrective_action_candidates_csv",
+        "load_documentation_updates_csv",
+        "load_eight_d_json",
+        "load_eight_d_json_from_path",
+        "load_team_members_csv",
+        "validate_8d",
+        "validate_containment_actions",
+        "validate_corrective_action_candidates",
+        "validate_d0_readiness",
+        "validate_d1_team",
+        "validate_d2_problem_description",
+        "validate_d3_containment",
+        "validate_d4_root_cause",
+        "validate_d5_pca_selection",
+        "validate_d6_implementation_validation",
+        "validate_d7_prevention",
+        "validate_d8_closure",
+        "validate_documentation_updates",
+        "validate_eight_d",
+        "validate_team_members",
+        "transition_eight_d",
         # 5-Why
         "AntiPatternFinding",
         "FIVE_WHY_COLUMN_WIDTHS",
@@ -393,6 +474,23 @@ def test_validate_five_why_from_dict() -> None:
     assert len(chain.steps) == 1
 
 
+def test_validate_five_why_from_dict_preserves_two_steps() -> None:
+    data = {
+        "problem_statement": "Two-step dict problem",
+        "steps": [
+            {"step_number": 1, "why": "Why stopped?", "because": "Fuse blew"},
+            {"step_number": 2, "why": "Why did it blow?", "because": "Overload"},
+        ],
+        "root_cause": "Overload",
+    }
+
+    chain = validate_five_why(data)
+
+    assert isinstance(chain, FiveWhyChain)
+    assert [step.step_number for step in chain.steps] == [1, 2]
+    assert [step.because for step in chain.steps] == ["Fuse blew", "Overload"]
+
+
 def test_validate_five_why_rejects_invalid_list_item() -> None:
     with pytest.raises(TypeError, match="Expected FiveWhyStep or dict in list"):
         validate_five_why(["not a dict"])
@@ -645,6 +743,22 @@ def test_validate_fishbone_from_dict() -> None:
     assert ds.effect == "Dict Effect"
     assert len(ds.causes) == 1
     assert ds.causes[0].category == "Environment"
+
+
+def test_validate_fishbone_from_dict_preserves_two_causes() -> None:
+    data = {
+        "effect": "Two-cause dict effect",
+        "causes": [
+            {"category": "Machine", "cause": "Bearing wear"},
+            {"category": "Method", "cause": "Missing inspection"},
+        ],
+    }
+
+    dataset = validate_fishbone(data)
+
+    assert isinstance(dataset, FishboneDataset)
+    assert [cause.category for cause in dataset.causes] == ["Machine", "Method"]
+    assert [cause.cause for cause in dataset.causes] == ["Bearing wear", "Missing inspection"]
 
 
 def test_validate_fishbone_rejects_invalid_list_item() -> None:
@@ -922,6 +1036,22 @@ def test_validate_is_is_not_from_dict() -> None:
     assert matrix.rows[0].dimension == "WHAT"
 
 
+def test_validate_is_is_not_from_dict_preserves_two_rows() -> None:
+    data = {
+        "problem_statement": "Two-row dict matrix",
+        "rows": [
+            {"dimension": "WHAT", "is_data": "Seal leak", "is_not_data": "Housing crack"},
+            {"dimension": "WHERE", "is_data": "Line 2", "is_not_data": "Line 1"},
+        ],
+    }
+
+    matrix = validate_is_is_not(data)
+
+    assert isinstance(matrix, IsIsNotMatrix)
+    assert [row.dimension for row in matrix.rows] == ["WHAT", "WHERE"]
+    assert [row.is_data for row in matrix.rows] == ["Seal leak", "Line 2"]
+
+
 def test_validate_is_is_not_rejects_invalid_list_item() -> None:
     with pytest.raises(TypeError, match="Expected IsIsNotRow or dict in list"):
         validate_is_is_not(["invalid"])
@@ -1029,5 +1159,3 @@ def test_nan_handling_in_all_validators() -> None:
     res_list_dict_in = validate_is_is_not(list_dict_in)
     assert res_list_dict_in.rows[0].distinctions is None
     assert res_list_dict_in.rows[0].changes is None
-
-

@@ -49,6 +49,7 @@ Server                                                                          
 | [**`v0.8.0`**](docs/milestones/v0.8.0.md) | **PPAP Core (base AIAG-VDA only)** *(Category 3 pick)* | `quality_core.ppap`: 18-element completeness auditor for Submission Levels 1–5, against the **base AIAG PPAP 4th Edition standard only** — no OEM CSR overlay yet (Ford/GM/Stellantis/VW/BMW variants are v2 backlog, see below). Skill: `/ppap-checker`. | New coverage gate; completeness auditor correctly flags missing elements per level against AIAG base rules, cited in `ASSUMPTIONS_LOG.md`. |
 | [**`v0.9.0`**](docs/milestones/v0.9.0.md) | **Supplier SCAR & Vendor Rating** *(Category 4 pick)* | `quality_core.sqe`: SCAR generator, vendor scorecard (PPM, OTIF), threshold-triggered escalation. Skill: `/supplier-scar`. Chosen over the full ISO 9001/IATF clause bank or VDA 6.3 for this slot because it's mostly business-metric arithmetic (PPM/OTIF formulas), not a large standards-citation surface — lower risk to build before the pattern is fully proven. | New coverage gate; PPM/OTIF calculators verified against known worked examples; escalation trigger covered by a negative control. |
 | [**`v1.0.0`**](docs/milestones/v1.0.0.md) | **Production Hardening & Release — Complete, human release pending** | Excel exporters (`openpyxl`, live formulas, not hardcoded values) for all 8 domains are complete; the full `ASSUMPTIONS_LOG.md` audit and end-to-end regression of all 11 domain skills are verified. Desktop packaging (PyInstaller), sha256 audit-hash stamping, and local-LLM support are **explicitly out of scope for this v1.0** — see v2 backlog. Promotion `test → main` and the `v1.0.0` tag remain human actions. | All 8 domains pass their CI gates simultaneously; Excel exports contain verified live formulas where applicable (RCA is structured-only); the full 11-skill catalog is smoke-tested end-to-end. |
+| [**`v1.1.0`**](docs/milestones/v1.1.0.md) | **8D Problem-Solving State Machine — Complete, human release pending** *(first v2-backlog item promoted)* | `quality_core.rca.eight_d`, `rca.eight_d_disciplines` and `rca.eight_d_schema`: the D0–D8 report model, the state machine with its D3→D4 containment gate, D7 PFMEA/Control-Plan prevention loopback and D8 closure gate, plus the single-writer `canvas.eight_d` view and the `validate_8d` / `advance_8d` / `render_8d_canvas` MCP tools. Skill: `/8d-problem-solving`. Cited to the Ford Global 8D Manual (primary for every D-label) and AIAG CQI-20. | New coverage gate at 100% line and branch; the three gates each blocked by a negative control asserting the exact `code` and `rule_id`; a chained client round-trip drives NCR → D3 → D4 → D7 → D8 → CLOSED through the real gates in one session; every `RULE-8D-*` id named in the skill body exists in `rca/CITATIONS.tsv`. |
 
 ---
 
@@ -65,7 +66,10 @@ Server                                                                          
 
 ## v2 Backlog (explicitly deferred, not dropped)
 
-- **8D Problem Solving State Machine** — full D0–D8 workflow, containment gates, D7 PFMEA/Control-Plan loopback.
+> **Shipped since this list was written:** the **8D Problem Solving State Machine** was
+> promoted out of this backlog and delivered in
+> [**`v1.1.0`**](docs/milestones/v1.1.0.md) (Milestone 11). Everything below remains deferred.
+
 - **DMAIC & Six Sigma Engine** — hypothesis-testing suite ($t$-test, ANOVA, Chi-square, regression) on CSV datasets.
 - **APQP Timing & Gate Engine + DVP&R Test Plan Engine** — 5-phase critical-path solver and DFMEA-to-test-plan mapping.
 - **ISO 9001 / IATF 16949 full clause audit engine** (§4–§10 question bank, Major/Minor/OFI scoring).

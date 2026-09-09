@@ -8,6 +8,337 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-08
+
+Milestone 11 implementation is complete and ready for the human release handoff. The closeout
+reconciles the [v1.1.0 milestone](docs/milestones/v1.1.0.md), all five version SSOTs and the
+workspace lock, and the 12-skill / nine-domain catalog now carrying 8D. Promotion `test → main`
+and creation of the `v1.1.0` tag remain human-owner actions (#217).
+
+### Added
+- Milestone 11 closeout record [`docs/milestones/v1.1.0.md`](docs/milestones/v1.1.0.md), with the
+  E0–E14 epic/PR/merge-SHA traceability table, the release gate criteria, the verification-artifact
+  index, and the retrospective. `docs/milestones/README.md`, `ROADMAP.md` (8D moves out of the v2
+  backlog into shipped `v1.1.0`) and the root `README.md` release table gain their `v1.1.0` rows,
+  and `tests/test_milestones_convention.py` gains the parallel v1.1.0 governance block —
+  traceability, release-gate/artifact, ROADMAP-link, closeout-fact and version/changelog
+  reconciliation tests, each with its own mutation negative control. The v1.0.0 version
+  reconciliation test is superseded by its v1.1.0 equivalent, which additionally pins that the
+  dated 1.0.0 release section is still present and still sits directly below this one (#217).
+- **8D chained client round-trip integration —
+  `packages/quality-mcp/tests/test_eight_d_chained_roundtrip.py`** (E13, Milestone 11, #216).
+  Test-only: one in-process FastMCP session drives NCR containment → 8D D3 → RCA D4 →
+  FMEA/Control-Plan D7 → D8 → CLOSED across real `write_ncr`, `advance_8d`, `validate_5why`,
+  `validate_control_plan` and `lookup_fmea_ap` calls, threading each hop's returned
+  `result["report"]` forward because the server persists no report between calls. Two negative
+  controls prove the chain is blocked at the *right* gate, not just any gate: an rca-rejected D4
+  passes D4→D5 untouched (D4 carries no transition gate) and blocks only at D8→CLOSED with a
+  single `ROOT_CAUSE_REJECTED` / `RULE-8D-GATE-CLOSURE` reason, and a missing D7 — both `d7: null`
+  and a D7 record with no qualifying update — blocks at D7→D8 with `PREVENTION_UPDATE_MISSING` /
+  `RULE-8D-GATE-PREVENTION`. Every call asserts four-leg payload parity (`structuredContent` ==
+  `json.loads(content[0].text)` == the tool function called directly == the wrapped `quality_core`
+  engine's own return), plus a chain-scoped skill leg asserting each touched domain's `SKILL.md`
+  names the tool the chain just called, and one error-isolation check that a malformed call
+  mid-chain returns `isError` without changing a later valid call's payload. No `quality-core` /
+  `quality-mcp` source change, no new fixture infrastructure and no new standards claim — every
+  gate code and `rule_id` exercised is already cited.
+- **`/8d` AI agent skill — `skills/8d-problem-solving/SKILL.md`** (E12, Milestone 11, #215). The
+  qualitative prompt layer over E11's three MCP tools: `validate_8d`, `advance_8d` and
+  `render_8d_canvas`. Documents each tool's full parameter and return contract plus three worked
+  JSON examples — the two `closeable` flags disagreeing over `PDD-8D-008`, a `BLOCKED` D3→D4 gate
+  as an explicit negative control, and an `ILLEGAL_TRANSITION` refusal carrying `rule_id: null`.
+  **The skill asserts no standard of its own**: it instructs the agent to read and relay the
+  machine-readable `citation_basis` (`RULE` / `PDD` / `PLATFORM_UNCITED`) and `rule_id` fields
+  rather than judging authority from a message's wording, quotes no manual prose, and names only
+  `RULE-8D-*` ids that already carry a `rca/CITATIONS.tsv` row. Zero Inline Math / Zero Inline
+  Adjudication is stated per step and as Best Practice 1: never decide a verdict or `closeable`
+  flag inline, never author a root cause (D4 causal work routes to `5why-root-cause` /
+  `validate_5why`), never advance past a blocked gate, never present a `PDD-8D-*` decision as a
+  Ford / CQI-20 requirement, and never conflate `result["closeable"]` (whole-report) with
+  `result["d8"]["closeable"]` (closure evidence only). The statelessness of `advance_8d` — the
+  host must carry `result["report"]` forward — is its own methodology step. Governed by three new
+  functions in `tests/test_skills_conventions.py`, including a `CITATIONS.tsv` subset check with a
+  five-mutation negative control and a non-vacuity guard. Step 3 carries an explicit **closure
+  precondition**: at `D8` the agent may attempt `advance_8d(target="CLOSED")` only while the latest
+  `validate_8d` reports `closeable: true`. Without it the documented workflow could close a report
+  the whole-report gate rejects — `advance_8d` evaluates only the gates of the transition attempted,
+  so `LINKED_NCR_INVALID` (`PDD-8D-008`, a D3→D4 gate) does not block D8→CLOSED, and forbidding the
+  agent to *report* such a report as closeable never prevented it from *creating* one. Raised as a
+  blocking review finding on PR #236 and reproduced end to end; guarded by a governance control that
+  fails if the precondition is deleted, softened from "only if" to advisory, or reverted to a
+  reporting-only prohibition, plus a behavioural canary
+  (`packages/quality-mcp/tests/test_eight_d_closure_precondition.py`) that fails if the engine ever
+  starts blocking the transition itself, so the prose cannot go stale unnoticed. No `quality-core` /
+  `quality-mcp` source change, no new `CITATIONS.tsv` row and no new Process Design Decision — a
+  skill asserts no standard.
+- **8D FastMCP tool layer — `quality_mcp.tools.eight_d`** (E11, Milestone 11, #214). Three tools
+  registered on the server (34 total): `validate_8d` (whole-report discipline sweep and closure
+  gates), `advance_8d` (one hypothetical adjacent state transition), and `render_8d_canvas`
+  (themed HTML canvas). Each wraps the already-merged E9/E10 core surface
+  (`rca.eight_d_disciplines.validate_8d`, `rca.eight_d.transition_eight_d`,
+  `canvas.eight_d.EightDCanvas`) behind `rca.eight_d_schema.validate_eight_d` as the untrusted-JSON
+  trust boundary, and returns the core result's own `to_dict()` **verbatim** — no MCP-layer field
+  is renamed, dropped or added, so the payload is schema-identical to a direct engine call.
+  `render_8d_canvas` adds only `title`, `html` and the hoisted `verdict` / `state` / `closeable`
+  convenience keys alongside the untouched `validation` payload.
+  **The two `closeable` flags stay at distinct JSON paths**: `result["closeable"]` is the
+  whole-report gate (`PDD-8D-008` included) and the closure-evidence-only flag remains reachable
+  only at `result["d8"]["closeable"]` (`result["validation"]["d8"]["closeable"]` for the canvas
+  tool), never collapsed onto one name. `advance_8d` is stateless like every other tool in this
+  package — the server persists no report, so the host must carry `result["report"]` forward
+  itself — and an illegal target is a normal `BLOCKED` result, not an error. Tool docstrings point
+  consumers at the machine-readable `citation_basis` (`RULE` / `PDD` / `PLATFORM_UNCITED`) and
+  `rule_id` (`RULE-8D-*` / `PDD-8D-*` / `None`) fields rather than making standards claims in
+  prose; no new `CITATIONS.tsv` row, no new `RULE-8D-*` id and no new Process Design Decision — a
+  transport wrapper asserts no standard.
+- **Single-writer 8D canvas — `quality_core.canvas.eight_d`** (E10, Milestone 11, #213).
+  `EightDCanvas` renders one already-validated `EightDReport` as themed HTML: a closure-gate
+  header panel plus one card per discipline D0-D8, in both `dark` and `light` themes and in
+  standalone or embeddable form, alongside `render_eight_d()`, `load_sample_eight_d_canvas()` and
+  the `SAMPLE_EIGHT_D_REPORT` benchmark. It calls
+  `quality_core.rca.eight_d_disciplines.validate_8d` once per render and recomputes no verdict,
+  `closeable` flag or severity of its own; every free-text field routes through `html.escape`.
+  An absent discipline renders a "not started" empty state — an in-progress report is not an
+  error — and D4, which `EightDValidationResult` deliberately carries no result for, is rendered
+  from `report.d4` and `report.root_cause_validation` directly.
+  **The headline "Closeable" badge is `EightDValidationResult.closeable`** (the whole-report gate
+  the state machine enforces, `PDD-8D-008` included); the narrower closure-evidence-only
+  `result.d8.closeable` renders inside the D8 card labelled "D8 closure-evidence complete", so a
+  report carrying an invalid linked NCR visibly shows the two disagreeing instead of collapsing
+  them. Recorded as Process Design Decision #16 in `rca/ASSUMPTIONS_LOG.md`; no new
+  `CITATIONS.tsv` row and no new `RULE-8D-*` id — a renderer asserts no standard.
+- 8D discipline engine for D7 (prevent recurrence) in
+  `quality_core.rca.eight_d_disciplines` (E8, Milestone 11). `validate_d7_prevention` reads a
+  typed `D7Discipline` and reports a missing qualifying documentation update
+  (`PREVENTION_ARTIFACT_UPDATE_MISSING`, `error`), reusing `quality_core.scoring.action_priority`
+  for FMEA residual-risk context and `quality_core.controlplan` for Control Plan evidence —
+  imports run downward only, and neither engine is reimplemented.
+  **A residual Action Priority that did not fall is never gating** (`FMEA_RESIDUAL_RISK` stays
+  `info`): no on-box manual states a "D7 must reduce Action Priority" threshold, and inventing one
+  would be the same class of un-cited standard this repo refuses elsewhere.
+- **`DocumentationUpdate.target` — the D7 prevention update now says which D4 finding it
+  addresses, and both prevention checkpoints enforce it** (E8, Milestone 11; added after the
+  PR #230 review). As first shipped, D7 reported `root_cause_traceable=True` whenever D4 carried a
+  non-`REJECT` 5-Why verdict *and* D7 held any qualifying artifact update, with nothing relating
+  the two: a proven root cause for "missing approval control" plus an unrelated `FMEA` update
+  `DOC-UNRELATED` was reported `ACCEPT` and traceable. Issue #211 conditions closure on a
+  PFMEA/Control-Plan update **reflecting the D4 root cause**, so that reading did not meet the
+  epic's own contract. `DocumentationUpdate.target` now takes the shared `D4FindingTarget`
+  vocabulary (`ROOT_CAUSE` | `ESCAPE_POINT`) that `CorrectiveActionCandidate.target` has used at
+  D5 — the alias is defined once and read by both models — and
+  `D7Discipline.has_root_cause_linked_update` requires one update to be *both* qualifying *and*
+  `ROOT_CAUSE`-targeted, so linkage cannot be borrowed across two records. The D7→D8 gate
+  (`PREVENTION_UPDATE_NOT_LINKED_TO_ROOT_CAUSE`, `PDD-8D-013`), the D8→CLOSED closure boundary and
+  the advisory engine (`severity="error"`) all read that one predicate. **This is a declared
+  structural reference, not string matching**: `D4Discipline` carries exactly one `root_cause` and
+  one `escape_point`, so naming one of the two is a complete reference — `artifact_reference` is
+  still never compared with `RootCauseFinding.statement`, and whether the named artifact genuinely
+  implements the fix remains the human judgment call it is at D5. The field is optional at the
+  schema level (an update recorded before its target is declared is a legitimate in-progress
+  state) and mandatory at every gate, the same split `has_qualifying_update` already used.
+  Declared as Process Design Decision #13 in `rca/ASSUMPTIONS_LOG.md`; no new `CITATIONS.tsv` row,
+  because it quotes nothing.
+
+### Changed
+- **Every 8D finding now declares its own citation basis — `Finding.citation_basis`** (E10,
+  Milestone 11, #213). `D0Finding` through `D8Finding` in
+  `quality_core.rca.eight_d_disciplines` gain
+  `citation_basis: Literal["RULE", "PDD", "PLATFORM_UNCITED"]`, set explicitly at all 64 finding
+  construction sites: `RULE` where a `RULE-8D-*` row in `rca/CITATIONS.tsv` backs the check, `PDD`
+  where a numbered Process Design Decision does, `PLATFORM_UNCITED` where neither does. The field
+  defaults to `PLATFORM_UNCITED` so an omission under-claims (heuristic) rather than over-claims
+  (standard). **This changes the `to_dict()` payload shape** — these dataclasses serialize through
+  `asdict`, so `citation_basis` now appears in every finding payload the MCP layer emits; E11
+  (#214) consumes it. Presentation layers must read the field: scraping a finding's message for a
+  `RULE-8D` substring fails silently on the 42 findings that name no identifier, promoting
+  heuristics to standards findings by omission. Classification policy and the fail-safe default
+  are recorded as Process Design Decision #16 in `rca/ASSUMPTIONS_LOG.md`; no new `CITATIONS.tsv`
+  row, because nothing new is quoted.
+- **The D7 qualifying-update predicate now has exactly one definition.**
+  `artifact_type in {"FMEA", "CONTROL_PLAN"}` had been hand-written twice in shipped code — in
+  `eight_d_schema._closure_evidence_deficiencies` and in `eight_d._prevention_reason` — two
+  agreeing copies of one rule that review and every prior mutation battery missed precisely
+  because they agreed. Both now read `D7Discipline.has_qualifying_update`, backed by a single
+  `_QUALIFYING_ARTIFACT_TYPES` set, as does the new D7 engine. Behaviour-preserving: reason codes,
+  messages and `RULE-8D-GATE-PREVENTION` are unchanged. Proven by mutation — neutralising the one
+  property fails the transition gate, the closure boundary and the advisory engine together,
+  including a direct-construction case that no test previously reached because every fixture
+  passed `d7=None` and short-circuited before the predicate ran.
+- 8D discipline engines for D5 (permanent corrective action selection) and D6 (implement and
+  validate) in `quality_core.rca.eight_d_disciplines` (E7, Milestone 11).
+  `validate_d5_pca_selection` reads a typed `D5Discipline` plus the optional same-report
+  `D4Discipline` and rejects a candidate that is not recorded as verified free of undesirable
+  effects (`PCA_UNDESIRABLE_EFFECTS_NOT_VERIFIED`), per Ford Global 8D's "Verify that both
+  decisions will be successful when implemented without causing undesirable effects"
+  (`RULE-8D-D5`). **D4→D5 traceability is structural, not semantic**: a candidate is traceable
+  only when D4 recorded a `CONFIRMED` candidate-cause test (for `ROOT_CAUSE` targets) and a
+  `five_why_verdict` on the targeted finding that is not `REJECT` — the verdict is *read* exactly
+  as the D4 engine recorded it, never recomputed. No text similarity between a candidate's
+  `description` and `RootCauseFinding.statement` is computed anywhere: that is the fuzzy string
+  matching `D4Discipline`'s own docstring disclaims, and it is not reintroduced under another
+  name. No schema field is added to `D4Discipline`, `RootCauseFinding`, `EscapePointFinding` or
+  `CorrectiveActionCandidate`.
+  `validate_d6_implementation_validation` reads a typed `D6Discipline` plus the optional
+  same-report `D5Discipline` and optional COPQ cost data, rejecting an implemented action with no
+  effectiveness verification (`IMPLEMENTED_ACTION_NOT_VERIFIED`), one whose validation concluded
+  it is not effective (`IMPLEMENTED_ACTION_VERIFIED_INEFFECTIVE`), or one naming a
+  `corrective_action_id` that matches no D5 candidate (`IMPLEMENTED_ACTION_UNKNOWN_CORRECTIVE_ACTION_ID`
+  — an exact, case-sensitive match on an assigned identifier, resolving the cross-discipline
+  reference `ImplementedAction`'s docstring recorded as unenforced). Both engines return the house
+  `ACCEPT`/`WARNING`/`REJECT` verdict with per-finding severities, de-duplicated recommendations,
+  and `to_dict()` serialization. Optional cost context is a **pure delegation** to
+  `quality_core.copq.estimator.estimate_copq`; no PAF/COPQ arithmetic or methodology claim is
+  authored in `rca/`, and its exceptions propagate uncaught because COPQ impact gates nothing.
+  **Verified-effective D6 actions are now part of the closure contract:** `D6Discipline` gains an
+  `is_verified` property mirroring `D3Discipline.is_verified`, and
+  `_closure_evidence_deficiencies` gains one `PCA_NOT_VERIFIED` deficiency — **one rule read by
+  both closure entry paths**, the `EightDReport` CLOSED-state model validator and
+  `transition_eight_d`'s D8→CLOSED gate, never a second copy. Refusing closure over it is a
+  platform decision with no manual clause behind it, identified as `PDD-8D-010`. Two new
+  `CITATIONS.tsv` rows, Ford Global 8D only — `RULE-8D-D5-001` ("What evidence (proof) do you have
+  that this will solve the problem at the root level?") and `RULE-8D-D6-001` ("Validate the ACPs
+  both for the root cause and for the escape points") — with both stale `RULE-8D-D5` /
+  `RULE-8D-D6` **Applied In** pointers corrected to name `eight_d_disciplines.py` rather than the
+  state-machine module. The heuristics no manual backs
+  (`PCA_VERIFICATION_EVIDENCE_MISSING`, `D4_NOT_SUPPLIED`, `D5_NOT_SUPPLIED`,
+  `IMPLEMENTED_ACTION_UNKNOWN_CORRECTIVE_ACTION_ID`,
+  `IMPLEMENTED_ACTION_TARGET_COVERAGE_INCOMPLETE`, `ICA_NOT_REMOVED`) and a `PROCUREMENT-GAP`
+  declaration for the unprocured COPQ sources are recorded as Process Design Decisions #10 and #11
+  and carry no citation row. **D5 and D6 only** — no D0–D4 behaviour change, no D7/D8 engine, no
+  new D4→D5 or D5→D6 transition gate, and no MCP, skill, or exporter surface (#210).
+- 8D discipline engine for D3 (interim containment) plus NCR linkage in
+  `quality_core.rca.eight_d_disciplines` (E5, Milestone 11): `validate_d3_containment` reads a
+  typed `D3Discipline` and optional linked Nonconformance Record evidence, emitting one finding
+  per containment action that carries no effectiveness verification
+  (`CONTAINMENT_ACTION_NOT_VERIFIED`) or whose verification concluded the action is not effective
+  (`CONTAINMENT_ACTION_VERIFIED_INEFFECTIVE`), per Ford Global 8D's "Define, verify, and implement
+  the Interim Containment Action" / "The AIC is verified" (`RULE-8D-D3`). Returns the house
+  `ACCEPT`/`WARNING`/`REJECT` verdict with `containment_verified` **read directly from**
+  `D3Discipline.is_verified` — the same predicate the D3→D4 gate reads — the action count, the
+  validated NCR payload, per-finding severities, de-duplicated recommendations, and `to_dict()`
+  serialization. Linked NCR evidence is delegated to `quality_core.ncr.schema.validate_ncr` and
+  never re-validated here: absent evidence is a `warning` (`LINKED_NCR_NOT_PROVIDED`), evidence
+  the NCR engine rejects is an `error` (`LINKED_NCR_INVALID`) carrying that engine's own message
+  text, following the shipped `sqe/scar.py` linkage precedent. **Zero new `CITATIONS.tsv` rows** —
+  `RULE-8D-D3` and `RULE-8D-GATE-CONTAINMENT` already back every claim — with both stale
+  **Applied In** pointers corrected to name the real module. **An invalid linked NCR blocks the
+  D3→D4 gate itself:** `D3Discipline` gains an optional `linked_ncr_validation`
+  (`LinkedNCRValidation` — `is_valid`, `record_count`, `findings`) recording the outcome
+  `validate_d3_containment` returns, and `transition_eight_d` refuses D3→D4 on a recorded
+  rejection with a structured `LINKED_NCR_INVALID` reason. Engine and gate consult **one shared
+  evaluator** (`_linked_ncr_deficiency`, following `_closure_evidence_deficiencies`), never two
+  copies of the rule, so the advisory `REJECT` and the gate's block cannot drift apart. Refusing a
+  state transition over nonconformity-record validity is a platform decision with no manual clause
+  behind it, identified as `PDD-8D-008` — the `PDD-` prefix deliberately not `RULE-`, which names
+  a cited manifest row. That decision, the warning-not-error severity for absent evidence, and a
+  `PROCUREMENT-GAP` declaration for the unprocured ISO 9001:2015 §8.7 / IATF 16949:2016 §8.7
+  excerpts (#221) are recorded as Process Design Decision #8 and carry no citation row. **D3
+  only** — D4–D8 disciplines, the D7 and D8→CLOSED gates and the closure evidence boundary, and
+  any MCP, skill, or exporter surface remain out of scope (#208).
+- D4 root-cause and escape-point validation for the 8D discipline engine, with independent
+  occurrence/escape 5-Why checks, candidate-test evidence gating, optional contextual fishbone
+  categorization, and a strict no-root-cause-authorship boundary (#209).
+- Deterministic 8D state machine and gate engine (E2, Milestone 11), with an explicit
+  `current_discipline` separate from report lifecycle status, adjacent-only transitions,
+  provenance-backed D3 verification, D7 FMEA/Control Plan update evidence, and defense-in-depth
+  D8 closure checks exposed through structured, copy-isolated results (#205).
+- 8D discipline engine for D2 (problem description) in `quality_core.rca.eight_d_disciplines`
+  (E4, Milestone 11): `validate_d2_problem_description` reads a typed `D2Discipline` plus
+  optional Is/Is-Not scoping data and validates **Ford 8D's own two-stage D2** — a problem
+  *statement* ("what is bad (the symptom) with what (the object)") and a problem *description*
+  "established by determining what, where, when, how big and use the form Is / Is Not". The
+  second stage is delegated verbatim to `quality_core.rca.is_is_not.scope_is_is_not`, whose four
+  Kepner-Tregoe dimensions (WHAT / WHERE / WHEN / EXTENT) are the same four Ford names; no part
+  of Is/Is-Not scoping is reimplemented. **5W2H completeness is checked against AIAG CQI-20
+  Figure 12, "Problem Identification Questions"**, which enumerates and defines seven questions —
+  Who?, What?, When?, Where?, Why?, How?, How Many? — five W-questions and two How-questions.
+  `D2Discipline` gains seven optional `w2h_*` answer fields, and a record that declares
+  `method_used="5W2H"` while leaving any of the seven unanswered raises
+  `METHOD_5W2H_DESCRIPTION_INCOMPLETE` at `severity="error"`, naming the unanswered questions and
+  forcing a non-`ACCEPT` verdict; the structured evidence is returned on
+  `D2ValidationResult.five_w_two_h`. The seven answers are judged only when the method is
+  declared — claiming the method is what creates the obligation — and only for presence; there is
+  no free-text parsing of the D2 statement fields. Returns the house `ACCEPT`/`WARNING`/`REJECT`
+  verdict — REJECT when a declared 5W2H is incomplete or when supplied scoping data is itself
+  rejected, WARNING when scoping is incomplete or absent — with the composed problem statement,
+  per-finding severities, the nested scoping payload, de-duplicated recommendations, and
+  `to_dict()` serialization. Adds ten `quality_core/rca/CITATIONS.tsv` rows: `RULE-8D-D2-001` (the
+  problem-statement two-part test) and `RULE-8D-D2-002` (the Is/Is-Not problem-description stage),
+  verified on-box against `FORD_8D_MANUAL_PATH`, plus eight `RULE-8D-D2-003` rows carrying Figure
+  12's caption and its seven question definitions verbatim from `CQI20_MANUAL_PATH`; also corrects
+  the stale `RULE-8D-D2` **Applied In** pointer to name the real module. **This corrects the 5W2H
+  reading recorded at E0 (#218)**, which read CQI-20's prose aside "5 Why-2 How (5W2H)" — an
+  acronym expanded in passing inside a note on supplier corrective action requests — as the
+  manual's model and concluded that no question-set model was defensible; Figure 12 is the
+  normative enumeration, and `rca/ASSUMPTIONS_LOG.md` records the correction beside the original
+  reading rather than rewriting it. The two heuristics no manual backs
+  (`DEGENERATE_PROBLEM_STATEMENT`, `QUANTIFICATION_NOT_NUMERIC`), the override of the nested
+  Is/Is-Not problem statement, and the warning-not-error severity for absent scoping are recorded
+  as Process Design Decision #7 and carry no citation row. **D2 engine only** — D3–D8, the 8D
+  state machine and cross-discipline gates (`rca/eight_d.py`, E2/#205), and any MCP, skill, or
+  exporter surface remain out of scope (#207).
+- 8D discipline engines for D0 and D1 in `quality_core.rca.eight_d_disciplines` (E3, Milestone
+  11): `validate_d0_readiness` reads a typed `D0Discipline` and reports Emergency Response Action
+  readiness — ACCEPT when no ERA is required or when the ERA is implemented *and* verified
+  effective, WARNING when the verification predates the implementation, and REJECT when a
+  required ERA is unimplemented, unverified, verified-without-implementation, or verified as not
+  effective. `validate_d1_team` reads a typed `D1Discipline` and rejects an incomplete team (an
+  empty `members` roster), warning on undefined member roles, duplicate roster names, and one
+  person holding both the Champion and Team Leader roles. Both return the house
+  `ACCEPT`/`WARNING`/`REJECT` verdict with per-finding severities, de-duplicated recommendations,
+  and a `to_dict()` serialization, matching the `five_why.py` engine shape. Adds six
+  `quality_core/rca/CITATIONS.tsv` rows in the reserved per-discipline namespace —
+  `RULE-8D-D0-001..003` (ERA verification/validation evaluation questions; what a verification
+  must demonstrate) and `RULE-8D-D1-001..003` (defining team members; team size adequacy; role
+  clarity) — each verified on-box against `FORD_8D_MANUAL_PATH` / `CQI20_MANUAL_PATH`, and
+  corrects the two `RULE-8D-D0`/`RULE-8D-D1` **Applied In** pointers to name the real module. The
+  four heuristics no manual backs (verification-date ordering, champion == team leader, duplicate
+  member names, and reading "roles ... clear" as a populated `role` field) carry no citation row
+  and are recorded as Process Design Decision #6, explicitly not presentable as standards. No
+  team-size threshold and no competency model are implemented: no source states a number and
+  `TeamMember` has no skill field. **D0/D1 engines only** — D2–D8, the 8D state machine and
+  cross-discipline gates (`rca/eight_d.py`, E2/#205), and any MCP, skill, or exporter surface
+  remain out of scope (#206).
+- 8D report schema and ingest boundary `quality_core.rca.eight_d_schema` (E1, Milestone 11): the
+  `EightDReport` envelope plus `D0Discipline`..`D8Discipline`, the reusable
+  `EffectivenessVerification` record, `WarningOverride`, and the four naturally tabular
+  sub-tables (D1 team roster, D3 containment measures, D5 corrective-action candidates, D7
+  documentation updates) each with a `TableSchema`, a `load_<x>_csv` loader, and a
+  `validate_<x>` trust-boundary validator. JSON ingest lands as `validate_eight_d`,
+  `load_eight_d_json`, and `load_eight_d_json_from_path`, all collapsing to `IngestError`. Two
+  invariants are enforced inside the models themselves: D8 closure is hard-blocked on a `REJECT`
+  linked 5-Why verdict and closable on `WARNING` only with a recorded `WarningOverride`; and
+  containment/corrective-action verification is a structured `EffectivenessVerification` record
+  (`is_verified` requires both presence and `is_effective`), never a settable boolean, so D6
+  cannot record removal of interim containment until every implemented action is verified
+  effective. **Schema and ingest only** — no state machine, no cross-discipline gates, no
+  exporter, no MCP or skill surface; those are E2 (#205) and onward. Adds no `CITATIONS.tsv`
+  rows: every quote it relies on was landed by E0 (#218). The two judgment calls above are
+  recorded as Process Design Decisions #4 and #5 in `quality_core/rca/ASSUMPTIONS_LOG.md`,
+  explicitly not presentable as standards (#204).
+- 8D Problem-Solving standards and citation base for Milestone 11 (E0, P0 governance): 28 new
+  `quality_core/rca/CITATIONS.tsv` rows and 13 new `rca/ASSUMPTIONS_LOG.md` `RULE-8D-*` entries
+  covering the nine D0–D8 discipline definitions (`RULE-8D-D0`..`RULE-8D-D8`), the three
+  milestone gates (`RULE-8D-GATE-CONTAINMENT` D3→D4, `RULE-8D-GATE-PREVENTION` D7 loopback,
+  `RULE-8D-GATE-CLOSURE` D8 closure), and the source-primacy decision
+  (`RULE-8D-SOURCE-PRIMACY`) recording that AIAG CQI-20 "intentionally avoids labelling the
+  steps as an 8D", which is why the Ford Global 8D Manual is primary for every D-label.
+  PROCUREMENT-GAP status is **none** — every rule and gate has a direct on-box excerpt, verified
+  against `FORD_8D_MANUAL_PATH` / `CQI20_MANUAL_PATH` rather than assumed. Gate *enforcement
+  mechanisms* and the root-cause-authorship invariant are recorded as Process Design Decisions
+  with no `CITATIONS.tsv` row, explicitly not presentable as standards. Also records the on-box
+  reading of CQI-20's "5W2H" as **"5 Why – 2 How"**, not the generic
+  What/Where/When/Who/Why/How mnemonic, for the future D2 engine. Data and documentation only —
+  no `quality_core` production code, no schema, and no state machine (#218).
+
+### Changed
+- `packages/quality-core/tests/test_rca_citations.py` gains two manual-independent structural
+  guards that RCA lacked relative to SQE/COPQ: `test_every_manifest_site_has_an_assumptions_log_rule`
+  (every `CITATIONS.tsv` site must have a `## <site>:` heading in the log) and
+  `test_every_manifest_row_is_present_in_log` (every manifest quote must appear verbatim in the
+  log, per row rather than per contiguous blockquote block, so corrupting one quote inside a
+  shared block can no longer pass silently) (#218).
+
 ## [1.0.0] - 2026-08-29
 
 Milestone 10 implementation is complete and ready for the human release handoff. The closeout reconciles the [v1.0.0 milestone](docs/milestones/v1.0.0.md), all five version SSOTs and the workspace lock, and the 11-skill / 8-domain catalog. Promotion `test → main` and creation of the `v1.0.0` tag remain human-owner actions (#151).
@@ -140,6 +471,8 @@ Milestone 10 implementation is complete and ready for the human release handoff.
   citation rows are deferred to an E0 follow-up once the manuals are provisioned (#140).
 
 ### Fixed
+- Prevented valid two-or-more-row RCA dict/JSON inputs from crashing during missing-value
+  normalization in the 5-Why, Fishbone, and Is/Is-Not validators (#223).
 - Repointed the stale module-docstring citation in `quality_core.spc.stability` from the
   nonexistent `docs/ASSUMPTIONS_LOG.md RULE 7` to the real `spc/ASSUMPTIONS_LOG.md
   RULE-SPC-004` (#140).

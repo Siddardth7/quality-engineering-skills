@@ -10,6 +10,7 @@ from unittest.mock import patch
 import quality_mcp
 from quality_mcp import __version__
 from quality_mcp.server import (
+    advance_8d,
     assess_ppap_capability,
     audit_ppap_package,
     calculate_gage_rr,
@@ -28,6 +29,7 @@ from quality_mcp.server import (
     ping,
     recommend_disposition,
     render_5why_canvas,
+    render_8d_canvas,
     render_controlplan_canvas,
     render_copq_canvas,
     render_fishbone_canvas,
@@ -41,6 +43,7 @@ from quality_mcp.server import (
     render_sqe_canvas,
     scope_is_is_not,
     validate_5why,
+    validate_8d,
     validate_control_plan,
     validate_psw,
     write_ncr,
@@ -53,7 +56,7 @@ def test_ping_returns_correct_dict() -> None:
     expected = {
         "status": "ok",
         "server": "quality-mcp",
-        "version": "1.0.0",
+        "version": "1.1.0",
     }
     assert result == expected
     assert result["status"] == "ok"
@@ -99,10 +102,13 @@ def test_mcp_instance_configuration() -> None:
     assert "evaluate_escalation" in tool_names
     assert "generate_scar" in tool_names
     assert "render_sqe_canvas" in tool_names
+    assert "validate_8d" in tool_names
+    assert "advance_8d" in tool_names
+    assert "render_8d_canvas" in tool_names
 
-    # Exactly 31 tools registered (25 baseline + 6 SQE), each name unique.
-    assert len(tool_names) == 31
-    assert len(set(tool_names)) == 31
+    # Exactly 34 tools registered (25 baseline + 6 SQE + 3 8D), each name unique.
+    assert len(tool_names) == 34
+    assert len(set(tool_names)) == 34
 
     # Verify tool execution via FastMCP interface
     _, content = asyncio.run(mcp.call_tool("ping", {}))
@@ -354,9 +360,13 @@ def test_package_exports() -> None:
     assert quality_mcp.evaluate_escalation is evaluate_escalation
     assert quality_mcp.generate_scar is generate_scar
     assert quality_mcp.render_sqe_canvas is render_sqe_canvas
-    assert quality_mcp.__version__ == "1.0.0"
+    assert quality_mcp.validate_8d is validate_8d
+    assert quality_mcp.advance_8d is advance_8d
+    assert quality_mcp.render_8d_canvas is render_8d_canvas
+    assert quality_mcp.__version__ == "1.1.0"
     assert set(quality_mcp.__all__) == {
         "__version__",
+        "advance_8d",
         "assess_ppap_capability",
         "audit_ppap_package",
         "calculate_gage_rr",
@@ -374,6 +384,7 @@ def test_package_exports() -> None:
         "ping",
         "recommend_disposition",
         "render_5why_canvas",
+        "render_8d_canvas",
         "render_controlplan_canvas",
         "render_copq_canvas",
         "render_fishbone_canvas",
@@ -387,12 +398,14 @@ def test_package_exports() -> None:
         "render_sqe_canvas",
         "scope_is_is_not",
         "validate_5why",
+        "validate_8d",
         "validate_control_plan",
         "validate_psw",
         "write_ncr",
     }
     assert sorted(quality_mcp.__all__) == [
         "__version__",
+        "advance_8d",
         "assess_ppap_capability",
         "audit_ppap_package",
         "calculate_gage_rr",
@@ -410,6 +423,7 @@ def test_package_exports() -> None:
         "ping",
         "recommend_disposition",
         "render_5why_canvas",
+        "render_8d_canvas",
         "render_controlplan_canvas",
         "render_copq_canvas",
         "render_fishbone_canvas",
@@ -423,6 +437,7 @@ def test_package_exports() -> None:
         "render_sqe_canvas",
         "scope_is_is_not",
         "validate_5why",
+        "validate_8d",
         "validate_control_plan",
         "validate_psw",
         "write_ncr",

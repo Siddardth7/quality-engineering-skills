@@ -26,6 +26,11 @@ from quality_mcp.tools.canvas import (
 )
 from quality_mcp.tools.controlplan import validate_control_plan
 from quality_mcp.tools.copq import estimate_copq
+from quality_mcp.tools.eight_d import (
+    advance_8d,
+    render_8d_canvas,
+    validate_8d,
+)
 from quality_mcp.tools.fmea import lookup_fmea_ap
 from quality_mcp.tools.msa import calculate_gage_rr
 from quality_mcp.tools.ncr import (
@@ -85,6 +90,9 @@ mcp.tool()(calculate_vendor_scorecard)
 mcp.tool()(evaluate_escalation)
 mcp.tool()(generate_scar)
 mcp.tool()(render_sqe_canvas)
+mcp.tool()(validate_8d)
+mcp.tool()(advance_8d)
+mcp.tool()(render_8d_canvas)
 
 
 @mcp.tool()
@@ -106,6 +114,7 @@ if __name__ == "__main__":
     main()
 
 __all__ = [
+    "advance_8d",
     "assess_ppap_capability",
     "audit_ppap_package",
     "calculate_gage_rr",
@@ -124,6 +133,7 @@ __all__ = [
     "ping",
     "recommend_disposition",
     "render_5why_canvas",
+    "render_8d_canvas",
     "render_controlplan_canvas",
     "render_copq_canvas",
     "render_fishbone_canvas",
@@ -137,6 +147,7 @@ __all__ = [
     "render_sqe_canvas",
     "scope_is_is_not",
     "validate_5why",
+    "validate_8d",
     "validate_control_plan",
     "validate_psw",
     "write_ncr",

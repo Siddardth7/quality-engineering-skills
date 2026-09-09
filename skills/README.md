@@ -102,6 +102,7 @@ The skill catalog maps directly to the releases defined in `ROADMAP.md`:
 | **`v0.8.0`** | `ppap-checker` | AIAG PPAP 4th Ed. 18-Element Completeness | `quality_mcp.tools.ppap` (`quality_core.ppap`) | Active |
 | **`v0.9.0`** | `supplier-scar` | Supplier Corrective Action & Vendor Scorecard | `quality_mcp.tools.sqe` (`quality_core.sqe`) | Active |
 | **`v1.0.0`** | *All 11 domain skills* | Production Hardening & Live Excel Exporters across 8 domains | Full Platform Integration | Complete · human release pending |
+| **`v1.1.0`** | `8d-problem-solving` | Ford Global 8D / AIAG CQI-20 D0-D8 Report & Closure Gates | `quality_mcp.tools.eight_d` (`quality_core.rca.eight_d`) | Active |
 
 ---
 

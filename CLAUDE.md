@@ -155,6 +155,16 @@ Violating these has cost real rework.
   - **COPQ:** ASQ Certified Six Sigma Green Belt (CSSGB) Body of Knowledge / *The Certified Six Sigma Green Belt Handbook* (2nd Edition, ASQ Quality Press) / CSSC *Lean Six Sigma Green Belt Certification Training Manual* (2018) at `/Users/sid/Documents/Upskill/SixSigma/COPQ/ASQ_six_sigma_green_belt_handb.pdf`, `/Users/sid/Documents/Upskill/SixSigma/COPQ/_new/ASQ-CSSGB-BoK-2014.pdf`, `/Users/sid/Documents/Upskill/SixSigma/COPQ/Lean-Six-Sigma-Green-Belt-Certification-Training-Manual-CSSC-2018-06b.pdf`; Lumafield Cost of Quality Report at `/Users/sid/Documents/Upskill/SixSigma/COPQ/TheLumafieldCostofQualityReportpdf.pdf` (non-standard industry benchmark).
   - **PPAP:** AIAG *Production Part Approval Process* Reference Manual (4th Edition, 2006) at `/Users/sid/Documents/Upskill/SixSigma/PPAP/AIAG_PPAP_4th_Edition.md` (training deck at `/Users/sid/Documents/Upskill/SixSigma/PPAP/AIAG Production Part Approval Process (PPAP), 4th Edition (2006).pdf` is secondary / non-authoritative).
   Never verify a standards quotation via web search.
+- **To verify citations locally, copy the `*_MANUAL_PATH` block from `.env.example` into
+  `.env` (gitignored) and fill each var with your own on-machine copy of the manual** — pytest
+  loads `.env` automatically via the root `conftest.py`, so there is no `set -a; source .env`
+  step, and a real exported shell variable always wins over `.env`. A missing or wrong path
+  **fails** that domain's citation tests rather than skipping them, unless
+  `ALLOW_UNVERIFIED_CITATIONS=1` is set (the literal `"1"` only). CI sets it, because CI mounts
+  no manuals; local runs default to strict. Every run prints
+  `CITATION VERIFICATION: N verified, M unverified`, splitting the unverified into
+  `structurally unverifiable (PDF-only)` (COPQ — a PDF cannot be line-matched) and
+  `missing config` (a `*_MANUAL_PATH` you can fix).
 - Use **formatting-tolerant matching** when checking quotations. Markdown emphasis and
   inline `<sup>` footnote markup produce false "fabricated" verdicts — and a false
   fabrication verdict is as serious as a real fabrication. Keep citations in a

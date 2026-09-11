@@ -22,8 +22,10 @@ from quality_core.io.validate import (
     IngestError,
     TableSchema,
     clean_pydantic_message,
+    clean_record,
     load_table,
     load_table_from_path,
+    na_to_none,
     read_table,
     read_table_from_path,
     validate_table,
@@ -591,8 +593,19 @@ def test_validate_long_offending_value_is_truncated():
     assert long_value not in msg  # not echoed in full
 
 
+def test_na_to_none_normalizes_missing_and_tolerates_array_likes():
+    assert na_to_none(float("nan")) is None
+    assert na_to_none("present") == "present"
+    # A bare pd.isna on a multi-element list raises; the guarded helper keeps the value.
+    assert na_to_none([1, 2, 3]) == [1, 2, 3]
+
+
+def test_clean_record_applies_na_to_none_across_a_mapping():
+    assert clean_record({"a": float("nan"), "b": 1}) == {"a": None, "b": 1}
+
+
 def test_validate_array_like_cell_does_not_crash_normalisation():
-    # A cell holding a list makes pd.isna return an array; _na_to_none must treat
+    # A cell holding a list makes pd.isna return an array; na_to_none must treat
     # it as present rather than raising on the ambiguous truth value.
     df = pd.DataFrame([{"ID": 1, "Name": "alpha", "Score": [1, 2]}])
     with pytest.raises(IngestError) as exc:

@@ -21,6 +21,7 @@ from typing import Any, Literal, cast
 
 import pandas as pd
 
+from quality_core.io import clean_record
 from quality_core.rca.schema import (
     CATEGORY_6M_ALIASES,
     CATEGORY_6M_VALUES,
@@ -121,10 +122,7 @@ def categorize_fishbone(
         raw_causes = [c.model_dump() for c in data.causes]
     elif isinstance(data, pd.DataFrame):
         effective_effect = effect_statement if effect_statement is not None else "Problem Effect"
-        raw_causes = [
-            cast("dict[str, Any]", {k: (None if pd.isna(v) else v) for k, v in row.items()})
-            for row in data.to_dict("records")
-        ]
+        raw_causes = [clean_record(row) for row in data.to_dict("records")]
     elif isinstance(data, list):
         effective_effect = effect_statement if effect_statement is not None else "Problem Effect"
         raw_causes = []
@@ -132,7 +130,7 @@ def categorize_fishbone(
             if isinstance(item, FishboneCause):
                 raw_causes.append(item.model_dump())
             elif isinstance(item, dict):
-                clean_rec = cast("dict[str, Any]", {k: (None if pd.isna(v) else v) for k, v in item.items()})
+                clean_rec = clean_record(item)
                 raw_causes.append(clean_rec)
             else:
                 raise TypeError(f"Expected FishboneCause or dict in list at index {idx}, got {type(item).__name__}")
@@ -147,7 +145,7 @@ def categorize_fishbone(
                 if isinstance(item, FishboneCause):
                     raw_causes.append(item.model_dump())
                 elif isinstance(item, dict):
-                    clean_rec = cast("dict[str, Any]", {k: (None if pd.isna(v) else v) for k, v in item.items()})
+                    clean_rec = clean_record(item)
                     raw_causes.append(clean_rec)
                 else:
                     raise TypeError(f"Expected FishboneCause or dict in causes list at index {idx}, got {type(item).__name__}")

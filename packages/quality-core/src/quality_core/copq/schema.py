@@ -12,12 +12,18 @@ blank rejection, PAF taxonomy alias normalization, cost driver aggregation, and 
 
 from __future__ import annotations
 
-from typing import Annotated, Any, BinaryIO, Literal, cast
+from typing import Annotated, Any, BinaryIO, Literal
 
 import pandas as pd
 import pydantic
 
-from quality_core.io.validate import IngestError, TableSchema, load_table, load_table_from_path
+from quality_core.io.validate import (
+    IngestError,
+    TableSchema,
+    clean_record,
+    load_table,
+    load_table_from_path,
+)
 
 __all__ = [
     "COPQ_SCHEMA",
@@ -236,10 +242,7 @@ def validate_copq(data: Any, revenue_base: float | None = None) -> COPQDataset:
             return COPQDataset(items=data.items, revenue_base=revenue_base)
         return data
     if isinstance(data, pd.DataFrame):
-        records = [
-            cast("dict[str, Any]", {k: (None if pd.isna(v) else v) for k, v in row.items()})
-            for row in data.to_dict("records")
-        ]
+        records = [clean_record(row) for row in data.to_dict("records")]
         return COPQDataset(
             items=[CostItem(**rec) for rec in records],
             revenue_base=revenue_base,
@@ -250,13 +253,13 @@ def validate_copq(data: Any, revenue_base: float | None = None) -> COPQDataset:
             if isinstance(item, CostItem):
                 items_list.append(item)
             elif isinstance(item, dict):
-                clean_rec = cast("dict[str, Any]", {k: (None if pd.isna(v) else v) for k, v in item.items()})
+                clean_rec = clean_record(item)
                 items_list.append(CostItem(**clean_rec))
             else:
                 raise TypeError(f"Expected CostItem or dict in list, got {type(item).__name__}")
         return COPQDataset(items=items_list, revenue_base=revenue_base)
     if isinstance(data, dict):
-        clean_dict = cast("dict[str, Any]", {k: (None if pd.isna(v) else v) for k, v in data.items()})
+        clean_dict = clean_record(data)
         if revenue_base is not None and "revenue_base" not in clean_dict:
             clean_dict["revenue_base"] = revenue_base
         return COPQDataset(**clean_dict)

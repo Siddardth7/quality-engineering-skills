@@ -293,17 +293,6 @@ def test_blank_to_none_normalizes_optional_strings() -> None:
     assert m._blank_to_none(9) == 9
 
 
-def test_na_to_none_normalizes_missing_and_tolerates_array_likes() -> None:
-    assert m._na_to_none(float("nan")) is None
-    assert m._na_to_none("present") == "present"
-    # A bare pd.isna on a multi-element list raises; the guarded helper keeps the value.
-    assert m._na_to_none([1, 2, 3]) == [1, 2, 3]
-
-
-def test_clean_record_applies_na_to_none_across_a_mapping() -> None:
-    assert m._clean_record({"a": float("nan"), "b": 1}) == {"a": None, "b": 1}
-
-
 def test_parse_date_lenient_covers_every_branch() -> None:
     assert m._parse_date_lenient(None) is None
     assert m._parse_date_lenient("  ") is None

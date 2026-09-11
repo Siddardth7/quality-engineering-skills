@@ -24,6 +24,12 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
   routes through it. Malformed input surfaces as an ordinary `ValidationError` /
   `TypeError` instead. `na_to_none`'s one-element collapse (`na_to_none([None]) is None`)
   is unchanged and now documented in its docstring as a deliberate decision.
+- **8D chained round-trip now asserts the whole-report closure gate** (#238). The valid
+  chain in `packages/quality-mcp/tests/test_eight_d_chained_roundtrip.py` ended at
+  `status == "CLOSED"` without ever calling `validate_8d`, so a report that reached CLOSED
+  while the gate still rejected it would have passed. It now asserts
+  `closeable is True` and `gate_reasons == []` — the happy-path mirror of
+  `test_eight_d_closure_precondition.py`, which pins the rejecting case. Test-only.
 
 ## [1.1.0] - 2026-09-08
 

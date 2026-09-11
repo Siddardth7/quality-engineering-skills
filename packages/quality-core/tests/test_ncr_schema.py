@@ -606,3 +606,22 @@ def test_ncr_normalize_disposition_direct_value_fallback(monkeypatch: pytest.Mon
     )
     assert NonconformanceRecord.normalize_disposition("Scrap") == "Scrap"
 
+
+
+def test_validate_ncr_from_dict_with_two_records_regression_232() -> None:
+    """#232 (A1): a dict whose list value holds 2+ rows must validate, not crash.
+
+    `pd.isna(list_of_two)` returns an ndarray, and the bare `None if pd.isna(v) else v`
+    comprehension on the dict entry path raised "truth value of an array with more than
+    one element is ambiguous". A ONE-element list is not ambiguous, which is exactly why
+    `test_validate_ncr_from_dict` above never caught this. Two rows is the whole control.
+    """
+    data = {
+        "records": [
+            _valid_ncr_record_dict(record_id="NCR-D1"),
+            _valid_ncr_record_dict(record_id="NCR-D2", part_lot_id="LOT-02"),
+        ]
+    }
+    validated = validate_ncr(data)
+    assert len(validated.records) == 2
+    assert [r.record_id for r in validated.records] == ["NCR-D1", "NCR-D2"]

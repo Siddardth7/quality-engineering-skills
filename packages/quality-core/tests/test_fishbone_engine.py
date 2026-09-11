@@ -482,3 +482,23 @@ def test_categorize_fishbone_rejects_blank_or_invalid_cause_text() -> None:
 
     with pytest.raises(TypeError, match="Cause at index 0 must be a string"):
         categorize_fishbone(data=[{"category": "Man", "cause": 12345}])
+
+
+def test_categorize_fishbone_list_with_list_valued_cell_regression_232() -> None:
+    """#232 (B4): a CELL holding a multi-element list must not ambiguous-crash.
+
+    Wider than #232's body, same reason as the Control Plan controls: the normaliser
+    runs over each row's `.items()`. Measured crashing on `origin/test` @ `92c8edc`.
+    """
+    with pytest.raises((TypeError, ValueError)) as excinfo:
+        categorize_fishbone(data=[{"cause": [1, 2]}], effect_statement="Regression 232")
+    assert "ambiguous" not in str(excinfo.value).lower()
+
+
+def test_categorize_fishbone_dict_causes_with_list_valued_cell_regression_232() -> None:
+    """#232 (B5): same defect via the dict-of-causes branch."""
+    with pytest.raises((TypeError, ValueError)) as excinfo:
+        categorize_fishbone(
+            data={"causes": [{"cause": [1, 2]}]}, effect_statement="Regression 232"
+        )
+    assert "ambiguous" not in str(excinfo.value).lower()

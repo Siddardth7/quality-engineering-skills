@@ -8,6 +8,29 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 
 ## [Unreleased]
 
+### Fixed
+- **Trust-boundary validators no longer crash on array-like values** (#232). A bare
+  `pd.isna(v)` inside the record-normalising dict comprehensions raised
+  `ValueError: The truth value of an array with more than one element is ambiguous` at
+  nine measured call sites across five modules — the dict-of-lists entry path of
+  `validate_ncr` / `validate_copq` / `validate_sqe_receipt` / `validate_sqe_delivery` /
+  `validate_sqe_scar`, and the list-of-dicts and DataFrame paths of
+  `validate_control_plan` and `categorize_fishbone` when a cell holds a multi-element
+  list (the latter four are wider than the issue body describes). Fixed at the root: the
+  guarded helper is promoted to the public `quality_core.io.na_to_none` plus a new
+  `quality_core.io.clean_record`, the three duplicate copies in `rca/schema.py`,
+  `rca/eight_d_schema.py` and `sqe/schema.py` are deleted, and every remaining bare
+  comprehension (including one in `ppap/schema.py` found by the `git grep` sweep) now
+  routes through it. Malformed input surfaces as an ordinary `ValidationError` /
+  `TypeError` instead. `na_to_none`'s one-element collapse (`na_to_none([None]) is None`)
+  is unchanged and now documented in its docstring as a deliberate decision.
+- **8D chained round-trip now asserts the whole-report closure gate** (#238). The valid
+  chain in `packages/quality-mcp/tests/test_eight_d_chained_roundtrip.py` ended at
+  `status == "CLOSED"` without ever calling `validate_8d`, so a report that reached CLOSED
+  while the gate still rejected it would have passed. It now asserts
+  `closeable is True` and `gate_reasons == []` — the happy-path mirror of
+  `test_eight_d_closure_precondition.py`, which pins the rejecting case. Test-only.
+
 ## [1.1.0] - 2026-09-08
 
 Milestone 11 implementation is complete and ready for the human release handoff. The closeout

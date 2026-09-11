@@ -93,6 +93,7 @@ import pydantic
 from quality_core.io import (
     IngestError,
     TableSchema,
+    clean_record,
     read_table,
     read_table_from_path,
     validate_table,
@@ -708,14 +709,6 @@ def load_sqe_scar_csv(source: str | BinaryIO) -> pd.DataFrame:
 # ===========================================================================
 
 
-def _clean_nan(mapping: Mapping[Any, Any]) -> dict[str, Any]:
-    """Map pandas missing values to ``None`` so a NaN cell reads as undecided, not as ``nan``."""
-    return cast(
-        "dict[str, Any]",
-        {key: (None if pd.isna(value) else value) for key, value in mapping.items()},
-    )
-
-
 def validate_sqe_receipt(data: Any) -> ReceiptLotDataset:
     """Validate untrusted receipt-lot input (ReceiptLotDataset, DataFrame, list of dicts/records, or dict) at trust boundary.
 
@@ -725,7 +718,7 @@ def validate_sqe_receipt(data: Any) -> ReceiptLotDataset:
     if isinstance(data, ReceiptLotDataset):
         return data
     if isinstance(data, pd.DataFrame):
-        records = [_clean_nan(row) for row in data.to_dict("records")]
+        records = [clean_record(row) for row in data.to_dict("records")]
         return ReceiptLotDataset(records=[ReceiptLot(**rec) for rec in records])
     if isinstance(data, list):
         records_list: list[ReceiptLot] = []
@@ -733,12 +726,12 @@ def validate_sqe_receipt(data: Any) -> ReceiptLotDataset:
             if isinstance(item, ReceiptLot):
                 records_list.append(item)
             elif isinstance(item, dict):
-                records_list.append(ReceiptLot(**_clean_nan(item)))
+                records_list.append(ReceiptLot(**clean_record(item)))
             else:
                 raise TypeError(f"Expected ReceiptLot or dict in list, got {type(item).__name__}")
         return ReceiptLotDataset(records=records_list)
     if isinstance(data, dict):
-        return ReceiptLotDataset(**_clean_nan(data))
+        return ReceiptLotDataset(**clean_record(data))
     raise TypeError(
         f"Expected ReceiptLotDataset, DataFrame, list of dicts/records, or dict, got {type(data).__name__}"
     )
@@ -753,7 +746,7 @@ def validate_sqe_delivery(data: Any) -> DeliveryRecordDataset:
     if isinstance(data, DeliveryRecordDataset):
         return data
     if isinstance(data, pd.DataFrame):
-        records = [_clean_nan(row) for row in data.to_dict("records")]
+        records = [clean_record(row) for row in data.to_dict("records")]
         return DeliveryRecordDataset(records=[DeliveryRecord(**rec) for rec in records])
     if isinstance(data, list):
         records_list: list[DeliveryRecord] = []
@@ -761,14 +754,14 @@ def validate_sqe_delivery(data: Any) -> DeliveryRecordDataset:
             if isinstance(item, DeliveryRecord):
                 records_list.append(item)
             elif isinstance(item, dict):
-                records_list.append(DeliveryRecord(**_clean_nan(item)))
+                records_list.append(DeliveryRecord(**clean_record(item)))
             else:
                 raise TypeError(
                     f"Expected DeliveryRecord or dict in list, got {type(item).__name__}"
                 )
         return DeliveryRecordDataset(records=records_list)
     if isinstance(data, dict):
-        return DeliveryRecordDataset(**_clean_nan(data))
+        return DeliveryRecordDataset(**clean_record(data))
     raise TypeError(
         f"Expected DeliveryRecordDataset, DataFrame, list of dicts/records, or dict, got {type(data).__name__}"
     )
@@ -783,7 +776,7 @@ def validate_sqe_scar(data: Any) -> SCARRequestDataset:
     if isinstance(data, SCARRequestDataset):
         return data
     if isinstance(data, pd.DataFrame):
-        records = [_clean_nan(row) for row in data.to_dict("records")]
+        records = [clean_record(row) for row in data.to_dict("records")]
         return SCARRequestDataset(records=[SCARRequest(**rec) for rec in records])
     if isinstance(data, list):
         records_list: list[SCARRequest] = []
@@ -791,12 +784,12 @@ def validate_sqe_scar(data: Any) -> SCARRequestDataset:
             if isinstance(item, SCARRequest):
                 records_list.append(item)
             elif isinstance(item, dict):
-                records_list.append(SCARRequest(**_clean_nan(item)))
+                records_list.append(SCARRequest(**clean_record(item)))
             else:
                 raise TypeError(f"Expected SCARRequest or dict in list, got {type(item).__name__}")
         return SCARRequestDataset(records=records_list)
     if isinstance(data, dict):
-        return SCARRequestDataset(**_clean_nan(data))
+        return SCARRequestDataset(**clean_record(data))
     raise TypeError(
         f"Expected SCARRequestDataset, DataFrame, list of dicts/records, or dict, got {type(data).__name__}"
     )

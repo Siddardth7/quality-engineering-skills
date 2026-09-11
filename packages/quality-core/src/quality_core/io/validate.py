@@ -45,7 +45,7 @@ from __future__ import annotations
 
 import io
 import os
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, BinaryIO, Union, cast
 
@@ -332,17 +332,35 @@ def read_table_from_path(
 # ===========================================================================
 
 
-def _na_to_none(value: Any) -> Any:
+def na_to_none(value: Any) -> Any:
     """Map a pandas missing value (NaN/NaT/NA) to ``None``; pass everything else.
 
     Keeps an empty cell from reaching a non-strict model as the float ``nan``,
     which would silently coerce to the literal string ``"nan"``.
+
+    A bare ``pd.isna(value)`` raises "truth value of an array is ambiguous" whenever
+    the value is a multi-element array-like — a list-valued dict entry, or a cell
+    holding a list. Every trust-boundary validator in this package routes its record
+    normalisation through this helper (via :func:`clean_record`) so that shape
+    surfaces as an ordinary ``ValidationError`` instead of that crash.
+
+    Deliberate, documented behaviour: a *one*-element array-like is not ambiguous, so
+    ``na_to_none([None])`` returns ``None`` rather than ``[None]`` — a single-row list
+    whose only element is missing collapses the whole field, and Pydantic then reports
+    a dataset-level rather than a row-level error. This is kept as-is: tightening it
+    would change the error shape at a trust boundary for every caller, which is a
+    user-visible change and belongs in its own issue, not a bug-fix for the crash above.
     """
     try:
         return None if pd.isna(value) else value
     except (TypeError, ValueError):
-        # pd.isna on an array-like cell returns an array; treat as present.
+        # pd.isna on a multi-element array-like returns an array; treat as present.
         return value
+
+
+def clean_record(mapping: Mapping[Any, Any]) -> dict[str, Any]:
+    """Apply :func:`na_to_none` across one untrusted record before it reaches a row model."""
+    return cast("dict[str, Any]", {key: na_to_none(value) for key, value in mapping.items()})
 
 
 _PYDANTIC_MSG_PREFIXES = ("Value error, ", "Assertion failed, ")
@@ -427,9 +445,9 @@ def validate_table(df: pd.DataFrame, schema: TableSchema) -> pd.DataFrame:
     rows: list[pydantic.BaseModel] = []
     records = df[columns].to_dict(orient="records")
     for offset, record in enumerate(records):
-        clean = {key: _na_to_none(value) for key, value in record.items()}
+        clean = clean_record(record)
         try:
-            rows.append(schema.row_model(**cast("dict[str, Any]", clean)))
+            rows.append(schema.row_model(**clean))
         except pydantic.ValidationError as exc:
             # Row numbers are 1-based with the header as row 1, so the number
             # matches what the user sees in a spreadsheet (first data row = 2).

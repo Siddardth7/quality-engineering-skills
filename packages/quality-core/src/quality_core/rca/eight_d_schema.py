@@ -37,7 +37,13 @@ from typing import Annotated, Any, BinaryIO, Literal, cast
 import pandas as pd
 import pydantic
 
-from quality_core.io import IngestError, TableSchema, load_table, load_table_from_path
+from quality_core.io import (
+    IngestError,
+    TableSchema,
+    clean_record,
+    load_table,
+    load_table_from_path,
+)
 from quality_core.io.validate import DEFAULT_MAX_UPLOAD_BYTES, clean_pydantic_message
 from quality_core.rca.five_why import FiveWhyValidationResult
 from quality_core.schema._base import find_duplicates
@@ -138,27 +144,6 @@ class _ClosureDeficiency:
 
     code: _ClosureDeficiencyCode
     message: str
-
-
-def _na_to_none(value: Any) -> Any:
-    """Normalize a missing cell to ``None``, tolerating array-like values.
-
-    Mirrors ``io.validate._na_to_none`` (private there, hence copied rather than imported).
-    ``rca/schema.py`` inlines a bare ``pd.isna(v)`` in its ``validate_*`` comprehensions, which
-    raises "truth value of an array is ambiguous" whenever a value is a multi-element list. The
-    8D dict entry paths pass exactly that — a list-valued ``rows`` key — so the guarded form is
-    required here, not optional.
-    """
-    try:
-        return None if pd.isna(value) else value
-    except (TypeError, ValueError):
-        # pd.isna on an array-like cell returns an array; treat the value as present.
-        return value
-
-
-def _clean_record(mapping: dict[str, Any]) -> dict[str, Any]:
-    """Apply :func:`_na_to_none` across one record before handing it to a row model."""
-    return {key: _na_to_none(value) for key, value in mapping.items()}
 
 
 def _reject_blank(v: object) -> object:
@@ -1155,7 +1140,7 @@ def validate_team_members(data: Any) -> TeamMemberList:
         return data
     if isinstance(data, pd.DataFrame):
         records = [
-            _clean_record(cast("dict[str, Any]", row)) for row in data.to_dict("records")
+            clean_record(cast("dict[str, Any]", row)) for row in data.to_dict("records")
         ]
         return TeamMemberList(rows=[TeamMember(**rec) for rec in records])
     if isinstance(data, list):
@@ -1164,13 +1149,13 @@ def validate_team_members(data: Any) -> TeamMemberList:
             if isinstance(item, TeamMember):
                 rows.append(item)
             elif isinstance(item, dict):
-                clean_rec = _clean_record(cast("dict[str, Any]", item))
+                clean_rec = clean_record(cast("dict[str, Any]", item))
                 rows.append(TeamMember(**clean_rec))
             else:
                 raise TypeError(f"Expected TeamMember or dict in list, got {type(item).__name__}")
         return TeamMemberList(rows=rows)
     if isinstance(data, dict):
-        clean_dict = _clean_record(cast("dict[str, Any]", data))
+        clean_dict = clean_record(cast("dict[str, Any]", data))
         return TeamMemberList(**clean_dict)
     raise TypeError(
         "Expected TeamMemberList, DataFrame, list of dicts/rows, or dict, got "
@@ -1224,7 +1209,7 @@ def validate_containment_actions(data: Any) -> ContainmentActionList:
         return data
     if isinstance(data, pd.DataFrame):
         records = [
-            _clean_record(cast("dict[str, Any]", row)) for row in data.to_dict("records")
+            clean_record(cast("dict[str, Any]", row)) for row in data.to_dict("records")
         ]
         return ContainmentActionList(rows=[ContainmentAction(**rec) for rec in records])
     if isinstance(data, list):
@@ -1233,7 +1218,7 @@ def validate_containment_actions(data: Any) -> ContainmentActionList:
             if isinstance(item, ContainmentAction):
                 rows.append(item)
             elif isinstance(item, dict):
-                clean_rec = _clean_record(cast("dict[str, Any]", item))
+                clean_rec = clean_record(cast("dict[str, Any]", item))
                 rows.append(ContainmentAction(**clean_rec))
             else:
                 raise TypeError(
@@ -1241,7 +1226,7 @@ def validate_containment_actions(data: Any) -> ContainmentActionList:
                 )
         return ContainmentActionList(rows=rows)
     if isinstance(data, dict):
-        clean_dict = _clean_record(cast("dict[str, Any]", data))
+        clean_dict = clean_record(cast("dict[str, Any]", data))
         return ContainmentActionList(**clean_dict)
     raise TypeError(
         "Expected ContainmentActionList, DataFrame, list of dicts/rows, or dict, got "
@@ -1304,7 +1289,7 @@ def validate_corrective_action_candidates(data: Any) -> CorrectiveActionCandidat
         return data
     if isinstance(data, pd.DataFrame):
         records = [
-            _clean_record(cast("dict[str, Any]", row)) for row in data.to_dict("records")
+            clean_record(cast("dict[str, Any]", row)) for row in data.to_dict("records")
         ]
         return CorrectiveActionCandidateList(
             rows=[CorrectiveActionCandidate(**rec) for rec in records]
@@ -1315,7 +1300,7 @@ def validate_corrective_action_candidates(data: Any) -> CorrectiveActionCandidat
             if isinstance(item, CorrectiveActionCandidate):
                 rows.append(item)
             elif isinstance(item, dict):
-                clean_rec = _clean_record(cast("dict[str, Any]", item))
+                clean_rec = clean_record(cast("dict[str, Any]", item))
                 rows.append(CorrectiveActionCandidate(**clean_rec))
             else:
                 raise TypeError(
@@ -1324,7 +1309,7 @@ def validate_corrective_action_candidates(data: Any) -> CorrectiveActionCandidat
                 )
         return CorrectiveActionCandidateList(rows=rows)
     if isinstance(data, dict):
-        clean_dict = _clean_record(cast("dict[str, Any]", data))
+        clean_dict = clean_record(cast("dict[str, Any]", data))
         return CorrectiveActionCandidateList(**clean_dict)
     raise TypeError(
         "Expected CorrectiveActionCandidateList, DataFrame, list of dicts/rows, or dict, got "
@@ -1383,7 +1368,7 @@ def validate_documentation_updates(data: Any) -> DocumentationUpdateList:
         return data
     if isinstance(data, pd.DataFrame):
         records = [
-            _clean_record(cast("dict[str, Any]", row)) for row in data.to_dict("records")
+            clean_record(cast("dict[str, Any]", row)) for row in data.to_dict("records")
         ]
         return DocumentationUpdateList(rows=[DocumentationUpdate(**rec) for rec in records])
     if isinstance(data, list):
@@ -1392,7 +1377,7 @@ def validate_documentation_updates(data: Any) -> DocumentationUpdateList:
             if isinstance(item, DocumentationUpdate):
                 rows.append(item)
             elif isinstance(item, dict):
-                clean_rec = _clean_record(cast("dict[str, Any]", item))
+                clean_rec = clean_record(cast("dict[str, Any]", item))
                 rows.append(DocumentationUpdate(**clean_rec))
             else:
                 raise TypeError(
@@ -1400,7 +1385,7 @@ def validate_documentation_updates(data: Any) -> DocumentationUpdateList:
                 )
         return DocumentationUpdateList(rows=rows)
     if isinstance(data, dict):
-        clean_dict = _clean_record(cast("dict[str, Any]", data))
+        clean_dict = clean_record(cast("dict[str, Any]", data))
         return DocumentationUpdateList(**clean_dict)
     raise TypeError(
         "Expected DocumentationUpdateList, DataFrame, list of dicts/rows, or dict, got "

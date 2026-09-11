@@ -34,7 +34,7 @@ they define none of the numeric criteria this workbook renders. Every weight and
 column/row is therefore visibly labelled ``(HEURISTIC)``, and no column, label, or literal
 here may present one as a standards requirement.
 
-What ships in the workbook (two sheets, in this order):
+What ships in the workbook (two sheets, plus one optional third, in this order):
 
   1. the vendor-scorecard sheet, named by ``title`` (default ``"SQE Vendor Scorecard"``),
      one row per supplier. Three cells per row are live formulas — ``PPM`` (column I),
@@ -49,6 +49,21 @@ What ships in the workbook (two sheets, in this order):
      ECMA-376 caps a sheet name at 31 characters; the unabbreviated
      "Heuristic Configuration & Metadata" is 34 and makes Excel report the workbook as
      needing repair.)
+  3. the ``"SCAR"`` sheet — present **only** when a ``SCARResult`` is passed as ``scar=``.
+     Omitted entirely by default, so a vendor-rating-only export is byte-compatible with the
+     two-sheet workbook that shipped before it.
+
+QUALITATIVE DOMAIN DECLARATION (SCAR sheet only — ASSUMPTIONS_LOG.md RULE-SQE-019): a Supplier
+Corrective Action Request is a qualitative corrective-action record, not a calculator. It has no
+arithmetic to re-express, so **live-formula verification is explicitly N/A for the SCAR sheet**:
+no ``Formula`` instance is ever constructed for it and every cell — header and body — is written
+through ``sanitize_cell``, including the sub-engine-authored ``findings`` and the one warning
+string that embeds the caller's ``linked_ncr_id`` verbatim. The SCAR sheet is a presentation
+boundary: it surfaces the engine's own verdicts, findings, and rationales and recomputes nothing.
+``SCARLinkageResult.raw_result`` is deliberately never rendered — it is the sub-engine's own
+nested payload (an NCR dataset, an RCA chain, a COPQ estimate: three incompatible shapes), and
+projecting it into rows here would mean this exporter *deciding* how to reinterpret another
+engine's internal structure, which is exactly the re-derivation that boundary forbids.
 
 Column letters are derived from ``VENDOR_SCORECARD_COLUMNS`` via ``get_column_letter``,
 never hand-typed, so reordering the column tuple cannot silently desync a formula from the
@@ -66,15 +81,18 @@ from typing import Any
 import openpyxl
 import pandas as pd
 from openpyxl import Workbook
+from openpyxl.styles import Font
 from openpyxl.utils import get_column_letter
 
 from quality_core.io.export import (
     Formula,
     now,
+    sanitize_cell,
     write_keyvalue_sheet,
     write_table_sheet,
 )
 from quality_core.sqe.escalation import EscalationResult, evaluate_escalation
+from quality_core.sqe.scar import LINKAGE_KEYS, SCARResult
 from quality_core.sqe.schema import DeliveryRecord, ReceiptLot, SupplierPeriod
 from quality_core.sqe.scorecard import (
     LinearScoringCurve,
@@ -161,6 +179,30 @@ _METADATA_SHEET_TITLE = "Heuristic Config & Metadata"
 #: never scored (``ScorecardResult.omitted_dimensions``) — distinct from INDETERMINATE,
 #: which means the dimension was weighted but its evidence was undecided.
 _NOT_SCORED = "NOT_SCORED"
+
+#: Sheet 3's name. Four characters, well inside ECMA-376's 31-character limit. Like
+#: ``_METADATA_SHEET_TITLE`` it is not guarded against a caller passing the same string as
+#: ``title``; openpyxl raises its own duplicate-title error in that case.
+_SCAR_SHEET_TITLE = "SCAR"
+
+_SCAR_SECTION_COLUMNS: tuple[str, ...] = ("Heading", "Rule ID", "Content")
+_SCAR_LINKAGE_COLUMNS: tuple[str, ...] = (
+    "Linkage Key",
+    "Verdict",
+    "Engine",
+    "Findings",
+    "Rationale",
+)
+_SCAR_NOTE_COLUMNS: tuple[str, ...] = ("Type", "Text")
+
+#: Column A..E widths for the SCAR sheet. Every column is shared by several blocks, so each is
+#: sized for the widest content it carries (free text in B/C/E, joined findings in D).
+_SCAR_COL_WIDTHS: tuple[float, ...] = (30.0, 46.0, 46.0, 44.0, 48.0)
+
+#: Rows between two blocks on the SCAR sheet.
+_SCAR_BLOCK_GAP = 1
+
+_SCAR_LABEL_FONT = Font(bold=True, size=10)
 
 #: Paraphrase already on record at the top of ``sqe/ASSUMPTIONS_LOG.md`` (and flagged there
 #: as a tracked PROCUREMENT-GAP): the ISO/IATF excerpts are not on-machine, so this is a
@@ -371,6 +413,105 @@ def _metadata_rows(rows: Sequence[SQEVendorRow], title: str) -> list[tuple[str, 
 
 
 # ===========================================================================
+# SCAR Sheet (structured, qualitative — no live formulas; RULE-SQE-019)
+# ===========================================================================
+
+
+def _scar_summary_rows(scar: SCARResult, title: str) -> list[tuple[str, Any]]:
+    """Return the SCAR sheet's fixed-length label/value header block.
+
+    Every value is copied straight off the ``SCARResult``. ``None`` is passed through, not
+    coerced to the string ``"None"``, so an unanswered SCAR renders a blank cell exactly as
+    ``write_table_sheet`` does for a missing count.
+    """
+    return [
+        ("Report Title", title),
+        ("Supplier ID", scar.supplier_id),
+        ("SCAR ID", scar.scar_id),
+        ("Issue Description", scar.issue_description),
+        ("Status", scar.status),
+        ("Root Cause", scar.root_cause),
+        ("Verification of Effectiveness", scar.verification_of_effectiveness),
+        ("Due Date", scar.due_date),
+        ("Date Issued", scar.date_issued),
+        ("Reason", scar.reason),
+    ]
+
+
+def _scar_linkage_rows(scar: SCARResult) -> list[tuple[Any, ...]]:
+    """Return one row per present linkage slot, in ``LINKAGE_KEYS`` order.
+
+    ``SCARConfig.evaluate_vendor_scorecard_linkage=False`` omits the ``vendor_scorecard`` key
+    entirely, so this block is three or four rows and is never assumed to be four.
+    ``raw_result`` is deliberately not projected (see the module docstring).
+    """
+    return [
+        (
+            scar.linkage[key].linkage_key,
+            scar.linkage[key].verdict,
+            scar.linkage[key].engine,
+            "; ".join(scar.linkage[key].findings),
+            scar.linkage[key].rationale,
+        )
+        for key in LINKAGE_KEYS
+        if key in scar.linkage
+    ]
+
+
+def _scar_note_rows(scar: SCARResult) -> list[tuple[Any, ...]]:
+    """Return the warnings-then-recommendations block; empty when the engine raised neither."""
+    return [("Warning", text) for text in scar.warnings] + [
+        ("Recommendation", text) for text in scar.recommendations
+    ]
+
+
+def _write_scar_block(
+    ws: Any,
+    first_row: int,
+    header: Sequence[str],
+    records: Sequence[Sequence[Any]],
+) -> int:
+    """Write a bold header row plus ``records`` beneath it; return the next free row.
+
+    The returned row already includes the blank separator, so the caller never computes a row
+    offset itself and a variable-length block cannot desync the block below it.
+    """
+    for col_idx, label in enumerate(header, start=1):
+        ws.cell(row=first_row, column=col_idx, value=sanitize_cell(label)).font = _SCAR_LABEL_FONT
+    for offset, record in enumerate(records, start=1):
+        for col_idx, value in enumerate(record, start=1):
+            ws.cell(row=first_row + offset, column=col_idx, value=sanitize_cell(value))
+    return first_row + len(records) + 1 + _SCAR_BLOCK_GAP
+
+
+def _write_scar_sheet(ws: Any, scar: SCARResult, title: str) -> None:
+    """Write one ``SCARResult`` as a structured, no-live-formula qualitative record.
+
+    Four blocks on one worksheet — summary, sections, linkage, warnings/recommendations — so
+    neither ``write_table_sheet`` nor ``write_keyvalue_sheet`` can be used (each owns ``ws.title``
+    and starts at row 1). This is the same direct-cell shape as
+    ``controlplan/export.py::_write_coverage_sheet``, with every value routed through
+    ``sanitize_cell`` and no ``Formula`` constructed anywhere.
+    """
+    ws.title = _SCAR_SHEET_TITLE
+
+    row = 1
+    for label, value in _scar_summary_rows(scar, title):
+        ws.cell(row=row, column=1, value=sanitize_cell(label)).font = _SCAR_LABEL_FONT
+        ws.cell(row=row, column=2, value=sanitize_cell(value))
+        row += 1
+    row += _SCAR_BLOCK_GAP
+
+    sections = [(s.heading, s.rule_id, s.content) for s in scar.sections]
+    row = _write_scar_block(ws, row, _SCAR_SECTION_COLUMNS, sections)
+    row = _write_scar_block(ws, row, _SCAR_LINKAGE_COLUMNS, _scar_linkage_rows(scar))
+    _write_scar_block(ws, row, _SCAR_NOTE_COLUMNS, _scar_note_rows(scar))
+
+    for col_idx, width in enumerate(_SCAR_COL_WIDTHS, start=1):
+        ws.column_dimensions[get_column_letter(col_idx)].width = width
+
+
+# ===========================================================================
 # Public Exporter API
 # ===========================================================================
 
@@ -379,8 +520,9 @@ def build_sqe_workbook(
     rows: Sequence[SQEVendorRow] | Sequence[dict[str, Any]],
     *,
     title: str = "SQE Vendor Scorecard",
+    scar: SCARResult | None = None,
 ) -> openpyxl.Workbook:
-    """Build the 2-sheet vendor-rating openpyxl Workbook with live formulas.
+    """Build the vendor-rating openpyxl Workbook with live formulas.
 
     Sheets:
       1. ``title`` (default ``"SQE Vendor Scorecard"``): one row per supplier, with live
@@ -388,6 +530,9 @@ def build_sqe_workbook(
          (``=IF(J{r}<>"MEASURED","N/A",K{r}/L{r})``) and ``Composite_Score``
          (``=IF(T{r}<>"RATED","N/A",SUMPRODUCT(Q{r}:S{r},N{r}:P{r}))``).
       2. ``"Heuristic Config & Metadata"``: the heuristic disclosure behind sheet 1.
+      3. ``"SCAR"``, appended **only** when ``scar`` is supplied: the SCAR record rendered as a
+         structured qualitative sheet with no live formulas (verification N/A — RULE-SQE-019).
+         Omitting ``scar`` (the default) leaves the two-sheet workbook exactly as it was.
 
     An empty ``rows`` sequence yields a valid, loadable header-only scorecard sheet and a
     metadata sheet stating that the heuristic configuration is unavailable.
@@ -421,6 +566,10 @@ def build_sqe_workbook(
         value_width=96.0,
     )
 
+    # Sheet 3: the SCAR record (optional, no live formulas).
+    if scar is not None:
+        _write_scar_sheet(wb.create_sheet(_SCAR_SHEET_TITLE), scar, title)
+
     return wb
 
 
@@ -428,9 +577,14 @@ def export_sqe_workbook(
     rows: Sequence[SQEVendorRow] | Sequence[dict[str, Any]],
     *,
     title: str = "SQE Vendor Scorecard",
+    scar: SCARResult | None = None,
 ) -> bytes:
-    """Export evaluated supplier rows to serialized .xlsx bytes."""
-    wb = build_sqe_workbook(rows, title=title)
+    """Export evaluated supplier rows to serialized .xlsx bytes.
+
+    ``scar`` threads straight through to :func:`build_sqe_workbook`: supply a ``SCARResult`` to
+    append the structured ``"SCAR"`` sheet, omit it for the unchanged two-sheet workbook.
+    """
+    wb = build_sqe_workbook(rows, title=title, scar=scar)
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
@@ -440,9 +594,10 @@ def export_sqe_excel(
     rows: Sequence[SQEVendorRow] | Sequence[dict[str, Any]],
     *,
     title: str = "SQE Vendor Scorecard",
+    scar: SCARResult | None = None,
 ) -> bytes:
     """Alias for :func:`export_sqe_workbook`."""
-    return export_sqe_workbook(rows, title=title)
+    return export_sqe_workbook(rows, title=title, scar=scar)
 
 
 # ===========================================================================

@@ -10,9 +10,12 @@ Design notes:
 - **Formatting-tolerant matching** (`normalise`): markdown emphasis, `<sup>` footnote
   markup, soft hyphens, and zero-width spaces are stripped before comparison, so a licensed
   quote that carries such markup is not falsely reported as fabricated (`CLAUDE.md`).
-- **Manuals are on-machine only** and never committed to git. When a manual file is absent
-  the manual-match is *skipped*, never failed — the structural checks (manifest present,
-  no duplicate rows, every live blockquote backed) still run everywhere, including CI.
+- **Manuals are on-machine only** and never committed to git, and their paths come from
+  ``*_MANUAL_PATH`` env vars with no per-machine default. When a manual is absent the
+  manual-match **fails** (``require_manual``) unless ``ALLOW_UNVERIFIED_CITATIONS=1`` is
+  set, which restores the old skip for local dev and for CI, where no manual is mounted
+  (#241). The structural checks (manifest present, no duplicate rows, every live
+  blockquote backed) still run everywhere regardless.
 - **"Any declared manual"** matching: several domains cite more than one licensed manual and
   the per-row manual is not recorded in the manifest. A row passes when its quote appears at
   the cited line (± ``LINE_TOLERANCE``) in *at least one* of the domain's declared manuals.
@@ -38,9 +41,84 @@ _NON_ALNUM = re.compile(r"[^0-9a-z]+")
 QUALITY_CORE_SRC = Path(__file__).resolve().parents[1] / "src" / "quality_core"
 
 
-def manual_path(env_var: str, default: str) -> Path:
-    """Resolve a manual path, honouring an env-var override (CI can point at a mount)."""
-    return Path(os.environ.get(env_var, default))
+ALLOW_UNVERIFIED_CITATIONS_ENV = "ALLOW_UNVERIFIED_CITATIONS"
+
+# Stable sentinels so the session summary can classify a skip by its message alone
+# (a module-scoped fixture skips once but marks N tests skipped, so counting guard
+# invocations would undercount; classifying each skipped report does not).
+PDF_ONLY_SKIP_MARKER = "PDF-only sources are verified structurally, not by line-match."
+MISSING_MANUAL_SKIP_MARKER = "Licensed manuals are on-machine only and not committed to git."
+
+
+def manual_path(env_var: str) -> Path:
+    """Resolve a manual path from its env var; unset means "no manual" (never a machine path).
+
+    Hardcoded per-machine defaults made the gate vacuous: on the author's box every path
+    happened to resolve, so the suite looked green while anywhere else it silently skipped
+    (#241). Unset resolves to ``Path("")`` — not a file, so ``require_manual`` treats "unset"
+    exactly like "set but wrong".
+    """
+    return Path(os.environ.get(env_var, ""))
+
+
+def citations_strict() -> bool:
+    """True unless the caller explicitly opted out with ``ALLOW_UNVERIFIED_CITATIONS=1``.
+
+    Only the literal string ``"1"`` opts out: ``"true"``/``"yes"``/``"0"``/``""`` are all
+    strict, so a mistyped opt-out fails loudly instead of silently disabling the gate.
+    """
+    return os.environ.get(ALLOW_UNVERIFIED_CITATIONS_ENV) != "1"
+
+
+def usable_manuals(manuals: dict[str, Path]) -> dict[str, Path]:
+    """The declared manuals that can actually be line-matched: existing regular files, non-PDF.
+
+    ``.is_file()`` rather than ``.exists()``: an unset env var resolves to ``Path("")`` — the
+    current directory — which exists but is not a manual.
+    """
+    return {
+        name: p for name, p in manuals.items() if p.is_file() and p.suffix.lower() != ".pdf"
+    }
+
+
+def require_manual(
+    label: str,
+    manual: Path | dict[str, Path],
+    *,
+    allow_pdf_only_skip: bool = False,
+) -> None:
+    """Skip (opted-out) or fail (strict, the default) when no usable manual is present.
+
+    Every citation domain routes its "manual missing" decision through here, so strict mode
+    is one branch in one place rather than seven duplicated ``pytest.skip`` call sites (#241,
+    #220). Returns normally — caller proceeds — when at least one declared manual is an
+    existing non-PDF file.
+
+    ``allow_pdf_only_skip=True`` keeps a domain whose declared manuals are all *present*
+    PDFs on the skip path even in strict mode: a PDF read as text is binary noise, so that
+    is a documented structural gap, not a configuration gap, and it is reported in its own
+    labelled bucket by the session summary.
+    """
+    manuals = manual if isinstance(manual, dict) else {label: manual}
+    if usable_manuals(manuals):
+        return
+    # An unset env var resolves to Path("") == Path("."); "not found at ['.']" tells an
+    # operator nothing, so name the actual condition.
+    declared = sorted("<unset>" if str(p) == "." else str(p) for p in manuals.values())
+    if allow_pdf_only_skip and any(p.is_file() for p in manuals.values()):
+        pytest.skip(
+            f"No text (.md) manual on-machine for {label}: {declared}. "
+            "Licensed manuals are on-machine only and not committed to git; "
+            f"{PDF_ONLY_SKIP_MARKER}"
+        )
+    if citations_strict():
+        pytest.fail(
+            f"Manual for {label} not found at {declared} — citation verification FAILED, "
+            "so this quotation was never checked against its licensed source. Point the "
+            "domain's *_MANUAL_PATH env var at your on-machine copy (see .env.example), or "
+            f"set {ALLOW_UNVERIFIED_CITATIONS_ENV}=1 to skip locally."
+        )
+    pytest.skip(f"Manual for {label} not found at {declared}. {MISSING_MANUAL_SKIP_MARKER}")
 
 
 def normalise(text: str) -> str:
@@ -145,8 +223,9 @@ def assert_quote_in_any_manual(
 ) -> None:
     """Verify ``quote`` appears at ``src_line`` (± tolerance) in at least one declared manual.
 
-    Skips when no *text* manual is on-machine (on-machine-only licensing); fails when at
-    least one text manual is present but none contains the quote at the cited line.
+    Routes the "no usable manual" decision through ``require_manual`` (strict by default,
+    ``allow_pdf_only_skip=True`` because a PDF-only domain is a structural gap); fails when
+    at least one text manual is present but none contains the quote at the cited line.
 
     ``.pdf`` manuals are excluded from line-matching: reading a PDF as text yields binary
     noise, so a domain whose only on-machine sources are PDFs (e.g. COPQ) is verified by the
@@ -154,16 +233,8 @@ def assert_quote_in_any_manual(
     ``*_MANUAL_PATH`` env var at it to enable line-verification.
     """
     assert normalise(quote), f"Empty normalised quote for {site} line {src_line}"
-    present = {
-        name: p for name, p in manuals.items() if p.exists() and p.suffix.lower() != ".pdf"
-    }
-    if not present:
-        pytest.skip(
-            "No text (.md) manual on-machine for "
-            f"{site}: {sorted(str(p) for p in manuals.values())}. "
-            "Licensed manuals are on-machine only and not committed to git; PDF-only "
-            "sources are verified structurally, not by line-match."
-        )
+    require_manual(site, manuals, allow_pdf_only_skip=True)
+    present = usable_manuals(manuals)
     if any(_matches_at_line(p, src_line, quote) for p in present.values()):
         return
     raise AssertionError(

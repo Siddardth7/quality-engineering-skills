@@ -30,6 +30,7 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
   while the gate still rejected it would have passed. It now asserts
   `closeable is True` and `gate_reasons == []` — the happy-path mirror of
   `test_eight_d_closure_precondition.py`, which pins the rejecting case. Test-only.
+- docs: regenerate the stale `docs/mcp-client-setup.md` transcript from a live server and add `tests/test_mcp_transcript_version_governance.py` to pin it to `quality_mcp.__version__` (#239).
 
 ## [1.1.0] - 2026-09-08
 

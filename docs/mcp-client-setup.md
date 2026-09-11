@@ -175,6 +175,55 @@ uv run pytest packages/quality-mcp --cov=quality_mcp --cov-report=term-missing -
 
 Below is a verified JSON-RPC 2.0 message exchange showing client initialization, tool discovery, and tool execution against `quality-mcp`.
 
+### 4.0 Regenerating this transcript
+
+Every value below is captured from a live in-process server — never hand-typed. When
+`quality_mcp.__version__` is bumped, or a tool is added or removed, re-capture rather than
+edit in place. Save the snippet to a scratch file, run it with `uv run python <file>`, and
+delete the file afterwards (it is deliberately not committed: the pattern it uses is already
+covered by `packages/quality-mcp/tests/test_client_roundtrip.py`).
+
+```python
+import asyncio
+import json
+
+from mcp.shared.memory import create_connected_server_and_client_session
+from quality_mcp.server import mcp
+
+
+async def capture() -> None:
+    async with create_connected_server_and_client_session(mcp) as session:
+        init = await session.initialize()
+        print(json.dumps({
+            "protocolVersion": init.protocolVersion,
+            "capabilities": init.capabilities.model_dump(exclude_none=True),
+            "serverInfo": init.serverInfo.model_dump(exclude_none=True),
+        }, indent=2))
+
+        tools = await session.list_tools()
+        print(f"# {len(tools.tools)} tools total")
+        print(json.dumps([t.name for t in tools.tools], indent=2))
+
+        res = await session.call_tool("ping", {})
+        print(json.dumps({
+            "content": [c.model_dump(exclude_none=True) for c in res.content],
+            "structuredContent": res.structuredContent,
+            "isError": res.isError,
+        }, indent=2))
+
+
+asyncio.run(capture())
+```
+
+Two values are easy to confuse and must not be "corrected" into each other:
+
+- `serverInfo.version` (§4.1) is the **MCP SDK** version FastMCP reports. It is *not*
+  `quality_mcp.__version__`, it moves when the `mcp` dependency moves, and it must not be
+  "corrected" to the package version.
+- `structuredContent.version` from `ping` (§4.3) is **`quality_mcp.__version__`**. This is the
+  one `tests/test_mcp_transcript_version_governance.py` pins to the installed package at test
+  time, so it fails the gate on the next version bump until this section is re-captured.
+
 ### 4.1 Initialization (`initialize`)
 
 **Client Request:**
@@ -247,7 +296,14 @@ Below is a verified JSON-RPC 2.0 message exchange showing client initialization,
 }
 ```
 
-**Server Response:**
+**Server Response (excerpt — showing 2 of 34 tools):**
+
+The live `tools/list` result is the full catalog named at the end of this subsection. Only two
+tools are reproduced below — `ping` (zero-argument schema) and `lookup_fmea_ap`
+(required-argument schema) — to show the *shape* of the response without a full schema dump. The JSON schema payload shown is **illustrative and
+truncated**: descriptions are shortened, optional fields are omitted, and tool order is whatever
+the live server returns. Treat the live `tools/list` call as authoritative; see §4.0 to re-capture.
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -305,6 +361,43 @@ Below is a verified JSON-RPC 2.0 message exchange showing client initialization,
 }
 ```
 
+**Every tool name, numbered, in the order the live server returns them:**
+
+1. `lookup_fmea_ap`
+2. `render_5why_canvas`
+3. `render_controlplan_canvas`
+4. `render_copq_canvas`
+5. `render_fishbone_canvas`
+6. `render_fmea_canvas`
+7. `render_isisnot_canvas`
+8. `render_msa_canvas`
+9. `render_ncr_canvas`
+10. `render_ppap_canvas`
+11. `render_spc_canvas`
+12. `calculate_spc_chart`
+13. `calculate_gage_rr`
+14. `categorize_fishbone`
+15. `scope_is_is_not`
+16. `validate_5why`
+17. `validate_control_plan`
+18. `write_ncr`
+19. `recommend_disposition`
+20. `estimate_copq`
+21. `audit_ppap_package`
+22. `lookup_ppap_requirement`
+23. `validate_psw`
+24. `assess_ppap_capability`
+25. `calculate_supplier_ppm`
+26. `calculate_otif`
+27. `calculate_vendor_scorecard`
+28. `evaluate_escalation`
+29. `generate_scar`
+30. `render_sqe_canvas`
+31. `validate_8d`
+32. `advance_8d`
+33. `render_8d_canvas`
+34. `ping`
+
 ---
 
 ### 4.3 Tool Invocation (`tools/call` -> `ping`)
@@ -331,13 +424,13 @@ Below is a verified JSON-RPC 2.0 message exchange showing client initialization,
     "content": [
       {
         "type": "text",
-        "text": "{\n  \"status\": \"ok\",\n  \"server\": \"quality-mcp\",\n  \"version\": \"0.1.0\"\n}"
+        "text": "{\n  \"status\": \"ok\",\n  \"server\": \"quality-mcp\",\n  \"version\": \"1.1.0\"\n}"
       }
     ],
     "structuredContent": {
       "status": "ok",
       "server": "quality-mcp",
-      "version": "0.1.0"
+      "version": "1.1.0"
     },
     "isError": false
   }

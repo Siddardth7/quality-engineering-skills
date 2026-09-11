@@ -39,6 +39,15 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
   reports the MCP SDK version there, and the doc already matched the live server.
   `tests/test_mcp_transcript_version_governance.py` binds the transcript to live
   `quality_mcp.__version__` so staleness fails loudly rather than surviving another release.
+### Added
+- Optional structured **SCAR sheet** on the SQE Excel exporter (#200). `build_sqe_workbook` /
+  `export_sqe_workbook` / `export_sqe_excel` gain a `scar: SCARResult | None = None` keyword;
+  when supplied, a third `"SCAR"` worksheet is appended rendering the SCAR summary, its six cited
+  sections, its three-or-four linkage rows, and its warnings/recommendations. Omitting `scar`
+  (the default) leaves the existing two-sheet workbook unchanged. The sheet is qualitative —
+  live-formula verification is declared N/A (`sqe/ASSUMPTIONS_LOG.md` RULE-SQE-019), every cell
+  routes through `sanitize_cell`, and `SCARLinkageResult.raw_result` is deliberately never
+  rendered. `quality_core.sqe.scar` gains `benchmark_scar_result()`.
 
 ## [1.1.0] - 2026-09-08
 

@@ -428,6 +428,46 @@ log and `RULE-SQE-001`/`RULE-SQE-004`/`RULE-SQE-007`/`RULE-SQE-014`.
 
 ---
 
+## RULE-SQE-019: The SCAR sheet is a qualitative record — live-formula verification is N/A (`export.py`, #200)
+
+**Decision:** `quality_core.sqe.export` gains an optional third worksheet (`"SCAR"`), appended only
+when a `SCARResult` is passed as `scar=`, rendering one Supplier Corrective Action Request as four
+structured blocks: the scalar summary, the six cited sections, the three-or-four linkage rows, and
+the warnings/recommendations list. **Live-formula arithmetic verification is explicitly N/A for
+this sheet.** A SCAR is a qualitative corrective-action record with no arithmetic to re-express, so
+no `Formula` instance is ever constructed for it; every cell, header and body alike, is written
+through `sanitize_cell`, including the sub-engine-authored `findings` strings and the one warning
+that embeds the caller-supplied `linked_ncr_id` verbatim (`scar.py`, `_build_warnings`). The sheet
+is a presentation boundary: it surfaces the engine's own verdicts, findings, and rationales and
+recomputes nothing. `SCARLinkageResult.raw_result` is deliberately never rendered — it is the
+sub-engine's own nested payload (an NCR dataset, an RCA chain, a COPQ estimate: three incompatible
+shapes), and projecting it into rows here would mean the exporter deciding how to reinterpret
+another engine's internal structure, which is exactly the re-derivation this boundary forbids.
+
+**Source:** None. This rule asserts **no standards citation** and introduces no constant, threshold,
+or quotation, so it adds nothing to `sqe/CITATIONS.tsv` and **gains no row** there. No published
+AIAG, ISO, IATF, or Ford Global 8D source specifies spreadsheet calculation formulas, sheet
+layouts, or column sets for a supplier corrective-action record — the same absence recorded for
+qualitative RCA exports in `packages/quality-core/src/quality_core/rca/ASSUMPTIONS_LOG.md` RULE 6.
+The six section headings the sheet renders are already cited under RULE-SQE-011/012/013/014/015/016;
+this rule adds no new claim about them.
+
+**Rationale:** Declaring N/A in the log rather than silently shipping a formula-free sheet keeps the
+"every engine either carries live formulas or states why it cannot" contract legible, and makes the
+carve-out enforceable — the companion governance test asserts the workbook's SCAR cells are
+literals, so a future PR that wraps one in `Formula(...)` fails rather than passing unnoticed. The
+sheet is conditional rather than always-present because a blank `"SCAR"` tab cannot be told apart
+from an exporter that forgot to fill one in, whereas an absent tab unambiguously means "not
+applicable to this report"; omitting it by default also leaves every existing two-sheet caller
+untouched.
+
+**Applied In:** `packages/quality-core/src/quality_core/sqe/export.py` (`build_sqe_workbook`,
+`export_sqe_workbook`, `export_sqe_excel`, `_write_scar_sheet`, `_write_scar_block`,
+`_scar_summary_rows`, `_scar_linkage_rows`, `_scar_note_rows`),
+`packages/quality-core/src/quality_core/sqe/scar.py` (`benchmark_scar_result`).
+
+---
+
 ## Process Design Decisions (no standard implied)
 
 These are engineering and process decisions taken while building `scar.py` (#120). **None of them

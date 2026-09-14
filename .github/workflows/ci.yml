@@ -93,16 +93,48 @@ jobs:
       # all twelve; the combined --cov-fail-under=100 fails if any line in any of them is
       # uncovered. branch coverage is inherited from [tool.coverage.run] branch=true in pyproject.
       #
-      # Citation gate (#241): manual paths come from `*_MANUAL_PATH` env vars with no
-      # per-machine default, and a missing manual FAILS by default. CI mounts no licensed
-      # manuals (they are on-machine only), so it opts out here — the structural citation
-      # checks still run. How much of the gate actually verified is not left implicit: the
-      # session hook in packages/quality-core/tests/conftest.py writes the verified /
-      # unverified split to $GITHUB_STEP_SUMMARY, so the vacuity is visible in the job
-      # summary tab, not buried in the log. No extra step is needed for that.
+      # Citation gate (#241, #246): manual paths come from `*_MANUAL_PATH` env vars with no
+      # per-machine default, and a missing manual FAILS. The licensed manuals are never
+      # committed here; the step below checks out the private manuals repo and exports every
+      # `*_MANUAL_PATH`, so CI runs the citation gate STRICT for every domain — there is no
+      # ALLOW_UNVERIFIED_CITATIONS opt-out in this workflow, deliberately. Fork PRs have no
+      # access to `secrets.MANUALS_REPO_TOKEN`, so the checkout fails and the job fails: that
+      # is the intended behaviour (a citation gate that never ran must not read as green), so
+      # do not add `continue-on-error`, an `if:` guard, or a fallback that re-sets the opt-out.
+      # Filenames mirror the on-machine paths in CLAUDE.md "Standards fidelity" 1:1 so the
+      # private repo can be diffed against that table. `COPQ_LUMAFIELD_MANUAL_PATH` is not
+      # exported: no manifest row cites it and `require_manual` returns as soon as one usable
+      # `.md` is present, so leaving it unset counts toward neither summary bucket.
+      # The session hook in packages/quality-core/tests/conftest.py still writes the
+      # verified / unverified split to $GITHUB_STEP_SUMMARY; after this step the expected
+      # line is `missing config (*_MANUAL_PATH unset or wrong): 0`.
+      - name: Fetch licensed reference manuals
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
+        with:
+          repository: Siddardth7/quality-manuals-private
+          token: ${{ secrets.MANUALS_REPO_TOKEN }}
+          path: .manuals
+          persist-credentials: false
+
+      - name: Export manual paths
+        run: |
+          M="$GITHUB_WORKSPACE/.manuals"
+          {
+            echo "MSA_MANUAL_PATH=$M/MSA/MSA_Reference_Manual_4th_Edition.md"
+            echo "FMEA_MANUAL_PATH=$M/FMEA/pdfcoffee.com_aiag-vda-fmea-handbook-1-version-juni-2019-englisch-pdf-free.md"
+            echo "PPAP_MANUAL_PATH=$M/PPAP/AIAG_PPAP_4th_Edition.md"
+            echo "ISHIKAWA_MANUAL_PATH=$M/RCA/Kaoru_Ishikawa_Guide_to_Quality_Control.md"
+            echo "ASQ_MANUAL_PATH=$M/RCA/ASQ_The_Quality_Toolbox_2nd_Edition.md"
+            echo "CQI20_MANUAL_PATH=$M/RCA/AIAG_CQI_20_Effective_Problem_Solving_2nd_Edition.md"
+            echo "KT_MANUAL_PATH=$M/RCA/Kepner_Tregoe_The_New_Rational_Manager.md"
+            echo "FORD_8D_MANUAL_PATH=$M/RCA/Ford_Global_8D_Manual.md"
+            echo "ISO_9001_MANUAL_PATH=$M/NCR/ISO_9001_2015_Section_8_7.md"
+            echo "IATF_16949_MANUAL_PATH=$M/NCR/IATF_16949_2016_Section_8_7.md"
+            echo "COPQ_ASQ_CSSGB_MANUAL_PATH=$M/COPQ/ASQ_six_sigma_green_belt_handb.md"
+            echo "COPQ_CSSC_MANUAL_PATH=$M/COPQ/Lean-Six-Sigma-Green-Belt-Certification-Training-Manual-CSSC-2018-06b.md"
+          } >> "$GITHUB_ENV"
+
       - name: Core coverage gate
-        env:
-          ALLOW_UNVERIFIED_CITATIONS: "1"
         run: >
           uv run pytest packages/quality-core
           --cov=quality_core.io

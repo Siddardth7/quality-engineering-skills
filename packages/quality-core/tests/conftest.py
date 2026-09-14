@@ -66,7 +66,7 @@ def make_dataset() -> Callable[..., FMEADataset]:
 # must never look alike:
 #
 #   - "structurally unverifiable (PDF-only)" — the domain's declared manuals are present but
-#     are PDFs, which cannot be line-matched (COPQ). Nothing an operator can configure fixes
+#     are PDFs, which cannot be line-matched. Nothing an operator can configure fixes
 #     this; only extracting a `.md` text layer does.
 #   - "missing config" — a `*_MANUAL_PATH` is unset or wrong. An operator CAN fix this, and
 #     under strict mode these fail rather than skip.

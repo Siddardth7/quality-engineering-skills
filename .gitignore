@@ -54,3 +54,6 @@ htmlcov/
 # Local persona and agent rules
 /.agents/
 /docs/personas/
+
+# Licensed reference manuals checked out by CI (.github/workflows/ci.yml); never committed.
+.manuals/

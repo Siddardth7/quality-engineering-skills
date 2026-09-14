@@ -3,10 +3,9 @@
 `copq/CITATIONS.tsv` shipped with real rows but no dedicated verifying test — its manifest
 was unverified (#140). This adds the missing test, mirroring the per-domain pattern.
 
-COPQ's declared sources (ASQ CSSGB handbook, CSSC Lean Six Sigma manual, Lumafield report)
-are **PDF-only** on-machine, so the quotation rows are verified by the structural checks
-here; line-matching activates only if a `.md` extraction is provided via the env-var
-overrides (see `_citation_audit.assert_quote_in_any_manual`).
+COPQ's manifest rows are line-matched against `pdftotext -layout` extractions of the ASQ
+CSSGB Handbook and the CSSC manual (#245), wired through `COPQ_ASQ_CSSGB_MANUAL_PATH` /
+`COPQ_CSSC_MANUAL_PATH`. The Lumafield report stays PDF-only and is cited by no row.
 """
 
 from __future__ import annotations
@@ -62,9 +61,9 @@ def test_every_live_quotation_in_log_has_manifest_row() -> None:
 
 
 def test_every_manifest_row_is_present_in_log() -> None:
-    """Load-bearing content check without a manual: COPQ's sources are PDF-only, so line-
-    matching always skips; this binds each manifest row to the log so corrupting any single
-    row fails even on CI (the issue's negative-control AC for copq)."""
+    """Load-bearing content check without a manual: this binds each manifest row to the log
+    so corrupting any single row fails even where no manual is mounted (the issue's
+    negative-control AC for copq)."""
     assert_manifest_rows_present_in_log(ASSUMPTIONS_LOG, MANIFEST_ROWS)
 
 

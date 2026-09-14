@@ -8,6 +8,25 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 
 ## [Unreleased]
 
+### Added
+- **CI runs the citation gate strict for every domain, and COPQ's manifest is now verbatim**
+  (#245, #246). `ci.yml` no longer sets `ALLOW_UNVERIFIED_CITATIONS: "1"`; a new
+  `Fetch licensed reference manuals` step checks out the private
+  `Siddardth7/quality-manuals-private` repo (secret `MANUALS_REPO_TOKEN`) into the gitignored
+  `.manuals/` and exports all twelve `*_MANUAL_PATH` vars, so the `Core coverage gate` summary
+  targets `missing config: 0` and `structurally unverifiable (PDF-only): 0`. There is no
+  `continue-on-error` or fallback: a fork PR has no secret, so the checkout fails the job
+  rather than passing vacuously. On the COPQ side, none of the six `copq/CITATIONS.tsv`
+  quotations existed in any on-machine source (the `src_line` values 1–6 were placeholders);
+  on the SME's ruling they are replaced by seven verbatim rows from `pdftotext -layout`
+  extractions of the ASQ CSSGB Handbook glossary (lines 27249–27255) and the CSSC manual
+  (lines 3920, 3989), wired through `COPQ_ASQ_CSSGB_MANUAL_PATH` / `COPQ_CSSC_MANUAL_PATH`.
+  All seven verify on-box; COPQ contributes 0 to the PDF-only bucket, and the uncited
+  Lumafield report (unset in CI) counts toward neither bucket. `copq/ASSUMPTIONS_LOG.md`
+  records the ASQ-vs-CSSC disagreement over whether COPQ spans all four PAF categories or
+  failure costs only (the engine follows CSSC). The opt-out mechanism itself is unchanged
+  for local runs.
+
 ### Fixed
 - **Trust-boundary validators no longer crash on array-like values** (#232). A bare
   `pd.isna(v)` inside the record-normalising dict comprehensions raised

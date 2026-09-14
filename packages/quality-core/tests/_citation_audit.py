@@ -13,8 +13,8 @@ Design notes:
 - **Manuals are on-machine only** and never committed to git, and their paths come from
   ``*_MANUAL_PATH`` env vars with no per-machine default. When a manual is absent the
   manual-match **fails** (``require_manual``) unless ``ALLOW_UNVERIFIED_CITATIONS=1`` is
-  set, which restores the old skip for local dev and for CI, where no manual is mounted
-  (#241). The structural checks (manifest present, no duplicate rows, every live
+  set, which restores the old skip for local dev only — CI checks out the manuals from a
+  private repo and runs strict (#241, #246). The structural checks (manifest present, no duplicate rows, every live
   blockquote backed) still run everywhere regardless.
 - **"Any declared manual"** matching: several domains cite more than one licensed manual and
   the per-row manual is not recorded in the manifest. A row passes when its quote appears at
@@ -228,7 +228,7 @@ def assert_quote_in_any_manual(
     at least one text manual is present but none contains the quote at the cited line.
 
     ``.pdf`` manuals are excluded from line-matching: reading a PDF as text yields binary
-    noise, so a domain whose only on-machine sources are PDFs (e.g. COPQ) is verified by the
+    noise, so a domain whose only on-machine sources are PDFs is verified by the
     structural checks, not by line-matching. Extract a ``.md`` and point the domain's
     ``*_MANUAL_PATH`` env var at it to enable line-verification.
     """
@@ -278,7 +278,7 @@ def assert_manifest_rows_present_in_log(log_path: Path, rows: list[tuple[str, in
     """Assert every manifest quote appears verbatim (normalised) in the log text.
 
     This is the manual-independent negative control for a domain whose manuals cannot be
-    line-matched (e.g. COPQ's PDF-only sources): corrupting *any single* manifest row makes
+    line-matched (PDF-only sources, as COPQ was before #245): corrupting *any single* manifest row makes
     that row's quote vanish from the log and fails here. Unlike ``assert_blockquotes_backed``
     (log → manifest, and per contiguous block), this binds manifest → log per row, so it is
     not defeated by several quotes sharing one contiguous blockquote block.

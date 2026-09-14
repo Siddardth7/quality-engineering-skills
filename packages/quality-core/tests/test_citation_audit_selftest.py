@@ -58,8 +58,8 @@ def test_correct_quote_at_wrong_line_fails(tmp_path: Path) -> None:
 def test_fails_when_no_text_manual_present(monkeypatch: pytest.MonkeyPatch) -> None:
     """Strict by default (#241): an absent manual is an unverified citation, not a free pass.
 
-    Forces strict mode rather than assuming the ambient env is strict. CI sets
-    ``ALLOW_UNVERIFIED_CITATIONS=1`` for the whole quality-core run (it mounts no manuals),
+    Forces strict mode rather than assuming the ambient env is strict. A local run may set
+    ``ALLOW_UNVERIFIED_CITATIONS=1`` for the whole quality-core run (CI never does, #246),
     and under that env an unpinned version of this test takes the skip path and its own
     escape-guard converts that into a failure -- a red gate for a correctly-configured CI.
     Its twin below pins the opposite direction with ``setenv``; this is the mirror.
@@ -88,7 +88,7 @@ def test_fails_when_no_text_manual_present(monkeypatch: pytest.MonkeyPatch) -> N
 def test_skips_when_no_text_manual_present_and_opted_out(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """`ALLOW_UNVERIFIED_CITATIONS=1` restores the old skip, for local dev and for CI."""
+    """`ALLOW_UNVERIFIED_CITATIONS=1` restores the old skip for local dev (never CI, #246)."""
     monkeypatch.setenv(ca.ALLOW_UNVERIFIED_CITATIONS_ENV, "1")
     absent = {"MISSING": Path("/nonexistent/manual.md")}
     with pytest.raises(pytest.skip.Exception):

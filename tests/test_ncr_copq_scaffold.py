@@ -122,6 +122,9 @@ def test_copq_assumptions_log_exists_and_metadata() -> None:
     assert "# Engineering Assumptions Log — Cost of Poor Quality (COPQ) Suite" in content
     assert "**Package:** `quality_core.copq`" in content
     assert "**Standard References:**" in content
+    # #245: the line-matched COPQ sources are the extracted .md text layers, not the PDFs.
+    assert "/Users/sid/Documents/Upskill/SixSigma/COPQ/ASQ_six_sigma_green_belt_handb.md" in content
+    assert "/Users/sid/Documents/Upskill/SixSigma/COPQ/Lean-Six-Sigma-Green-Belt-Certification-Training-Manual-CSSC-2018-06b.md" in content
     assert "/Users/sid/Documents/Upskill/SixSigma/COPQ/ASQ_six_sigma_green_belt_handb.pdf" in content
     assert "/Users/sid/Documents/Upskill/SixSigma/COPQ/_new/ASQ-CSSGB-BoK-2014.pdf" in content
     assert "/Users/sid/Documents/Upskill/SixSigma/COPQ/Lean-Six-Sigma-Green-Belt-Certification-Training-Manual-CSSC-2018-06b.pdf" in content
@@ -204,6 +207,9 @@ def test_claude_md_standards_fidelity_mapping() -> None:
     assert "/Users/sid/Documents/Upskill/SixSigma/NCR/ISO_9001_2015_Section_8_7.md" in content
     assert "IATF 16949:2016 §8.7" in content
     assert "/Users/sid/Documents/Upskill/SixSigma/NCR/IATF_16949_2016_Section_8_7.md" in content
+    # #245: the line-matched COPQ sources are the extracted .md text layers, not the PDFs.
+    assert "/Users/sid/Documents/Upskill/SixSigma/COPQ/ASQ_six_sigma_green_belt_handb.md" in content
+    assert "/Users/sid/Documents/Upskill/SixSigma/COPQ/Lean-Six-Sigma-Green-Belt-Certification-Training-Manual-CSSC-2018-06b.md" in content
     assert "/Users/sid/Documents/Upskill/SixSigma/COPQ/ASQ_six_sigma_green_belt_handb.pdf" in content
     assert "/Users/sid/Documents/Upskill/SixSigma/COPQ/TheLumafieldCostofQualityReportpdf.pdf" in content
 

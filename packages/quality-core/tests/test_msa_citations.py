@@ -14,8 +14,10 @@ The check pins the **line number** (+/-2 for wrapping), not mere substring prese
 substring test would pass for a quote lifted from the wrong chapter; a line-pinned test is
 a citation index, which is what a reader auditing the log actually needs.
 
-The manual is licensed and is NOT in the repo, so these tests **skip** (never fail) when it
-is absent — CI has no copy. Point ``MSA_MANUAL_PATH`` at a local copy to run them.
+The manual is licensed and is NOT in the repo. A missing ``MSA_MANUAL_PATH`` **fails** these
+tests under strict mode (#241); ``ALLOW_UNVERIFIED_CITATIONS=1`` restores the skip for local
+dev only. CI checks the manual out of a private repo and runs strict (#246). Point
+``MSA_MANUAL_PATH`` at a local copy to run them.
 
 Matching is formatting-tolerant by necessity: the markdown renders emphasis inline, so the
 genuine passage at line 3419 reads ``tolerance _divided by six_``. A naive substring search
@@ -197,7 +199,7 @@ def test_every_live_quotation_in_the_log_has_a_manifest_row() -> None:
     later, citing nothing, would pass every other check. This closes that direction.
 
     Runs with or without the manual, so it is the one substantive citation check that
-    executes on CI, where the licensed manual is absent.
+    still executes when ``ALLOW_UNVERIFIED_CITATIONS=1`` skips the line-matched rows.
     """
     rows = [_normalise(quote) for _, _, quote in MANIFEST_ROWS]
 

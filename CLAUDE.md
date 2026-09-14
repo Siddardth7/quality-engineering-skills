@@ -152,7 +152,7 @@ Violating these has cost real rework.
   - **RCA:** AIAG CQI-20 (2nd Ed, 2018), Kaoru Ishikawa *Guide to Quality Control* (2nd Rev Ed, 1986), Kepner & Tregoe *The New Rational Manager* (Updated Ed, 1997), Ford Global 8D Manual, and Nancy R. Tague *The Quality Toolbox* (2nd Ed, ASQ 2005) under `/Users/sid/Documents/Upskill/SixSigma/RCA/`.
   - **Supplier Quality (SCAR & Vendor Rating):** ISO 9001:2015 §8.4/§10.2 at `/Users/sid/Documents/Upskill/SixSigma/SQE/ISO_9001_2015_Section_8_4_and_10_2.md`; IATF 16949:2016 §8.4 at `/Users/sid/Documents/Upskill/SixSigma/SQE/IATF_16949_2016_Section_8_4.md`; AIAG CQI-20 (2nd Ed, 2018) and the Ford Global 8D Manual under `/Users/sid/Documents/Upskill/SixSigma/RCA/`.
   - **NCR:** ISO 9001:2015 §8.7 ("Control of nonconforming outputs") at `/Users/sid/Documents/Upskill/SixSigma/NCR/ISO_9001_2015_Section_8_7.md` (or `/Users/sid/Documents/Upskill/SixSigma/NCR/ISO-9001-2015.pdf`), IATF 16949:2016 §8.7 at `/Users/sid/Documents/Upskill/SixSigma/NCR/IATF_16949_2016_Section_8_7.md` (or `/Users/sid/Documents/Upskill/SixSigma/NCR/pdfcoffee.com_iatf16949-2016-standard-pdf-free.pdf`).
-  - **COPQ:** ASQ Certified Six Sigma Green Belt (CSSGB) Body of Knowledge / *The Certified Six Sigma Green Belt Handbook* (2nd Edition, ASQ Quality Press) / CSSC *Lean Six Sigma Green Belt Certification Training Manual* (2018) at `/Users/sid/Documents/Upskill/SixSigma/COPQ/ASQ_six_sigma_green_belt_handb.pdf`, `/Users/sid/Documents/Upskill/SixSigma/COPQ/_new/ASQ-CSSGB-BoK-2014.pdf`, `/Users/sid/Documents/Upskill/SixSigma/COPQ/Lean-Six-Sigma-Green-Belt-Certification-Training-Manual-CSSC-2018-06b.pdf`; Lumafield Cost of Quality Report at `/Users/sid/Documents/Upskill/SixSigma/COPQ/TheLumafieldCostofQualityReportpdf.pdf` (non-standard industry benchmark).
+  - **COPQ:** ASQ Certified Six Sigma Green Belt (CSSGB) Body of Knowledge / *The Certified Six Sigma Green Belt Handbook* (2nd Edition, ASQ Quality Press) / CSSC *Lean Six Sigma Green Belt Certification Training Manual* (2018) at `/Users/sid/Documents/Upskill/SixSigma/COPQ/ASQ_six_sigma_green_belt_handb.md` and `/Users/sid/Documents/Upskill/SixSigma/COPQ/Lean-Six-Sigma-Green-Belt-Certification-Training-Manual-CSSC-2018-06b.md` (text layers, `pdftotext -layout` of `/Users/sid/Documents/Upskill/SixSigma/COPQ/ASQ_six_sigma_green_belt_handb.pdf` and `/Users/sid/Documents/Upskill/SixSigma/COPQ/Lean-Six-Sigma-Green-Belt-Certification-Training-Manual-CSSC-2018-06b.pdf`; `/Users/sid/Documents/Upskill/SixSigma/COPQ/_new/ASQ-CSSGB-BoK-2014.pdf` is the BoK outline only); Lumafield Cost of Quality Report at `/Users/sid/Documents/Upskill/SixSigma/COPQ/TheLumafieldCostofQualityReportpdf.pdf` (non-standard industry benchmark).
   - **PPAP:** AIAG *Production Part Approval Process* Reference Manual (4th Edition, 2006) at `/Users/sid/Documents/Upskill/SixSigma/PPAP/AIAG_PPAP_4th_Edition.md` (training deck at `/Users/sid/Documents/Upskill/SixSigma/PPAP/AIAG Production Part Approval Process (PPAP), 4th Edition (2006).pdf` is secondary / non-authoritative).
   Never verify a standards quotation via web search.
 - **To verify citations locally, copy the `*_MANUAL_PATH` block from `.env.example` into
@@ -160,11 +160,14 @@ Violating these has cost real rework.
   loads `.env` automatically via the root `conftest.py`, so there is no `set -a; source .env`
   step, and a real exported shell variable always wins over `.env`. A missing or wrong path
   **fails** that domain's citation tests rather than skipping them, unless
-  `ALLOW_UNVERIFIED_CITATIONS=1` is set (the literal `"1"` only). CI sets it, because CI mounts
-  no manuals; local runs default to strict. Every run prints
+  `ALLOW_UNVERIFIED_CITATIONS=1` is set (the literal `"1"` only). CI never sets it: the
+  `Fetch licensed reference manuals` step in `ci.yml` checks out the private
+  `Siddardth7/quality-manuals-private` repo (secret `MANUALS_REPO_TOKEN`) into `.manuals/`
+  and exports every `*_MANUAL_PATH`, so CI runs strict for every domain and a fork PR (no
+  secret) fails at that step rather than passing vacuously. Every run prints
   `CITATION VERIFICATION: N verified, M unverified`, splitting the unverified into
-  `structurally unverifiable (PDF-only)` (COPQ — a PDF cannot be line-matched) and
-  `missing config` (a `*_MANUAL_PATH` you can fix).
+  `structurally unverifiable (PDF-only)` (a domain whose only present sources are PDFs — none
+  since the COPQ `.md` extractions in #245) and `missing config` (a `*_MANUAL_PATH` you can fix).
 - Use **formatting-tolerant matching** when checking quotations. Markdown emphasis and
   inline `<sup>` footnote markup produce false "fabricated" verdicts — and a false
   fabrication verdict is as serious as a real fabrication. Keep citations in a

@@ -1755,7 +1755,7 @@ wheels = [
 
 [[package]]
 name = "quality-core"
-version = "1.1.0"
+version = "1.1.1"
 source = { editable = "packages/quality-core" }
 dependencies = [
     { name = "defusedxml" },
@@ -1785,7 +1785,7 @@ provides-extras = ["streamlit"]
 
 [[package]]
 name = "quality-engineering-skills"
-version = "1.1.0"
+version = "1.1.1"
 source = { virtual = "." }
 dependencies = [
     { name = "quality-core" },
@@ -1822,7 +1822,7 @@ dev = [
 
 [[package]]
 name = "quality-mcp"
-version = "1.1.0"
+version = "1.1.1"
 source = { editable = "packages/quality-mcp" }
 dependencies = [
     { name = "mcp" },

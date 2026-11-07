@@ -8,6 +8,20 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-11-07
+
+Patch release covering the work promoted from `test` to `main` after `v1.1.0` (#252),
+including a dependency security bump. No breaking changes.
+
+### Security
+- **Six locked dependencies bumped to clear new `pip-audit` advisories** (#251). 37 advisories
+  published after the last green CI run had turned the gate red on every branch: certifi
+  2026.5.20 → 2026.10.23, filelock 3.32.2 → 4.2.9, mcp 1.29.0 → 1.30.0, msgpack 1.2.1 → 1.2.4,
+  pyjwt 2.13.0 → 2.15.1, urllib3 2.7.0 → 2.8.0. Lockfile-only; both 100% coverage gates hold.
+  The "Verified" MCP client-setup transcript is re-captured from a live server for this
+  release (`ping` reports `1.1.1`; `serverInfo` reports the SDK's `1.30.0` and its new empty
+  `experimental` capability).
+
 ### Documentation
 - **v1 close-out presentation pass.** README and ROADMAP now show `v1.0.0` and `v1.1.0` as
   released, with links to their release pages. The README gains a stable-status line and an

@@ -255,6 +255,7 @@ Two values are easy to confuse and must not be "corrected" into each other:
   "result": {
     "protocolVersion": "2025-11-25",
     "capabilities": {
+      "experimental": {},
       "prompts": {
         "listChanged": false
       },
@@ -268,7 +269,7 @@ Two values are easy to confuse and must not be "corrected" into each other:
     },
     "serverInfo": {
       "name": "quality-mcp",
-      "version": "1.29.0"
+      "version": "1.30.0"
     }
   }
 }
@@ -424,13 +425,13 @@ the live server returns. Treat the live `tools/list` call as authoritative; see 
     "content": [
       {
         "type": "text",
-        "text": "{\n  \"status\": \"ok\",\n  \"server\": \"quality-mcp\",\n  \"version\": \"1.1.0\"\n}"
+        "text": "{\n  \"status\": \"ok\",\n  \"server\": \"quality-mcp\",\n  \"version\": \"1.1.1\"\n}"
       }
     ],
     "structuredContent": {
       "status": "ok",
       "server": "quality-mcp",
-      "version": "1.1.0"
+      "version": "1.1.1"
     },
     "isError": false
   }

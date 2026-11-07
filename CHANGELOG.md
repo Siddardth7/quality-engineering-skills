@@ -8,6 +8,14 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 
 ## [Unreleased]
 
+### Documentation
+- **v1 close-out presentation pass.** README and ROADMAP now show `v1.0.0` and `v1.1.0` as
+  released, with links to their release pages. The README gains a stable-status line and an
+  "Add a skill" pointer. ROADMAP's v2 backlog becomes an undated **Next stages** list with a
+  documented way to propose new skills, and a minimal `CONTRIBUTING.md` is added. #245/#246
+  (strict citation gate in CI) are carried into Next stages; PR #250 was closed unmerged because
+  CI has no licensed-manuals repo or `MANUALS_REPO_TOKEN` secret.
+
 ### Fixed
 - **Trust-boundary validators no longer crash on array-like values** (#232). A bare
   `pd.isna(v)` inside the record-normalising dict comprehensions raised

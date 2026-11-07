@@ -4,7 +4,7 @@
 
 <div align="center">
 
-<img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=600&size=20&pause=1200&color=E65100&center=true&vCenter=true&width=820&height=45&lines=FMEA+//+SPC+//+MSA+//+Control+Plan+%E2%80%94+the+tested+core;The+AI+reasons+//+the+Python+engine+does+the+exact+math;MCP-native+//+local-first+//+agentskills.io;10+releases+//+v0.1.0+%E2%80%94%E2%96%B6+v1.0.0" alt="tagline">
+<img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=600&size=20&pause=1200&color=E65100&center=true&vCenter=true&width=820&height=45&lines=FMEA+//+SPC+//+MSA+//+Control+Plan+%E2%80%94+the+tested+core;The+AI+reasons+//+the+Python+engine+does+the+exact+math;MCP-native+//+local-first+//+agentskills.io;11+releases+//+v0.1.0+%E2%80%94%E2%96%B6+v1.1.0" alt="tagline">
 
 <br>
 
@@ -16,6 +16,8 @@
 [![Ruff](https://img.shields.io/badge/lint-ruff-261230?logo=ruff&logoColor=white)](https://github.com/astral-sh/ruff)
 [![mypy](https://img.shields.io/badge/types-mypy-2a6db2)](https://mypy-lang.org/)
 [![MCP](https://img.shields.io/badge/protocol-MCP-6e56cf)](https://modelcontextprotocol.io)
+
+**Stable · [v1.1.0](https://github.com/Siddardth7/quality-engineering-skills/releases/tag/v1.1.0) · 14 skills · actively maintained · Next stages → [ROADMAP.md](ROADMAP.md#next-stages)**
 
 <br>
 
@@ -54,12 +56,12 @@ Local-first: no cloud backend, works directly on local CSV / Excel / JSON files.
 
 ## 🗺️ The plan
 
-`v0.1` platform + MCP setup → `v0.2–v0.5` wrap the four existing engines → `v0.6–v0.9` one new high-ROI domain per version → `v1.0` hardening.
+`v0.1` platform + MCP setup → `v0.2–v0.5` wrap the four existing engines → `v0.6–v0.9` one new high-ROI domain per version → `v1.0` hardening → `v1.1` 8D. All shipped.
 
 ```
-v0.1.0 ─► v0.2.0 ─► v0.3.0 ─► v0.4.0 ─► v0.5.0 ─► v0.6.0 ─► v0.7.0 ─► v0.8.0 ─► v0.9.0 ─► v1.0.0
-Setup     FMEA      SPC       MSA      Control    RCA       NCR &     PPAP      Supplier   Production
-& MCP     via MCP   via MCP   via MCP  Plan       Suite     COPQ      Core      SCAR       Hardening
+v0.1.0 ─► v0.2.0 ─► v0.3.0 ─► v0.4.0 ─► v0.5.0 ─► v0.6.0 ─► v0.7.0 ─► v0.8.0 ─► v0.9.0 ─► v1.0.0 ─► v1.1.0
+Setup     FMEA      SPC       MSA      Control    RCA       NCR &     PPAP      Supplier   Production 8D state
+& MCP     via MCP   via MCP   via MCP  Plan       Suite     COPQ      Core      SCAR       Hardening  machine
 ```
 
 | Milestone | Theme | Status | Milestone Index |
@@ -73,10 +75,10 @@ Setup     FMEA      SPC       MSA      Control    RCA       NCR &     PPAP      
 | **v0.7.0** | NCR & COPQ Financial Estimator | ✅ **Completed** | [docs/milestones/v0.7.0.md](docs/milestones/v0.7.0.md) |
 | **v0.8.0** | PPAP Core (18-Element AIAG Base Standard) | ✅ **Completed** | [docs/milestones/v0.8.0.md](docs/milestones/v0.8.0.md) |
 | **v0.9.0** | Supplier SCAR & Vendor Rating | ✅ **Completed** | [docs/milestones/v0.9.0.md](docs/milestones/v0.9.0.md) |
-| **v1.0.0** | Production Hardening & Live-Formula Exporters | ✅ **Complete · human release pending** | [docs/milestones/v1.0.0.md](docs/milestones/v1.0.0.md) |
-| **v1.1.0** | 8D Problem-Solving State Machine | ✅ **Complete · human release pending** | [docs/milestones/v1.1.0.md](docs/milestones/v1.1.0.md) |
+| **v1.0.0** | Production Hardening & Live-Formula Exporters | ✅ **[Released](https://github.com/Siddardth7/quality-engineering-skills/releases/tag/v1.0.0)** | [docs/milestones/v1.0.0.md](docs/milestones/v1.0.0.md) |
+| **v1.1.0** | 8D Problem-Solving State Machine | ✅ **[Released](https://github.com/Siddardth7/quality-engineering-skills/releases/tag/v1.1.0)** | [docs/milestones/v1.1.0.md](docs/milestones/v1.1.0.md) |
 
-8D was the first v2-backlog item promoted, shipping in `v1.1.0`. Everything else — APQP/DVP&R, full ISO/IATF + VDA 6.3 audit, OEM CSR overlays, desktop packaging — is the named **v2 backlog** in **[ROADMAP.md](ROADMAP.md)**. Versions are milestone-driven, not date-driven.
+8D was the first v2-backlog item promoted, shipping in `v1.1.0`. What comes next (OEM CSR overlays, an ISO 9001/IATF clause bank, VDA 6.3, desktop packaging, local-LLM support, and more) is listed under **[ROADMAP.md → Next stages](ROADMAP.md#next-stages)**, with no dates. Versions are milestone-driven, not date-driven.
 
 ---
 
@@ -121,7 +123,7 @@ uv sync --frozen
 uv run pytest -q
 ```
 
-The MCP server and canvas entry points land in `v0.1.0`–`v0.2.0` — see **[ROADMAP.md](ROADMAP.md)**. To connect AI host clients (Claude Code, Cursor) to `quality-mcp`, see **[docs/mcp-client-setup.md](docs/mcp-client-setup.md)**.
+Run the MCP server over stdio with `uv run quality-mcp`. To connect AI host clients (Claude Code, Cursor) to `quality-mcp`, see **[docs/mcp-client-setup.md](docs/mcp-client-setup.md)**.
 
 ---
 
@@ -153,6 +155,12 @@ quality-engineering-skills/
 ├── docs/milestones/      # per-release milestone index + specs
 └── .claude/              # ship pipeline agents + commands
 ```
+
+---
+
+## ➕ Add a skill
+
+New skills are welcome. Copy **[`skills/_template/`](skills/_template/)**, follow the conventions in **[`skills/README.md`](skills/README.md)** (skills hold the reasoning, and every number comes from a `quality-core` engine), and read **[CONTRIBUTING.md](CONTRIBUTING.md)** before opening a PR. To propose a new skill or domain, open an issue first, as described in [ROADMAP.md → Next stages](ROADMAP.md#next-stages).
 
 ---
 

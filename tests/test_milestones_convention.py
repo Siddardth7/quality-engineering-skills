@@ -16,7 +16,7 @@ Validates:
 13. Markdown relative link resolution against repository filesystem.
 14. CHANGELOG.md entry formatting under [Unreleased] or release headings (#7, #21, #34, #41, #48, #80, #96).
 15. Milestone 11 (v1.1.0.md) Epic definitions (E0-E14), Issue traceability (#204 through #218),
-    branch mapping, closeout facts, and version/changelog reconciliation at 1.1.0 (#217).
+    branch mapping, and closeout facts (#217); version/changelog reconciliation at 1.1.1.
 16. Negative controls: detection of invalid filenames, missing sections, invalid issue URLs, broken links, missing epics/issues/artifacts, and corrupted branch names.
 """
 
@@ -1623,23 +1623,17 @@ def test_v110_closeout_completion_and_release_boundary() -> None:
 
 
 def _assert_v110_changelog_facts(changelog: str) -> None:
-    """Assert the dated 1.1.0 release section, its traceability, and the release ordering.
+    """Assert the dated 1.1.0 release section, its traceability, and its link to 1.0.0.
 
-    This carries forward the ordering structure ``_assert_v100_changelog_facts`` established
-    in #218 — ``[Unreleased]`` present and immediately above the newest release section, with
-    no other release heading wedged between — retargeted at ``[1.1.0]``. It adds the piece the
-    1.0.0 version could not have: ``## [1.0.0] - 2026-08-29`` must still be present and must
-    still follow ``[1.1.0]`` directly, so the historical record's ordering is guarded going
-    forward and not merely the newest release's (#217).
+    At the v1.1.0 closeout this also pinned ``[Unreleased]`` as sitting *immediately* above
+    ``[1.1.0]``. The v1.1.1 roll legitimately supersedes that placement — ``[1.1.1]`` now sits
+    between them — so, exactly as #217 did for 1.0.0, the ordering assertion moved to
+    :func:`_assert_v111_changelog_facts`, which pins it against the newest release and also pins
+    that ``[1.1.0]`` still follows ``[1.1.1]`` directly. What remains here stays true for good:
+    the dated 1.1.0 heading, ``## [1.0.0] - 2026-08-29`` following it directly, and the 1.1.0
+    section's traceability to #217 and the v1.1.0 milestone doc.
     """
-    assert "## [Unreleased]" in changelog
     assert "## [1.1.0] - 2026-09-08" in changelog
-    before_v110 = changelog.split("## [1.1.0] - 2026-09-08", maxsplit=1)[0]
-    around_unreleased = before_v110.split("## [Unreleased]", maxsplit=1)
-    assert len(around_unreleased) == 2, "## [Unreleased] must sit above the 1.1.0 release section"
-    assert "## [" not in around_unreleased[1], (
-        "no release section may sit between ## [Unreleased] and ## [1.1.0] - 2026-09-08"
-    )
     release = changelog.split("## [1.1.0] - 2026-09-08", maxsplit=1)[1]
     assert "## [1.0.0] - 2026-08-29" in release, (
         "the historical ## [1.0.0] - 2026-08-29 section must remain present below ## [1.1.0]"
@@ -1652,21 +1646,50 @@ def _assert_v110_changelog_facts(changelog: str) -> None:
     assert "docs/milestones/v1.1.0.md" in release
 
 
-def test_v110_versions_and_changelog_are_reconciled() -> None:
-    """Verify metadata, lockfile, and release history agree on 1.1.0.
+def _assert_v111_changelog_facts(changelog: str) -> None:
+    """Assert the dated 1.1.1 release section, its traceability, and the release ordering.
 
-    Supersedes ``test_v100_versions_and_changelog_are_reconciled``: that function read the
-    *live, mutable* pyproject files and lockfile for ``version = "1.0.0"``, which was only
-    ever true between the v1.0.0 and v1.1.0 releases. The immutable half of its claim — the
-    dated 1.0.0 CHANGELOG section and its #151 traceability — is still asserted, by
-    ``_assert_v100_changelog_facts`` (#217).
+    Carries forward the ordering structure from #218 / #217 — ``[Unreleased]`` present and
+    immediately above the newest release section, with no other release heading wedged
+    between — retargeted at ``[1.1.1]``, and pins that ``## [1.1.0] - 2026-09-08`` still
+    follows ``[1.1.1]`` directly so the historical ordering stays guarded.
+    """
+    assert "## [Unreleased]" in changelog
+    assert "## [1.1.1] - 2026-11-07" in changelog
+    before = changelog.split("## [1.1.1] - 2026-11-07", maxsplit=1)[0]
+    around_unreleased = before.split("## [Unreleased]", maxsplit=1)
+    assert len(around_unreleased) == 2, "## [Unreleased] must sit above the 1.1.1 release section"
+    assert "## [" not in around_unreleased[1], (
+        "no release section may sit between ## [Unreleased] and ## [1.1.1] - 2026-11-07"
+    )
+    release = changelog.split("## [1.1.1] - 2026-11-07", maxsplit=1)[1]
+    assert "## [1.1.0] - 2026-09-08" in release, (
+        "the historical ## [1.1.0] - 2026-09-08 section must remain present below ## [1.1.1]"
+    )
+    release = release.split("## [1.1.0] - 2026-09-08", maxsplit=1)[0]
+    assert "## [" not in release, (
+        "no release section may sit between ## [1.1.1] - 2026-11-07 and ## [1.1.0] - 2026-09-08"
+    )
+    assert "#251" in release
+    assert "#252" in release
+
+
+def test_v111_versions_and_changelog_are_reconciled() -> None:
+    """Verify metadata, lockfile, and release history agree on 1.1.1.
+
+    Supersedes ``test_v110_versions_and_changelog_are_reconciled``, which read the *live,
+    mutable* pyproject files and lockfile for ``version = "1.1.0"`` — only ever true between
+    the v1.1.0 and v1.1.1 releases. The immutable halves of the older claims — the dated 1.1.0
+    and 1.0.0 CHANGELOG sections and their traceability — are still asserted below.
     """
     for path in (_ROOT_PYPROJECT, _CORE_PYPROJECT, _MCP_PYPROJECT):
-        assert 'version = "1.1.0"' in path.read_text(encoding="utf-8")
+        assert 'version = "1.1.1"' in path.read_text(encoding="utf-8")
     lock = (_REPO_ROOT / "uv.lock").read_text(encoding="utf-8")
-    assert lock.count('version = "1.1.0"') >= 3
-    _assert_v110_changelog_facts(_CHANGELOG.read_text(encoding="utf-8"))
-    _assert_v100_changelog_facts(_CHANGELOG.read_text(encoding="utf-8"))
+    assert lock.count('version = "1.1.1"') >= 3
+    changelog = _CHANGELOG.read_text(encoding="utf-8")
+    _assert_v111_changelog_facts(changelog)
+    _assert_v110_changelog_facts(changelog)
+    _assert_v100_changelog_facts(changelog)
 
 
 @pytest.mark.parametrize(
@@ -1702,32 +1725,44 @@ def test_negative_control_v110_release_and_changelog_mutations() -> None:
             # Every occurrence — each of these facts is stated more than once in the
             # 1.1.0 section, so a single-replace mutation would not remove the fact.
             _assert_v110_changelog_facts(changelog.replace(old, ""))
+    for old in ("## [1.1.1] - 2026-11-07", "#251", "#252"):
+        with pytest.raises(AssertionError):
+            _assert_v111_changelog_facts(changelog.replace(old, ""))
 
 
 def test_negative_control_v110_changelog_ordering_and_history() -> None:
     """Negative control: the ordering *and* history-preservation assertions are load-bearing.
 
-    The first two mutations exercise the ``[Unreleased]`` placement checks inherited from
-    #218's v1.0.0 form. The third is the piece that form could not have: deleting the
-    historical ``## [1.0.0]`` heading must fail, or the record's ordering integrity is
-    unguarded from v1.1.0 onward.
+    The first two mutations exercise the ``[Unreleased]`` placement checks, which now live in
+    :func:`_assert_v111_changelog_facts` (the newest release). The third adds a release wedged
+    between ``[1.1.1]`` and ``[1.1.0]``. The last two keep the 1.1.0 history guard honest:
+    deleting the historical ``## [1.0.0]`` heading, or wedging a release above it, must fail.
     """
     changelog = _CHANGELOG.read_text(encoding="utf-8")
 
-    # [Unreleased] still present, but demoted below the 1.1.0 release section.
+    # [Unreleased] still present, but demoted below the 1.1.1 release section.
     demoted = changelog.replace("## [Unreleased]\n", "", 1) + "\n## [Unreleased]\n"
     assert "## [Unreleased]" in demoted, "mutation must keep the heading, only move it"
     with pytest.raises(AssertionError):
-        _assert_v110_changelog_facts(demoted)
+        _assert_v111_changelog_facts(demoted)
 
-    # A later release section wedged between [Unreleased] and [1.1.0].
+    # A later release section wedged between [Unreleased] and [1.1.1].
     wedged = changelog.replace(
-        "## [1.1.0] - 2026-09-08",
-        "## [1.2.0] - 2026-09-20\n\n## [1.1.0] - 2026-09-08",
+        "## [1.1.1] - 2026-11-07",
+        "## [1.2.0] - 2026-11-20\n\n## [1.1.1] - 2026-11-07",
         1,
     )
     with pytest.raises(AssertionError):
-        _assert_v110_changelog_facts(wedged)
+        _assert_v111_changelog_facts(wedged)
+
+    # A release section wedged between [1.1.1] and the historical [1.1.0].
+    wedged_v110 = changelog.replace(
+        "## [1.1.0] - 2026-09-08",
+        "## [1.1.0.5] - 2026-10-01\n\n## [1.1.0] - 2026-09-08",
+        1,
+    )
+    with pytest.raises(AssertionError):
+        _assert_v111_changelog_facts(wedged_v110)
 
     # The historical 1.0.0 heading deleted.
     erased = changelog.replace("## [1.0.0] - 2026-08-29", "## Release 1.0.0", 1)

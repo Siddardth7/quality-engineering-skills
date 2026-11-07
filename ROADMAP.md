@@ -1,7 +1,7 @@
 # 🗺️ Product Roadmap: Engine-Powered Quality Engineering Skills
 
 > **Document Version:** 3.1: v1 line released; open-ended [Next stages](#next-stages) added (3.0 was the rescope after peer review, see `Peer_Review_On_Execution_And_Roadmap.md`)
-> **Status:** 11 releases shipped, `v0.1.0` → `v1.1.0`. Stable.
+> **Status:** 12 releases shipped, `v0.1.0` → [`v1.1.1`](https://github.com/Siddardth7/quality-engineering-skills/releases/tag/v1.1.1) (a patch on the `v1.1.0` milestone release). Stable.
 > **Pacing:** Milestone- and issue-driven, not calendar-driven. No day/date targets appear anywhere in this document on purpose — see "How pacing works" below.
 > **Companion Document:** `Execution.md`, `Idea.md`, `Peer_review_On_Idea.md`, `Peer_Review_On_Execution_And_Roadmap.md`
 

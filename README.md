@@ -4,7 +4,7 @@
 
 <div align="center">
 
-<img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=600&size=20&pause=1200&color=E65100&center=true&vCenter=true&width=820&height=45&lines=FMEA+//+SPC+//+MSA+//+Control+Plan+%E2%80%94+the+tested+core;The+AI+reasons+//+the+Python+engine+does+the+exact+math;MCP-native+//+local-first+//+agentskills.io;11+releases+//+v0.1.0+%E2%80%94%E2%96%B6+v1.1.0" alt="tagline">
+<img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=600&size=20&pause=1200&color=E65100&center=true&vCenter=true&width=820&height=45&lines=FMEA+//+SPC+//+MSA+//+Control+Plan+%E2%80%94+the+tested+core;The+AI+reasons+//+the+Python+engine+does+the+exact+math;MCP-native+//+local-first+//+agentskills.io;12+releases+//+v0.1.0+%E2%80%94%E2%96%B6+v1.1.1" alt="tagline">
 
 <br>
 
@@ -17,7 +17,7 @@
 [![mypy](https://img.shields.io/badge/types-mypy-2a6db2)](https://mypy-lang.org/)
 [![MCP](https://img.shields.io/badge/protocol-MCP-6e56cf)](https://modelcontextprotocol.io)
 
-**Stable · [v1.1.0](https://github.com/Siddardth7/quality-engineering-skills/releases/tag/v1.1.0) · 14 skills · actively maintained · Next stages → [ROADMAP.md](ROADMAP.md#next-stages)**
+**Stable · [v1.1.1](https://github.com/Siddardth7/quality-engineering-skills/releases/tag/v1.1.1) · 14 skills · actively maintained · Next stages → [ROADMAP.md](ROADMAP.md#next-stages)**
 
 <br>
 

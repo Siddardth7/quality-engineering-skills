@@ -92,7 +92,17 @@ jobs:
       # fully covered by quality-core's OWN tests. One run over packages/quality-core covers
       # all twelve; the combined --cov-fail-under=100 fails if any line in any of them is
       # uncovered. branch coverage is inherited from [tool.coverage.run] branch=true in pyproject.
+      #
+      # Citation gate (#241): manual paths come from `*_MANUAL_PATH` env vars with no
+      # per-machine default, and a missing manual FAILS by default. CI mounts no licensed
+      # manuals (they are on-machine only), so it opts out here — the structural citation
+      # checks still run. How much of the gate actually verified is not left implicit: the
+      # session hook in packages/quality-core/tests/conftest.py writes the verified /
+      # unverified split to $GITHUB_STEP_SUMMARY, so the vacuity is visible in the job
+      # summary tab, not buried in the log. No extra step is needed for that.
       - name: Core coverage gate
+        env:
+          ALLOW_UNVERIFIED_CITATIONS: "1"
         run: >
           uv run pytest packages/quality-core
           --cov=quality_core.io

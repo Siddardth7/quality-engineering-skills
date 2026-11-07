@@ -15,6 +15,7 @@ import unicodedata
 from pathlib import Path
 
 import pytest
+from _citation_audit import require_manual
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _RCA_DIR = Path(__file__).resolve().parents[1] / "src" / "quality_core" / "rca"
@@ -28,34 +29,19 @@ _NON_ALNUM = re.compile(r"[^0-9a-z]+")
 
 MANUAL_PATHS: dict[str, Path] = {
     "Ishikawa": Path(
-        os.environ.get(
-            "ISHIKAWA_MANUAL_PATH",
-            "/Users/sid/Documents/Upskill/SixSigma/RCA/Kaoru_Ishikawa_Guide_to_Quality_Control.md",
-        )
+os.environ.get("ISHIKAWA_MANUAL_PATH", "")
     ),
     "ASQ": Path(
-        os.environ.get(
-            "ASQ_MANUAL_PATH",
-            "/Users/sid/Documents/Upskill/SixSigma/RCA/ASQ_The_Quality_Toolbox_2nd_Edition.md",
-        )
+os.environ.get("ASQ_MANUAL_PATH", "")
     ),
     "AIAG_CQI20": Path(
-        os.environ.get(
-            "CQI20_MANUAL_PATH",
-            "/Users/sid/Documents/Upskill/SixSigma/RCA/AIAG_CQI_20_Effective_Problem_Solving_2nd_Edition.md",
-        )
+os.environ.get("CQI20_MANUAL_PATH", "")
     ),
     "Kepner_Tregoe": Path(
-        os.environ.get(
-            "KT_MANUAL_PATH",
-            "/Users/sid/Documents/Upskill/SixSigma/RCA/Kepner_Tregoe_The_New_Rational_Manager.md",
-        )
+os.environ.get("KT_MANUAL_PATH", "")
     ),
     "Ford_8D": Path(
-        os.environ.get(
-            "FORD_8D_MANUAL_PATH",
-            "/Users/sid/Documents/Upskill/SixSigma/RCA/Ford_Global_8D_Manual.md",
-        )
+os.environ.get("FORD_8D_MANUAL_PATH", "")
     ),
 }
 
@@ -209,11 +195,7 @@ _MANUAL_CACHE: dict[str, tuple[str, list[int]]] = {}
 def _get_flattened_manual(manual_key: str) -> tuple[str, list[int]]:
     if manual_key not in _MANUAL_CACHE:
         path = MANUAL_PATHS[manual_key]
-        if not path.exists():
-            pytest.skip(
-                f"Manual for {manual_key} not found at {path}. "
-                "Licensed manuals are on-machine only and not committed to git."
-            )
+        require_manual(manual_key, path)
         _MANUAL_CACHE[manual_key] = _flatten_manual(path)
     return _MANUAL_CACHE[manual_key]
 

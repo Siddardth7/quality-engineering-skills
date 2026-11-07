@@ -8,6 +8,55 @@ Versions are milestone-driven, not date-driven — see [`ROADMAP.md`](ROADMAP.md
 
 ## [Unreleased]
 
+### Documentation
+- **v1 close-out presentation pass.** README and ROADMAP now show `v1.0.0` and `v1.1.0` as
+  released, with links to their release pages. The README gains a stable-status line and an
+  "Add a skill" pointer. ROADMAP's v2 backlog becomes an undated **Next stages** list with a
+  documented way to propose new skills, and a minimal `CONTRIBUTING.md` is added. #245/#246
+  (strict citation gate in CI) are carried into Next stages; PR #250 was closed unmerged because
+  CI has no licensed-manuals repo or `MANUALS_REPO_TOKEN` secret.
+
+### Fixed
+- **Trust-boundary validators no longer crash on array-like values** (#232). A bare
+  `pd.isna(v)` inside the record-normalising dict comprehensions raised
+  `ValueError: The truth value of an array with more than one element is ambiguous` at
+  nine measured call sites across five modules — the dict-of-lists entry path of
+  `validate_ncr` / `validate_copq` / `validate_sqe_receipt` / `validate_sqe_delivery` /
+  `validate_sqe_scar`, and the list-of-dicts and DataFrame paths of
+  `validate_control_plan` and `categorize_fishbone` when a cell holds a multi-element
+  list (the latter four are wider than the issue body describes). Fixed at the root: the
+  guarded helper is promoted to the public `quality_core.io.na_to_none` plus a new
+  `quality_core.io.clean_record`, the three duplicate copies in `rca/schema.py`,
+  `rca/eight_d_schema.py` and `sqe/schema.py` are deleted, and every remaining bare
+  comprehension (including one in `ppap/schema.py` found by the `git grep` sweep) now
+  routes through it. Malformed input surfaces as an ordinary `ValidationError` /
+  `TypeError` instead. `na_to_none`'s one-element collapse (`na_to_none([None]) is None`)
+  is unchanged and now documented in its docstring as a deliberate decision.
+- **8D chained round-trip now asserts the whole-report closure gate** (#238). The valid
+  chain in `packages/quality-mcp/tests/test_eight_d_chained_roundtrip.py` ended at
+  `status == "CLOSED"` without ever calling `validate_8d`, so a report that reached CLOSED
+  while the gate still rejected it would have passed. It now asserts
+  `closeable is True` and `gate_reasons == []` — the happy-path mirror of
+  `test_eight_d_closure_precondition.py`, which pins the rejecting case. Test-only.
+- **The "Verified" MCP client-setup transcript is regenerated from a live server, and pinned**
+  (#239). `docs/mcp-client-setup.md` §4 reported `ping()` returning version `0.1.0` while the
+  workspace shipped `1.1.0`, and advertised a pre-34-tool catalog; it survived two release
+  closeouts. Every value is now captured from a live in-process server, §4.2 states "showing 2 of
+  34 tools" and names all 34, and a new §4.0 records the capture recipe so the next release
+  re-captures instead of hand-editing. `serverInfo.version` is deliberately unchanged — FastMCP
+  reports the MCP SDK version there, and the doc already matched the live server.
+  `tests/test_mcp_transcript_version_governance.py` binds the transcript to live
+  `quality_mcp.__version__` so staleness fails loudly rather than surviving another release.
+### Added
+- Optional structured **SCAR sheet** on the SQE Excel exporter (#200). `build_sqe_workbook` /
+  `export_sqe_workbook` / `export_sqe_excel` gain a `scar: SCARResult | None = None` keyword;
+  when supplied, a third `"SCAR"` worksheet is appended rendering the SCAR summary, its six cited
+  sections, its three-or-four linkage rows, and its warnings/recommendations. Omitting `scar`
+  (the default) leaves the existing two-sheet workbook unchanged. The sheet is qualitative —
+  live-formula verification is declared N/A (`sqe/ASSUMPTIONS_LOG.md` RULE-SQE-019), every cell
+  routes through `sanitize_cell`, and `SCARLinkageResult.raw_result` is deliberately never
+  rendered. `quality_core.sqe.scar` gains `benchmark_scar_result()`.
+
 ## [1.1.0] - 2026-09-08
 
 Milestone 11 implementation is complete and ready for the human release handoff. The closeout

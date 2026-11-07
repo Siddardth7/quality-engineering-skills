@@ -19,6 +19,7 @@ import unicodedata
 from pathlib import Path
 
 import pytest
+from _citation_audit import require_manual
 
 _QUALITY_CORE_SRC = Path(__file__).resolve().parents[1] / "src" / "quality_core"
 
@@ -37,16 +38,10 @@ _NON_ALNUM = re.compile(r"[^0-9a-z]+")
 
 MANUAL_PATHS: dict[str, Path] = {
     "ISO_9001": Path(
-        os.environ.get(
-            "ISO_9001_MANUAL_PATH",
-            "/Users/sid/Documents/Upskill/SixSigma/NCR/ISO_9001_2015_Section_8_7.md",
-        )
+os.environ.get("ISO_9001_MANUAL_PATH", "")
     ),
     "IATF_16949": Path(
-        os.environ.get(
-            "IATF_16949_MANUAL_PATH",
-            "/Users/sid/Documents/Upskill/SixSigma/NCR/IATF_16949_2016_Section_8_7.md",
-        )
+os.environ.get("IATF_16949_MANUAL_PATH", "")
     ),
 }
 
@@ -135,11 +130,7 @@ _MANUAL_CACHE: dict[str, tuple[str, list[int]]] = {}
 def _get_flattened_manual(manual_key: str) -> tuple[str, list[int]]:
     if manual_key not in _MANUAL_CACHE:
         path = MANUAL_PATHS[manual_key]
-        if not path.exists():
-            pytest.skip(
-                f"Manual for {manual_key} not found at {path}. "
-                "Licensed manuals are on-machine only and not committed to git."
-            )
+        require_manual(manual_key, path)
         _MANUAL_CACHE[manual_key] = _flatten_manual(path)
     return _MANUAL_CACHE[manual_key]
 

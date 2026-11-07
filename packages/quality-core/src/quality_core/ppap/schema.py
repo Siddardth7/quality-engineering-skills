@@ -22,6 +22,7 @@ import pydantic
 from quality_core.io import (
     IngestError,
     TableSchema,
+    clean_record,
     read_table,
     read_table_from_path,
     validate_table,
@@ -892,10 +893,7 @@ def load_ppap_csv(
     # Convert DataFrame records into EvidenceItem instances
     evidence_items: list[EvidenceItem] = []
     for row in df.to_dict("records"):
-        clean_row = cast(
-            "dict[str, Any]",
-            {k: (None if pd.isna(v) else v) for k, v in row.items()},
-        )
+        clean_row = clean_record(row)
         evidence_items.append(EvidenceItem(**clean_row))
 
     return PPAPPackage(

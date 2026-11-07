@@ -38,11 +38,14 @@ from quality_core.sqe.export import (
     VENDOR_SCORECARD_COL_WIDTHS,
     VENDOR_SCORECARD_COLUMNS,
     SQEVendorRow,
+    _scar_linkage_rows,
+    _scar_note_rows,
     benchmark_sqe_vendor_rows,
     build_sqe_workbook,
     export_sqe_excel,
     export_sqe_workbook,
 )
+from quality_core.sqe.scar import SCARResult, benchmark_scar_result
 from quality_core.sqe.schema import DeliveryRecord, ReceiptLot, SupplierPeriod
 from quality_core.sqe.scorecard import (
     LinearScoringCurve,
@@ -540,3 +543,192 @@ def test_benchmark_returns_fresh_instances_sqe() -> None:
     assert all(isinstance(row.escalation, EscalationResult) for row in a)
     # Fresh nested objects, not shared references.
     assert a[0].scorecard is not b[0].scorecard
+
+
+# ===========================================================================
+# Structured SCAR sheet (#200) — qualitative, no live formulas (RULE-SQE-019)
+# ===========================================================================
+
+
+def _scar_sheet(scar: SCARResult, title: str = "SQE Vendor Scorecard") -> object:
+    """Build a workbook with the optional SCAR sheet and hand back that sheet."""
+    wb = build_sqe_workbook(benchmark_sqe_vendor_rows(), title=title, scar=scar)
+    return wb["SCAR"]
+
+
+def test_sqe_workbook_omits_the_scar_sheet_by_default() -> None:
+    """#200 backward compatibility: omitting `scar` leaves the two-sheet workbook untouched.
+
+    The SCAR sheet is opt-in precisely so every existing `wb.sheetnames` assertion, and the
+    SQE row in the e2e catalog regression's live-formula table, keep passing unchanged.
+    """
+    wb = build_sqe_workbook(benchmark_sqe_vendor_rows())
+    assert "SCAR" not in wb.sheetnames
+    assert len(wb.sheetnames) == 2
+
+
+def test_sqe_workbook_appends_the_scar_sheet_when_supplied() -> None:
+    """#200: supplying a SCARResult appends exactly one sheet, titled `SCAR`, last."""
+    wb = build_sqe_workbook(benchmark_sqe_vendor_rows(), scar=benchmark_scar_result())
+    assert wb.sheetnames[-1] == "SCAR"
+    assert len(wb.sheetnames) == 3
+
+
+def test_scar_sheet_renders_summary_sections_linkage_and_notes() -> None:
+    """Every block of the engine's record reaches the sheet."""
+    scar = benchmark_scar_result()
+    ws = _scar_sheet(scar)
+    rendered = {
+        str(c.value)
+        for row in ws.iter_rows()
+        for c in row
+        if c.value is not None
+    }
+    assert scar.supplier_id in rendered
+    assert scar.scar_id in rendered
+    assert scar.status in rendered
+    assert {s.heading for s in scar.sections} <= rendered
+    assert {scar.linkage[k].linkage_key for k in scar.linkage} <= rendered
+
+
+def test_scar_sheet_carries_no_live_formulas() -> None:
+    """SCAR is qualitative: live-formula verification is declared N/A (RULE-SQE-019).
+
+    Asserting the absence is the load-bearing half of that declaration — a formula appearing
+    here would mean the exporter had started computing rather than presenting.
+    """
+    ws = _scar_sheet(benchmark_scar_result())
+    for row in ws.iter_rows():
+        for cell in row:
+            assert not (isinstance(cell.value, str) and cell.value.startswith("=")), cell.value
+
+
+def test_scar_sheet_sanitizes_a_formula_leading_field() -> None:
+    """Injection control: a `=`-leading engine field must render inert.
+
+    Built directly rather than via `generate_scar`, because the engine's own
+    `linked_ncr_id` warning embeds caller text mid-sentence (`sqe/scar.py:638-642`) and so is
+    never formula-leading. Asserting escaping there would assert the wrong thing; this drives
+    the escaping path head-on.
+    """
+    scar = benchmark_scar_result()
+    hostile = "=HYPERLINK(\"http://evil\",\"click\")"
+    scar.warnings.append(hostile)
+    ws = _scar_sheet(scar)
+    values = [c.value for row in ws.iter_rows() for c in row if isinstance(c.value, str)]
+    assert any(v.endswith(hostile[1:]) and v.startswith("'") for v in values), values[-6:]
+    assert hostile not in values
+
+
+def test_scar_linkage_block_is_three_rows_without_vendor_scorecard_linkage() -> None:
+    """The linkage block is 3 or 4 rows and must never be assumed to be 4.
+
+    `SCARConfig.evaluate_vendor_scorecard_linkage=False` drops the key entirely. Hardcoding
+    the block height would silently desync every block written beneath it.
+    """
+    full = benchmark_scar_result()
+    assert len(_scar_linkage_rows(full)) == len(full.linkage)
+
+    trimmed = benchmark_scar_result()
+    trimmed.linkage.pop("vendor_scorecard", None)
+    assert len(_scar_linkage_rows(trimmed)) == len(full.linkage) - 1
+    assert "vendor_scorecard" not in {r[0] for r in _scar_linkage_rows(trimmed)}
+
+
+def test_scar_sheet_passes_none_fields_through_as_blank_cells() -> None:
+    """An unanswered SCAR field renders blank, never the literal string "None"."""
+    scar = benchmark_scar_result()
+    scar.root_cause = None
+    ws = _scar_sheet(scar)
+    values = [c.value for row in ws.iter_rows() for c in row]
+    assert "None" not in [v for v in values if isinstance(v, str)]
+
+
+def test_scar_sheet_handles_empty_warning_and_recommendation_lists() -> None:
+    """The notes block is legitimately empty when the engine raised neither."""
+    scar = benchmark_scar_result()
+    scar.warnings.clear()
+    scar.recommendations.clear()
+    ws = _scar_sheet(scar)
+    assert _scar_note_rows(scar) == []
+    assert ws["A1"].value == "Report Title"
+
+
+def test_scar_sheet_never_renders_raw_result() -> None:
+    """Presentation boundary: nested sub-engine payloads are surfaced as verdicts, not re-projected."""
+    scar = benchmark_scar_result()
+    ws = _scar_sheet(scar)
+    rendered = " ".join(
+        str(c.value) for row in ws.iter_rows() for c in row if c.value is not None
+    )
+    assert "raw_result" not in rendered
+
+
+def test_export_sqe_workbook_and_excel_thread_scar_through() -> None:
+    """Both serializing entrypoints forward `scar` to the builder."""
+    scar = benchmark_scar_result()
+    for payload in (
+        export_sqe_workbook(benchmark_sqe_vendor_rows(), scar=scar),
+        export_sqe_excel(benchmark_sqe_vendor_rows(), scar=scar),
+    ):
+        wb = openpyxl.load_workbook(io.BytesIO(payload))
+        assert "SCAR" in wb.sheetnames
+
+
+def test_benchmark_scar_result_returns_fresh_closable_instances() -> None:
+    """#200 fixture helper: fresh objects each call, mirroring `benchmark_sqe_vendor_rows`."""
+    a = benchmark_scar_result()
+    b = benchmark_scar_result()
+    assert a is not b
+    assert a.linkage is not b.linkage
+    assert a.status == "CLOSABLE"
+    assert a.root_cause is not None
+    assert a.verification_of_effectiveness is not None
+
+
+def test_scar_summary_block_sanitizes_a_formula_leading_field() -> None:
+    """Injection control for Block A — the PRIMARY caller-controlled surface.
+
+    `issue_description`, `scar_id`, `root_cause` and `verification_of_effectiveness` are
+    caller-authored and land in the summary block, which is written by `_write_scar_sheet`
+    directly rather than through `_write_scar_block`. The notes-block control above does not
+    reach this code path: dropping `sanitize_cell` here left all tests green (reviewer
+    finding). This drives the summary write head-on.
+    """
+    scar = benchmark_scar_result()
+    hostile = '=cmd|\' /C calc\'!A0'
+    scar.issue_description = hostile
+    ws = _scar_sheet(scar)
+    values = [c.value for row in ws.iter_rows() for c in row if isinstance(c.value, str)]
+    assert hostile not in values, "summary block wrote an unescaped formula-leading value"
+    assert any(v.startswith("'") and v.endswith(hostile[1:]) for v in values), values[:12]
+
+
+def test_scar_notes_block_start_row_tracks_the_variable_linkage_height() -> None:
+    """Sheet-level control for the 3-vs-4 linkage case.
+
+    `test_scar_linkage_block_is_three_rows_without_vendor_scorecard_linkage` exercises only the
+    pure `_scar_linkage_rows` helper, so hardcoding Block D's start row stayed green (reviewer
+    finding). This asserts on the rendered sheet: dropping one linkage row must move the notes
+    header up by exactly one, and must not clobber the last linkage row.
+    """
+
+    def _notes_header_row(ws: object) -> int:
+        for row in ws.iter_rows():  # type: ignore[attr-defined]
+            if row[0].value == "Type" and row[1].value == "Text":
+                return int(row[0].row)
+        raise AssertionError("notes block header not found on the SCAR sheet")
+
+    full = benchmark_scar_result()
+    trimmed = benchmark_scar_result()
+    trimmed.linkage.pop("vendor_scorecard", None)
+    assert len(trimmed.linkage) == len(full.linkage) - 1
+
+    ws_full, ws_trim = _scar_sheet(full), _scar_sheet(trimmed)
+    assert _notes_header_row(ws_full) - _notes_header_row(ws_trim) == 1
+
+    # The surviving linkage rows are intact, not overwritten by the block beneath them.
+    trimmed_values = {
+        c.value for row in ws_trim.iter_rows() for c in row if c.value is not None
+    }
+    assert {trimmed.linkage[k].linkage_key for k in trimmed.linkage} <= trimmed_values

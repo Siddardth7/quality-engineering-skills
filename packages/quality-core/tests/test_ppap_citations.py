@@ -18,6 +18,7 @@ import unicodedata
 from pathlib import Path
 
 import pytest
+from _citation_audit import require_manual
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _PPAP_DIR = Path(__file__).resolve().parents[1] / "src" / "quality_core" / "ppap"
@@ -25,8 +26,7 @@ MANIFEST = _PPAP_DIR / "CITATIONS.tsv"
 ASSUMPTIONS_LOG = _PPAP_DIR / "ASSUMPTIONS_LOG.md"
 
 MANUAL_ENV_VAR = "PPAP_MANUAL_PATH"
-DEFAULT_MANUAL = "/Users/sid/Documents/Upskill/SixSigma/PPAP/AIAG_PPAP_4th_Edition.md"
-MANUAL = Path(os.environ.get(MANUAL_ENV_VAR, DEFAULT_MANUAL))
+MANUAL = Path(os.environ.get(MANUAL_ENV_VAR, ""))
 
 LINE_TOLERANCE = 2
 
@@ -78,12 +78,7 @@ def _flatten_manual() -> tuple[str, list[int]]:
 
 @pytest.fixture(scope="module")
 def manual() -> tuple[str, list[int]]:
-    if not MANUAL.exists():
-        pytest.skip(
-            f"AIAG PPAP 4th Edition manual not found at {MANUAL}. It is licensed and is not "
-            f"committed to this repo, so the citation check did NOT run. Set ${MANUAL_ENV_VAR} "
-            f"to a local copy of AIAG_PPAP_4th_Edition.md to run it."
-        )
+    require_manual(f"AIAG PPAP 4th Edition ({MANUAL_ENV_VAR})", MANUAL)
     return _flatten_manual()
 
 

@@ -71,6 +71,7 @@ from quality_core.sqe.export import (
     benchmark_sqe_vendor_rows,
     export_sqe_workbook,
 )
+from quality_core.sqe.scar import benchmark_scar_result
 from quality_mcp.server import mcp
 
 # ---------------------------------------------------------------------------
@@ -328,6 +329,39 @@ def test_domain_exporter_emits_live_formulas(
     for sheet, coord in cells:
         # Does not raise: the cell carries a live <f> element.
         assert_cell_is_formula(workbook_bytes, sheet, coord)
+
+
+def test_sqe_scar_sheet_is_structured_only_and_the_verifier_proves_it() -> None:
+    """The optional SCAR sheet is qualitative: every cell is a literal, at the OOXML level.
+
+    `quality_core/sqe/export.py` declares live-formula verification N/A for this sheet
+    (RULE-SQE-019). The in-suite control asserts no cell string starts with "=", which is a
+    proxy; this asserts the same carve-out through the same E1 verifier the live-formula rows
+    use, so "N/A" is enforced rather than merely claimed — the RCA test below is the template.
+
+    This samples one populated cell per block rather than every cell on the sheet; the
+    full-sheet guarantee comes from `test_scar_sheet_carries_no_live_formulas`. Saying so
+    matters: a test whose name promises more than it checks is the failure this cleanup
+    series exists to remove.
+
+    The Vendor Scorecard sheet in the same workbook keeps its live formulas; only the SCAR
+    sheet is structured-only. Both are asserted so a future change cannot quietly flatten one
+    into the other.
+    """
+    workbook_bytes = export_sqe_workbook(
+        benchmark_sqe_vendor_rows(), scar=benchmark_scar_result()
+    )
+    assert workbook_bytes[:2] == b"PK"
+
+    # One cell per block — A (summary), B (sections), C (linkage), D (notes) — so the
+    # carve-out is sampled across the whole sheet, not just its header. Reviewer round 2
+    # caught the earlier A-only sampling reading as "every cell".
+    for coord in ("A1", "B1", "B4", "A12", "A20", "E21", "A26"):
+        with pytest.raises(AssertionError, match="is a literal, not a live formula"):
+            assert_cell_is_formula(workbook_bytes, "SCAR", coord)
+
+    # The scorecard half is unaffected: its PPM cell is still a live formula.
+    assert_cell_is_formula(workbook_bytes, "SQE Vendor Scorecard", "I2")
 
 
 def test_rca_exporter_is_structured_only_and_the_verifier_proves_it() -> None:

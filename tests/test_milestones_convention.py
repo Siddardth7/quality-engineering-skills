@@ -1348,13 +1348,19 @@ def _assert_v100_closeout_facts(milestone: str) -> None:
 
 
 def _assert_v100_public_release_facts(content: str) -> None:
-    """Assert the approved implementation-complete, publication-pending boundary."""
-    assert "Complete" in content
-    assert "human release pending" in content
+    """Assert the published release state, with no stale publication-pending wording.
+
+    Until the human promotion this pinned "Complete · human release pending" so no index could
+    claim a release that had not happened. ``v1.0.0`` and ``v1.1.0`` are now tagged and
+    published as GitHub releases, so the boundary flips: every public index must say
+    "Released" and none may still say "human release pending".
+    """
+    assert "Released" in content
+    assert "human release pending" not in content
 
 
 def test_v100_closeout_completion_and_release_boundary() -> None:
-    """Verify completed implementation without fabricating promotion or a tag."""
+    """Verify completed implementation and that public indexes match the published release."""
     _assert_v100_closeout_facts(_V100_MILESTONE.read_text(encoding="utf-8"))
     for path in (_ROADMAP, _MILESTONES_README, _README, _SKILLS_README):
         _assert_v100_public_release_facts(path.read_text(encoding="utf-8"))
@@ -1401,11 +1407,12 @@ def test_negative_control_v100_release_and_changelog_mutations() -> None:
     """Negative control: release-state and changelog linkage are load-bearing."""
     roadmap = _ROADMAP.read_text(encoding="utf-8")
     with pytest.raises(AssertionError):
-        # Every occurrence: the v1.1.0 closeout added a second "human release pending" row,
-        # so mutating only the first would leave the asserted fact intact (#217).
-        _assert_v100_public_release_facts(
-            roadmap.replace("human release pending", "Planned")
-        )
+        # Every occurrence: ROADMAP carries several "Released" markers, so mutating only the
+        # first would leave the asserted fact intact (#217).
+        _assert_v100_public_release_facts(roadmap.replace("Released", "Planned"))
+    with pytest.raises(AssertionError):
+        # Stale pending wording reintroduced next to a released row must also be rejected.
+        _assert_v100_public_release_facts(roadmap + "\nComplete · human release pending\n")
     changelog = _CHANGELOG.read_text(encoding="utf-8")
     for old in ("## [1.0.0] - 2026-08-29", "#151"):
         with pytest.raises(AssertionError):
@@ -1435,18 +1442,18 @@ _V110_EXPECTED_ISSUES = {
 }
 
 # The v1.1.0 row each public-facing index must carry. ``_assert_v100_public_release_facts``
-# only proves the *words* "Complete" and "human release pending" appear somewhere in each
-# file, which the pre-existing v1.0.0 rows already satisfy — so a v1.1.0 clone of it would
-# pass without v1.1.0 being mentioned at all. These pin the actual new rows instead.
+# only proves the *word* "Released" appears somewhere in each file, which the v1.0.0 rows
+# already satisfy — so a v1.1.0 clone of it would pass without v1.1.0 being mentioned at all.
+# These pin the actual v1.1.0 rows, including their released state, instead.
 _V110_PUBLIC_ROWS = {
     "ROADMAP.md": "[**`v1.1.0`**](docs/milestones/v1.1.0.md)",
     "docs/milestones/README.md": (
         "| `v1.1.0` | [`docs/milestones/v1.1.0.md`](v1.1.0.md) | "
-        "8D Problem-Solving State Machine | Complete · human release pending |"
+        "8D Problem-Solving State Machine | Released |"
     ),
     "README.md": (
         "| **v1.1.0** | 8D Problem-Solving State Machine | "
-        "✅ **Complete · human release pending** | "
+        "✅ **[Released](https://github.com/Siddardth7/quality-engineering-skills/releases/tag/v1.1.0)** | "
         "[docs/milestones/v1.1.0.md](docs/milestones/v1.1.0.md) |"
     ),
     "skills/README.md": "| **`v1.1.0`** | `8d-problem-solving` |",
@@ -1610,7 +1617,7 @@ def _assert_v110_public_rows(contents: dict[str, str]) -> None:
 
 
 def test_v110_closeout_completion_and_release_boundary() -> None:
-    """Verify completed implementation without fabricating promotion or a tag."""
+    """Verify completed implementation and that public indexes carry the released v1.1.0 row."""
     _assert_v110_closeout_facts(_V110_MILESTONE.read_text(encoding="utf-8"))
     _assert_v110_public_rows(_read_v110_public_rows())
 

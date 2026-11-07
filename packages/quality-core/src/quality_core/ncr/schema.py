@@ -12,12 +12,18 @@ blank rejection, disposition alias normalization, and unique record ID enforceme
 
 from __future__ import annotations
 
-from typing import Annotated, Any, BinaryIO, Literal, cast
+from typing import Annotated, Any, BinaryIO, Literal
 
 import pandas as pd
 import pydantic
 
-from quality_core.io.validate import IngestError, TableSchema, load_table, load_table_from_path
+from quality_core.io.validate import (
+    IngestError,
+    TableSchema,
+    clean_record,
+    load_table,
+    load_table_from_path,
+)
 from quality_core.schema._base import find_duplicates
 
 __all__ = [
@@ -205,10 +211,7 @@ def validate_ncr(data: Any) -> NCRDataset:
     if isinstance(data, NCRDataset):
         return data
     if isinstance(data, pd.DataFrame):
-        records = [
-            cast("dict[str, Any]", {k: (None if pd.isna(v) else v) for k, v in row.items()})
-            for row in data.to_dict("records")
-        ]
+        records = [clean_record(row) for row in data.to_dict("records")]
         return NCRDataset(records=[NonconformanceRecord(**rec) for rec in records])
     if isinstance(data, list):
         records_list: list[NonconformanceRecord] = []
@@ -216,12 +219,12 @@ def validate_ncr(data: Any) -> NCRDataset:
             if isinstance(item, NonconformanceRecord):
                 records_list.append(item)
             elif isinstance(item, dict):
-                clean_rec = cast("dict[str, Any]", {k: (None if pd.isna(v) else v) for k, v in item.items()})
+                clean_rec = clean_record(item)
                 records_list.append(NonconformanceRecord(**clean_rec))
             else:
                 raise TypeError(f"Expected NonconformanceRecord or dict in list, got {type(item).__name__}")
         return NCRDataset(records=records_list)
     if isinstance(data, dict):
-        clean_dict = cast("dict[str, Any]", {k: (None if pd.isna(v) else v) for k, v in data.items()})
+        clean_dict = clean_record(data)
         return NCRDataset(**clean_dict)
     raise TypeError(f"Expected NCRDataset, DataFrame, list of dicts/records, or dict, got {type(data).__name__}")

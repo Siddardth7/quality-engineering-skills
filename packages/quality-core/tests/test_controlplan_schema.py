@@ -352,3 +352,26 @@ def test_validate_control_plan_rejects_invalid_list_item() -> None:
 def test_validate_control_plan_rejects_unsupported_type() -> None:
     with pytest.raises(TypeError, match="Expected ControlPlanDataset, DataFrame"):
         validate_control_plan(12345)
+
+
+def test_validate_control_plan_list_with_list_valued_cell_regression_232() -> None:
+    """#232 (B2): a CELL holding a multi-element list must not ambiguous-crash.
+
+    Wider than #232's body, which states the list-of-dicts branch is unaffected. It is
+    not: the comprehension runs over each ROW's `.items()`, so a list-valued cell hits
+    the same bare `pd.isna(v)`. Measured crashing on `origin/test` @ `92c8edc`.
+    The honest post-fix outcome is an ordinary validation error, never the crash.
+    """
+    bad_row = {**GOOD_ROW_KWARGS, "characteristic": [1, 2]}
+    with pytest.raises((pydantic.ValidationError, TypeError)) as excinfo:
+        validate_control_plan([bad_row])
+    assert "ambiguous" not in str(excinfo.value).lower()
+
+
+def test_validate_control_plan_dataframe_with_list_valued_cell_regression_232() -> None:
+    """#232 (B3): same defect via the DataFrame branch."""
+    df = pd.DataFrame([dict(GOOD_ROW_KWARGS)])
+    df["characteristic"] = pd.Series([[1, 2]], dtype=object)
+    with pytest.raises((pydantic.ValidationError, TypeError)) as excinfo:
+        validate_control_plan(df)
+    assert "ambiguous" not in str(excinfo.value).lower()

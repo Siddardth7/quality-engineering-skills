@@ -55,7 +55,41 @@ def test_correct_quote_at_wrong_line_fails(tmp_path: Path) -> None:
         ca.assert_quote_in_any_manual("RULE 1", _GOOD_LINE + 50, _GOOD_QUOTE, manuals)
 
 
-def test_skips_when_no_text_manual_present() -> None:
+def test_fails_when_no_text_manual_present(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Strict by default (#241): an absent manual is an unverified citation, not a free pass.
+
+    Forces strict mode rather than assuming the ambient env is strict. CI sets
+    ``ALLOW_UNVERIFIED_CITATIONS=1`` for the whole quality-core run (it mounts no manuals),
+    and under that env an unpinned version of this test takes the skip path and its own
+    escape-guard converts that into a failure -- a red gate for a correctly-configured CI.
+    Its twin below pins the opposite direction with ``setenv``; this is the mirror.
+
+    Deliberately NOT ``pytest.raises(pytest.fail.Exception)``. Both ``Failed`` and ``Skipped``
+    derive from ``BaseException``, not ``Exception``, and ``pytest.raises(Failed)`` does not
+    catch ``Skipped``. So if the strict branch ever regresses to a skip, the ``Skipped``
+    escapes this test body and pytest records this control as SKIPPED rather than FAILED --
+    a green suite with the guard reverted, which is the exact vacuity #241 exists to kill.
+    Mutation-verified: reverting ``citations_strict()`` to ``return False`` must make this
+    test FAIL, not skip.
+    """
+    monkeypatch.delenv(ca.ALLOW_UNVERIFIED_CITATIONS_ENV, raising=False)
+    absent = {"MISSING": Path("/nonexistent/manual.md")}
+    try:
+        ca.assert_quote_in_any_manual("RULE 1", 1, "anything at all here", absent)
+    except pytest.fail.Exception:
+        return
+    except BaseException as exc:  # noqa: BLE001 - a Skipped escape must not read as success
+        pytest.fail(
+            f"strict mode must FAIL on an absent manual; got {type(exc).__name__}: {exc}"
+        )
+    pytest.fail("strict mode must FAIL on an absent manual; the call returned cleanly")
+
+
+def test_skips_when_no_text_manual_present_and_opted_out(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`ALLOW_UNVERIFIED_CITATIONS=1` restores the old skip, for local dev and for CI."""
+    monkeypatch.setenv(ca.ALLOW_UNVERIFIED_CITATIONS_ENV, "1")
     absent = {"MISSING": Path("/nonexistent/manual.md")}
     with pytest.raises(pytest.skip.Exception):
         ca.assert_quote_in_any_manual("RULE 1", 1, "anything at all here", absent)

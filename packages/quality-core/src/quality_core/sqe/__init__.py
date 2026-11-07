@@ -7,7 +7,13 @@ identity models, and the CSV ingest loaders (Issue #115), plus the supplier PPM/
 engine (Issue #116), the OTIF & delivery-performance calculator (Issue #117), the composed vendor
 scorecard engine (Issue #118), the evidence-first supplier escalation tier engine (Issue #119),
 the SCAR generator with cross-engine evidence linkage (Issue #120), and the vendor-rating
-live-formula Excel exporter (Issue #149).
+live-formula Excel exporter (Issue #149) with its optional structured SCAR sheet (Issue #200).
+
+``benchmark_scar_result`` is deliberately NOT re-exported here: ``quality_core.sqe.__all__`` is
+pinned as an exact set by ``packages/quality-core/tests/test_sqe_schema.py``
+(``test_sqe_module_all_exports``), which is owned by an open PR. Import it from
+``quality_core.sqe.scar`` — the same submodule-path convention the e2e catalog regression already
+uses for ``benchmark_sqe_vendor_rows``.
 """
 
 from __future__ import annotations

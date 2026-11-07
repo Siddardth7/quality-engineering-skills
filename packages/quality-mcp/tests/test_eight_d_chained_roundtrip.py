@@ -305,6 +305,16 @@ def test_valid_chain_ncr_to_d3_to_d4_to_d7_to_closed() -> None:
             assert closed["reasons"] == []
             assert closed["report"]["status"] == "CLOSED"
 
+            # Step 6 — the whole-report gate must agree the finished report is closeable.
+            # Mirror of test_eight_d_closure_precondition.py, which pins the hazard case
+            # (a report advanced to CLOSED that validate_8d still rejects); this is the
+            # happy-path half: a valid chain's closed report passes the same gate (#238).
+            final = _parsed(
+                await session.call_tool("validate_8d", arguments={"report": closed["report"]})
+            )
+            assert final["closeable"] is True
+            assert final["gate_reasons"] == []
+
     asyncio.run(_run())
 
 

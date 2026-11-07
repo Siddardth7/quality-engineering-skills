@@ -31,18 +31,9 @@ MANIFEST = _COPQ_DIR / "CITATIONS.tsv"
 ASSUMPTIONS_LOG = _COPQ_DIR / "ASSUMPTIONS_LOG.md"
 
 MANUAL_PATHS: dict[str, Path] = {
-    "ASQ_CSSGB": manual_path(
-        "COPQ_ASQ_CSSGB_MANUAL_PATH",
-        "/Users/sid/Documents/Upskill/SixSigma/COPQ/ASQ_six_sigma_green_belt_handb.pdf",
-    ),
-    "CSSC": manual_path(
-        "COPQ_CSSC_MANUAL_PATH",
-        "/Users/sid/Documents/Upskill/SixSigma/COPQ/Lean-Six-Sigma-Green-Belt-Certification-Training-Manual-CSSC-2018-06b.pdf",
-    ),
-    "Lumafield": manual_path(
-        "COPQ_LUMAFIELD_MANUAL_PATH",
-        "/Users/sid/Documents/Upskill/SixSigma/COPQ/TheLumafieldCostofQualityReportpdf.pdf",
-    ),
+    "ASQ_CSSGB": manual_path("COPQ_ASQ_CSSGB_MANUAL_PATH"),
+    "CSSC": manual_path("COPQ_CSSC_MANUAL_PATH"),
+    "Lumafield": manual_path("COPQ_LUMAFIELD_MANUAL_PATH"),
 }
 
 MANIFEST_ROWS = load_citations(MANIFEST)

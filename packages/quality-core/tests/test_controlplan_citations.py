@@ -14,12 +14,10 @@ import unicodedata
 from pathlib import Path
 
 import pytest
+from _citation_audit import require_manual
 
 MANUAL_ENV_VAR = "FMEA_MANUAL_PATH"
-DEFAULT_MANUAL = (
-    "/Users/sid/Documents/Upskill/SixSigma/FMEA/pdfcoffee.com_aiag-vda-fmea-handbook-1-version-juni-2019-englisch-pdf-free.md"
-)
-MANUAL = Path(os.environ.get(MANUAL_ENV_VAR, DEFAULT_MANUAL))
+MANUAL = Path(os.environ.get(MANUAL_ENV_VAR, ""))
 
 MANIFEST = (
     Path(__file__).resolve().parents[1]
@@ -55,8 +53,7 @@ def _load_citations() -> list[tuple[str, int, str]]:
 
 @pytest.fixture(scope="module")
 def manual_lines() -> list[str]:
-    if not MANUAL.exists():
-        pytest.skip(f"Manual not found at {MANUAL} (set {MANUAL_ENV_VAR})")
+    require_manual(f"Control Plan ({MANUAL_ENV_VAR})", MANUAL)
     return MANUAL.read_text(encoding="utf-8", errors="replace").splitlines()
 
 

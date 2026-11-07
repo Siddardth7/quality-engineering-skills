@@ -661,3 +661,19 @@ def test_copq_normalize_category_direct_value_fallback(monkeypatch: pytest.Monke
     )
     assert CostItem.normalize_category("Prevention") == "Prevention"
 
+
+
+def test_validate_copq_from_dict_with_two_items_regression_232() -> None:
+    """#232 (A2): a dict whose list value holds 2+ cost items must validate, not crash.
+
+    Sibling of the NCR control; see `quality_core.io.na_to_none` for why a one-element
+    list hid this for so long.
+    """
+    data = {
+        "items": [
+            _valid_cost_item_dict(),
+            _valid_cost_item_dict(),
+        ]
+    }
+    validated = validate_copq(data)
+    assert len(validated.items) == 2

@@ -18,7 +18,13 @@ from typing import Annotated, Any, BinaryIO, Literal, cast, get_args
 import pandas as pd
 import pydantic
 
-from quality_core.io import IngestError, TableSchema, load_table, load_table_from_path
+from quality_core.io import (
+    IngestError,
+    TableSchema,
+    clean_record,
+    load_table,
+    load_table_from_path,
+)
 from quality_core.schema._base import find_duplicates
 
 __all__ = [
@@ -44,18 +50,6 @@ __all__ = [
     "validate_is_is_not",
 ]
 
-
-def _na_to_none(value: Any) -> Any:
-    """Normalize scalar missing values while preserving array-like values."""
-    try:
-        return None if pd.isna(value) else value
-    except (TypeError, ValueError):
-        return value
-
-
-def _clean_record(mapping: dict[str, Any]) -> dict[str, Any]:
-    """Normalize missing scalar values in one untrusted record."""
-    return {key: _na_to_none(value) for key, value in mapping.items()}
 
 # ==============================================================================
 # 1. 5-Why Problem Solving
@@ -171,7 +165,7 @@ def validate_five_why(
         return data
     if isinstance(data, pd.DataFrame):
         records = [
-            _clean_record(cast("dict[str, Any]", row)) for row in data.to_dict("records")
+            clean_record(cast("dict[str, Any]", row)) for row in data.to_dict("records")
         ]
         return FiveWhyChain(
             problem_statement=problem_statement,
@@ -184,13 +178,13 @@ def validate_five_why(
             if isinstance(item, FiveWhyStep):
                 steps.append(item)
             elif isinstance(item, dict):
-                clean_rec = _clean_record(item)
+                clean_rec = clean_record(item)
                 steps.append(FiveWhyStep(**clean_rec))
             else:
                 raise TypeError(f"Expected FiveWhyStep or dict in list, got {type(item).__name__}")
         return FiveWhyChain(problem_statement=problem_statement, steps=steps, root_cause=root_cause)
     if isinstance(data, dict):
-        clean_dict = _clean_record(data)
+        clean_dict = clean_record(data)
         return FiveWhyChain(**clean_dict)
     raise TypeError(f"Expected FiveWhyChain, DataFrame, list of dicts/steps, or dict, got {type(data).__name__}")
 
@@ -376,7 +370,7 @@ def validate_fishbone(
         return data
     if isinstance(data, pd.DataFrame):
         records = [
-            _clean_record(cast("dict[str, Any]", row)) for row in data.to_dict("records")
+            clean_record(cast("dict[str, Any]", row)) for row in data.to_dict("records")
         ]
         return FishboneDataset(
             effect=effect,
@@ -388,13 +382,13 @@ def validate_fishbone(
             if isinstance(item, FishboneCause):
                 causes.append(item)
             elif isinstance(item, dict):
-                clean_rec = _clean_record(item)
+                clean_rec = clean_record(item)
                 causes.append(FishboneCause(**clean_rec))
             else:
                 raise TypeError(f"Expected FishboneCause or dict in list, got {type(item).__name__}")
         return FishboneDataset(effect=effect, causes=causes)
     if isinstance(data, dict):
-        clean_dict = _clean_record(data)
+        clean_dict = clean_record(data)
         return FishboneDataset(**clean_dict)
     raise TypeError(f"Expected FishboneDataset, DataFrame, list of dicts/causes, or dict, got {type(data).__name__}")
 
@@ -511,7 +505,7 @@ def validate_is_is_not(
         return data
     if isinstance(data, pd.DataFrame):
         records = [
-            _clean_record(cast("dict[str, Any]", row)) for row in data.to_dict("records")
+            clean_record(cast("dict[str, Any]", row)) for row in data.to_dict("records")
         ]
         return IsIsNotMatrix(
             problem_statement=problem_statement,
@@ -523,12 +517,12 @@ def validate_is_is_not(
             if isinstance(item, IsIsNotRow):
                 rows.append(item)
             elif isinstance(item, dict):
-                clean_rec = _clean_record(item)
+                clean_rec = clean_record(item)
                 rows.append(IsIsNotRow(**clean_rec))
             else:
                 raise TypeError(f"Expected IsIsNotRow or dict in list, got {type(item).__name__}")
         return IsIsNotMatrix(problem_statement=problem_statement, rows=rows)
     if isinstance(data, dict):
-        clean_dict = _clean_record(data)
+        clean_dict = clean_record(data)
         return IsIsNotMatrix(**clean_dict)
     raise TypeError(f"Expected IsIsNotMatrix, DataFrame, list of dicts/rows, or dict, got {type(data).__name__}")

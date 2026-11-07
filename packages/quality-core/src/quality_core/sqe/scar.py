@@ -71,6 +71,7 @@ __all__ = [
     "SCARResult",
     "SCARSection",
     "ScarStatus",
+    "benchmark_scar_result",
     "generate_scar",
 ]
 
@@ -755,4 +756,62 @@ def generate_scar(
         reason=reason,
         warnings=_build_warnings(request, linkage),
         recommendations=_build_recommendations(linkage, voe),
+    )
+
+
+# ===========================================================================
+# Benchmark Dataset
+# ===========================================================================
+
+#: A systemic supplier 5-Why response: it terminates in a procedural gap, not in blame, so
+#: ``quality_core.rca`` accepts it and its own terminal cause becomes ``SCARResult.root_cause``.
+#: Authored here as *supplier evidence*, never as a root cause this module asserts.
+_BENCHMARK_SUPPLIER_CHAIN: list[dict[str, Any]] = [
+    {
+        "step_number": 1,
+        "why": "Why were cracked housings shipped to the customer?",
+        "because": "The final visual inspection did not detect the hairline cracks.",
+    },
+    {
+        "step_number": 2,
+        "why": "Why did the final visual inspection not detect them?",
+        "because": "The inspection was performed without the magnification the crack size requires.",
+    },
+    {
+        "step_number": 3,
+        "why": "Why was no magnification used?",
+        "because": "The final-inspection work instruction specifies no magnification requirement.",
+    },
+]
+
+
+def benchmark_scar_result() -> SCARResult:
+    """Return a fresh benchmark :class:`SCARResult` exercising every rendered field.
+
+    A ``CLOSABLE`` SCAR — supplier chain accepted, verification of effectiveness stated — that
+    still carries one warning and one recommendation, so a renderer sees non-empty content in
+    every block: scalar fields (all populated except ``reason``, which ``CLOSABLE`` leaves
+    ``None`` by design), six sections, four linkage rows, one warning, one recommendation.
+    ``linked_ncr_id`` is referenced without NCR evidence (the warning) and no cost-impact
+    evidence is supplied (the recommendation).
+    """
+    request = SCARRequest(
+        supplier_id="SUP-A",
+        scar_id="SCAR-2026-0007",
+        issue_description=(
+            "Hairline cracks found on 5 of 120 pump housings at incoming inspection, against a "
+            "drawing requirement of no visible cracks."
+        ),
+        linked_ncr_id="NCR-2026-0042",
+        date_issued=datetime.date(2026, 2, 3),
+        due_date=datetime.date(2026, 3, 3),
+        requested_by="Supplier Quality Engineering",
+    )
+    return generate_scar(
+        request,
+        supplier_root_cause_evidence=copy.deepcopy(_BENCHMARK_SUPPLIER_CHAIN),
+        verification_of_effectiveness=(
+            "Three consecutive lots (360 housings) inspected under 10x magnification after the "
+            "work-instruction revision showed zero cracks."
+        ),
     )

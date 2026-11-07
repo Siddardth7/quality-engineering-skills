@@ -1082,3 +1082,50 @@ def test_supplier_and_period_validators_non_string_passthrough() -> None:
     assert Supplier.normalize_optional_strings(123) == 123
     assert SupplierPeriod.reject_blank_required_fields(123) == 123
     assert SupplierPeriod.normalize_optional_strings(123) == 123
+
+
+def test_validate_sqe_receipt_from_dict_with_two_lots_regression_232() -> None:
+    """#232 (A3): dict-of-lists entry path with 2+ rows must validate, not crash.
+
+    All three SQE datasets name their field `records`; #232's reproduction used
+    `{"lots": ...}` / `{"requests": ...}` only because ANY list value triggered the
+    crash before field validation ever ran. The unrecognised-key case is pinned
+    separately below.
+    """
+    validated = validate_sqe_receipt(
+        {"records": [_valid_receipt(lot_id="LOT-01"), _valid_receipt(lot_id="LOT-02")]}
+    )
+    assert len(validated.records) == 2
+
+
+def test_validate_sqe_delivery_from_dict_with_two_records_regression_232() -> None:
+    """#232 (A4): dict-of-lists entry path with 2+ delivery records must validate."""
+    validated = validate_sqe_delivery(
+        {"records": [_valid_delivery(order_id="ORD-01"), _valid_delivery(order_id="ORD-02")]}
+    )
+    assert len(validated.records) == 2
+
+
+def test_validate_sqe_scar_from_dict_with_two_requests_regression_232() -> None:
+    """#232 (A5): dict-of-lists entry path with 2+ SCAR requests must validate."""
+    validated = validate_sqe_scar(
+        {"records": [_valid_scar(scar_id="SCAR-01"), _valid_scar(scar_id="SCAR-02")]}
+    )
+    assert len(validated.records) == 2
+
+
+def test_validate_sqe_unrecognised_dict_key_is_a_clean_error_regression_232() -> None:
+    """#232 verbatim reproduction: the issue's own keys must not ambiguous-crash.
+
+    `{"lots": [...]}` is not a field of `ReceiptLotDataset`, so the honest outcome is an
+    ordinary `ValidationError`. Before the fix it raised `ValueError: The truth value of
+    an array with more than one element is ambiguous` from inside the normaliser, before
+    pydantic ever saw the payload. Asserting the message is NOT that crash is the point.
+    """
+    for fn, payload in (
+        (validate_sqe_receipt, {"lots": [_valid_receipt(), _valid_receipt()]}),
+        (validate_sqe_scar, {"requests": [_valid_scar(), _valid_scar()]}),
+    ):
+        with pytest.raises(pydantic.ValidationError) as excinfo:
+            fn(payload)
+        assert "ambiguous" not in str(excinfo.value).lower()

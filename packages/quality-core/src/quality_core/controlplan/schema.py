@@ -27,12 +27,18 @@ placeholders rather than engineered values. It defaults to ``False``.
 
 from __future__ import annotations
 
-from typing import Annotated, Any, BinaryIO, cast
+from typing import Annotated, Any, BinaryIO
 
 import pandas as pd
 import pydantic
 
-from quality_core.io import IngestError, TableSchema, load_table, load_table_from_path
+from quality_core.io import (
+    IngestError,
+    TableSchema,
+    clean_record,
+    load_table,
+    load_table_from_path,
+)
 from quality_core.schema._base import find_duplicates
 from quality_core.spc.constants import SPCChart
 
@@ -174,10 +180,7 @@ def validate_control_plan(data: Any) -> ControlPlanDataset:
     if isinstance(data, ControlPlanDataset):
         return data
     if isinstance(data, pd.DataFrame):
-        records = [
-            cast("dict[str, Any]", {k: (None if pd.isna(v) else v) for k, v in row.items()})
-            for row in data.to_dict("records")
-        ]
+        records = [clean_record(row) for row in data.to_dict("records")]
         return ControlPlanDataset(rows=[ControlPlanRow(**rec) for rec in records])
     if isinstance(data, list):
         rows: list[ControlPlanRow] = []
@@ -185,7 +188,7 @@ def validate_control_plan(data: Any) -> ControlPlanDataset:
             if isinstance(item, ControlPlanRow):
                 rows.append(item)
             elif isinstance(item, dict):
-                clean_rec = cast("dict[str, Any]", {k: (None if pd.isna(v) else v) for k, v in item.items()})
+                clean_rec = clean_record(item)
                 rows.append(ControlPlanRow(**clean_rec))
             else:
                 raise TypeError(f"Expected ControlPlanRow or dict in list, got {type(item).__name__}")
